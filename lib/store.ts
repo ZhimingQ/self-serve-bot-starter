@@ -6,14 +6,19 @@
  *     UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set. This is the
  *     recommended production backend (works great on Vercel / any serverless
  *     runtime since it's just HTTP).
- *  2. An in-memory Map fallback for local dev. Data resets whenever the
+ *  2. A JSON-file store when STORE_DIR is set (and Upstash is not). For hosts
+ *     with a persistent disk but no Redis — e.g. the "Deploy via your bot" path,
+ *     where the bot container bind-mounts STORE_DIR so data survives restarts.
+ *  3. An in-memory Map fallback for local dev. Data resets whenever the
  *     process restarts — do NOT use this in production.
  *
  * Every function in the `Store` interface is async so both backends satisfy
  * the same contract.
  */
 
-import { upstash } from "./config";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { storeDir, upstash } from "./config";
 
 export interface StoredUser {
   id: string;
@@ -138,6 +143,110 @@ class MemoryStore implements Store {
   }
 }
 
+// ── Backend 3: JSON-file store (persistent disk, no Redis) ────────────────
+//
+// The whole dataset is small (one row per signed-up user), so we keep it in
+// memory and persist the entire snapshot to a single JSON file on every write.
+// Writes are serialized through a promise chain and committed atomically
+// (write temp → rename) so a crash mid-write can't corrupt the file. A single
+// `next start` process owns the file; do not point two processes at the same
+// STORE_DIR.
+
+interface FileSnapshot {
+  usersById: Record<string, StoredUser>;
+  userIdByEmail: Record<string, string>;
+  instanceByUserId: Record<string, string>;
+  sessionByUserId: Record<string, string>;
+}
+
+function emptySnapshot(): FileSnapshot {
+  return { usersById: {}, userIdByEmail: {}, instanceByUserId: {}, sessionByUserId: {} };
+}
+
+class FileStore implements Store {
+  private readonly file: string;
+  private snapshot: FileSnapshot | null = null;
+  private loadPromise: Promise<FileSnapshot> | null = null;
+  private writeChain: Promise<void> = Promise.resolve();
+
+  constructor(private readonly dir: string) {
+    this.file = path.join(dir, "store.json");
+  }
+
+  private async load(): Promise<FileSnapshot> {
+    if (this.snapshot) return this.snapshot;
+    if (!this.loadPromise) {
+      this.loadPromise = (async () => {
+        try {
+          const raw = await fs.readFile(this.file, "utf8");
+          this.snapshot = { ...emptySnapshot(), ...(JSON.parse(raw) as Partial<FileSnapshot>) };
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+            console.error(`[store] failed to read ${this.file}, starting empty:`, err);
+          }
+          this.snapshot = emptySnapshot();
+        }
+        return this.snapshot;
+      })();
+    }
+    return this.loadPromise;
+  }
+
+  /** Serialize + atomically persist the current snapshot. Each write waits for
+   *  the previous one but is isolated from its outcome — a transient failure
+   *  (e.g. ENOSPC) must NOT poison the chain and silently drop every later
+   *  write. `run` surfaces THIS write's own error to its caller; the chain
+   *  itself is kept resolved for the next writer. */
+  private persist(): Promise<void> {
+    const run = this.writeChain.catch(() => {}).then(async () => {
+      const snap = this.snapshot ?? emptySnapshot();
+      await fs.mkdir(this.dir, { recursive: true });
+      const tmp = `${this.file}.${process.pid}.tmp`;
+      await fs.writeFile(tmp, JSON.stringify(snap), "utf8");
+      await fs.rename(tmp, this.file);
+    });
+    this.writeChain = run.catch(() => {});
+    return run;
+  }
+
+  async getUserByEmail(email: string): Promise<StoredUser | null> {
+    const snap = await this.load();
+    const userId = snap.userIdByEmail[normalizeEmail(email)];
+    if (!userId) return null;
+    return snap.usersById[userId] ?? null;
+  }
+
+  async createUser(user: StoredUser): Promise<StoredUser> {
+    const snap = await this.load();
+    snap.usersById[user.id] = user;
+    snap.userIdByEmail[normalizeEmail(user.email)] = user.id;
+    await this.persist();
+    return user;
+  }
+
+  async getUserInstance(userId: string): Promise<string | null> {
+    const snap = await this.load();
+    return snap.instanceByUserId[userId] ?? null;
+  }
+
+  async setUserInstance(userId: string, instanceId: string): Promise<void> {
+    const snap = await this.load();
+    snap.instanceByUserId[userId] = instanceId;
+    await this.persist();
+  }
+
+  async getUserSession(userId: string): Promise<string | null> {
+    const snap = await this.load();
+    return snap.sessionByUserId[userId] ?? null;
+  }
+
+  async setUserSession(userId: string, sessionId: string): Promise<void> {
+    const snap = await this.load();
+    snap.sessionByUserId[userId] = sessionId;
+    await this.persist();
+  }
+}
+
 // ── Factory ────────────────────────────────────────────────────────────
 
 let cachedStore: Store | null = null;
@@ -147,9 +256,11 @@ export function getStore(): Store {
 
   if (upstash.url && upstash.token) {
     cachedStore = new UpstashStore(upstash.url, upstash.token);
+  } else if (storeDir) {
+    cachedStore = new FileStore(storeDir);
   } else {
     console.warn(
-      "[store] Using in-memory store — data resets on restart; set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for production."
+      "[store] Using in-memory store — data resets on restart; set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or STORE_DIR) for production."
     );
     cachedStore = new MemoryStore();
   }

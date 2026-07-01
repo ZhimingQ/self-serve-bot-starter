@@ -36,3 +36,9 @@ export const upstash = {
   url: process.env.UPSTASH_REDIS_REST_URL || "",
   token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
 };
+
+// A writable directory for the JSON-file store backend (lib/store.ts). Set this
+// when you deploy on a host with a persistent disk but no Upstash — e.g. the
+// "Deploy via your bot" path, where the bot container bind-mounts this dir so
+// signups survive restarts. Leave empty on Vercel/serverless (use Upstash there).
+export const storeDir = process.env.STORE_DIR || "";
