@@ -1,0 +1,158 @@
+/**
+ * Pluggable persistence layer.
+ *
+ * Two backends behind one factory:
+ *  1. Upstash Redis (REST API, plain fetch — no client library) when
+ *     UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set. This is the
+ *     recommended production backend (works great on Vercel / any serverless
+ *     runtime since it's just HTTP).
+ *  2. An in-memory Map fallback for local dev. Data resets whenever the
+ *     process restarts — do NOT use this in production.
+ *
+ * Every function in the `Store` interface is async so both backends satisfy
+ * the same contract.
+ */
+
+import { upstash } from "./config";
+
+export interface StoredUser {
+  id: string;
+  email: string;
+  passwordHash: string;
+  passwordSalt: string;
+  createdAt: string;
+}
+
+export interface Store {
+  getUserByEmail(email: string): Promise<StoredUser | null>;
+  createUser(user: StoredUser): Promise<StoredUser>;
+  /** The end-user's own provisioned bot instance id (one per user). */
+  getUserInstance(userId: string): Promise<string | null>;
+  setUserInstance(userId: string, instanceId: string): Promise<void>;
+  /**
+   * The upstream chat session id (from the `x-openclaw-session-id` response
+   * header) used to keep multi-turn memory across chat turns. Not to be
+   * confused with the browser auth-cookie session in lib/session.ts.
+   */
+  getUserSession(userId: string): Promise<string | null>;
+  setUserSession(userId: string, sessionId: string): Promise<void>;
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+// ── Backend 1: Upstash Redis via REST (plain fetch, no SDK) ──────────────
+
+class UpstashStore implements Store {
+  constructor(
+    private readonly url: string,
+    private readonly token: string
+  ) {}
+
+  private async command<T = unknown>(cmd: (string | number)[]): Promise<T> {
+    const res = await fetch(this.url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(cmd),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Upstash command failed (${res.status}): ${text}`);
+    }
+    const data = (await res.json()) as { result: T };
+    return data.result;
+  }
+
+  async getUserByEmail(email: string): Promise<StoredUser | null> {
+    const key = `user:by-email:${normalizeEmail(email)}`;
+    const userId = await this.command<string | null>(["GET", key]);
+    if (!userId) return null;
+    const raw = await this.command<string | null>(["GET", `user:${userId}`]);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredUser;
+  }
+
+  async createUser(user: StoredUser): Promise<StoredUser> {
+    const emailKey = `user:by-email:${normalizeEmail(user.email)}`;
+    await this.command(["SET", `user:${user.id}`, JSON.stringify(user)]);
+    await this.command(["SET", emailKey, user.id]);
+    return user;
+  }
+
+  async getUserInstance(userId: string): Promise<string | null> {
+    return this.command<string | null>(["GET", `instance:${userId}`]);
+  }
+
+  async setUserInstance(userId: string, instanceId: string): Promise<void> {
+    await this.command(["SET", `instance:${userId}`, instanceId]);
+  }
+
+  async getUserSession(userId: string): Promise<string | null> {
+    return this.command<string | null>(["GET", `chatsession:${userId}`]);
+  }
+
+  async setUserSession(userId: string, sessionId: string): Promise<void> {
+    await this.command(["SET", `chatsession:${userId}`, sessionId]);
+  }
+}
+
+// ── Backend 2: in-memory fallback for local dev ───────────────────────────
+
+class MemoryStore implements Store {
+  private usersById = new Map<string, StoredUser>();
+  private userIdByEmail = new Map<string, string>();
+  private instanceByUserId = new Map<string, string>();
+  private sessionByUserId = new Map<string, string>();
+
+  async getUserByEmail(email: string): Promise<StoredUser | null> {
+    const userId = this.userIdByEmail.get(normalizeEmail(email));
+    if (!userId) return null;
+    return this.usersById.get(userId) ?? null;
+  }
+
+  async createUser(user: StoredUser): Promise<StoredUser> {
+    this.usersById.set(user.id, user);
+    this.userIdByEmail.set(normalizeEmail(user.email), user.id);
+    return user;
+  }
+
+  async getUserInstance(userId: string): Promise<string | null> {
+    return this.instanceByUserId.get(userId) ?? null;
+  }
+
+  async setUserInstance(userId: string, instanceId: string): Promise<void> {
+    this.instanceByUserId.set(userId, instanceId);
+  }
+
+  async getUserSession(userId: string): Promise<string | null> {
+    return this.sessionByUserId.get(userId) ?? null;
+  }
+
+  async setUserSession(userId: string, sessionId: string): Promise<void> {
+    this.sessionByUserId.set(userId, sessionId);
+  }
+}
+
+// ── Factory ────────────────────────────────────────────────────────────
+
+let cachedStore: Store | null = null;
+
+export function getStore(): Store {
+  if (cachedStore) return cachedStore;
+
+  if (upstash.url && upstash.token) {
+    cachedStore = new UpstashStore(upstash.url, upstash.token);
+  } else {
+    console.warn(
+      "[store] Using in-memory store — data resets on restart; set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for production."
+    );
+    cachedStore = new MemoryStore();
+  }
+
+  return cachedStore;
+}
