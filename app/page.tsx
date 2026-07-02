@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { brand } from "@/lib/config";
+import { brand } from "../lib/config";
 
 export default function LandingPage() {
   return (

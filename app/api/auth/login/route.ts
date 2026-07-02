@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStore } from "@/lib/store";
-import { verifyPassword } from "@/lib/password";
-import { setSession } from "@/lib/session";
+import { getStore } from "../../../../lib/store";
+import { verifyPassword } from "../../../../lib/password";
+import { setSession } from "../../../../lib/session";
 
 export async function POST(request: NextRequest) {
   let body: { email?: string; password?: string };

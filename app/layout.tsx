@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
-import { brand } from "@/lib/config";
+import { brand } from "../lib/config";
 import "./globals.css";
 
 export const metadata: Metadata = {

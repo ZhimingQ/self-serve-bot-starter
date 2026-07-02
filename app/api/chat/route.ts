@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
-import { getStore } from "@/lib/store";
-import { streamResponse } from "@/lib/buildResell";
+import { getSession } from "../../../lib/session";
+import { getStore } from "../../../lib/store";
+import { streamResponse } from "../../../lib/buildResell";
 
 /**
  * Pipes the upstream SSE stream from the Build & Resell API straight

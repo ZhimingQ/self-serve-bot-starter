@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
-import { getStore } from "@/lib/store";
-import { createInstance, getInstance } from "@/lib/buildResell";
+import { getSession } from "../../../lib/session";
+import { getStore } from "../../../lib/store";
+import { createInstance, getInstance } from "../../../lib/buildResell";
 
 /**
  * Idempotent: the first call creates the user's one-and-only bot instance;
