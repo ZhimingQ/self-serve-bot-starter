@@ -42,3 +42,36 @@ export const upstash = {
 // "Deploy via your bot" path, where the bot container bind-mounts this dir so
 // signups survive restarts. Leave empty on Vercel/serverless (use Upstash there).
 export const storeDir = process.env.STORE_DIR || "";
+
+// ── Payment (YOUR Stripe account) ─────────────────────────────────────────
+// Charge your end users on YOUR OWN Stripe before their bot is provisioned —
+// this is where your reseller margin lives. All server-only; NEVER expose the
+// secret key or webhook secret to the browser.
+//
+//  - secretKey   : your Stripe secret key (sk_live_… in prod, sk_test_… to test).
+//  - priceId     : the Stripe Price your customers buy (price_…). You set the
+//                  amount + currency in your Stripe dashboard, so your markup
+//                  over the ~$6/deploy you pay OpenClaw Launch is yours to keep.
+//  - mode        : "subscription" for a recurring price, "payment" for one-time.
+//                  Must match the Price's type.
+//  - webhookSecret: from `stripe listen` / your dashboard webhook (whsec_…) —
+//                  used to verify the /api/stripe/webhook signature.
+//
+// If secretKey + priceId are unset the app runs in NO-PAYMENT mode: signup
+// provisions a bot immediately (the original starter behavior), so you can demo
+// before wiring Stripe. Set both to gate provisioning behind a real payment.
+export const stripe = {
+  secretKey: process.env.STRIPE_SECRET_KEY || "",
+  priceId: process.env.STRIPE_PRICE_ID || "",
+  mode: (process.env.STRIPE_MODE === "payment" ? "payment" : "subscription") as
+    | "subscription"
+    | "payment",
+  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
+};
+
+/** True when Stripe is configured — provisioning is then gated behind payment. */
+export const paymentsEnabled = Boolean(stripe.secretKey && stripe.priceId);
+
+// Public base URL of THIS storefront (e.g. https://bots.youragency.com), used to
+// build Stripe Checkout success/cancel redirect URLs. Falls back to localhost.
+export const appUrl = process.env.APP_URL || "http://localhost:3000";

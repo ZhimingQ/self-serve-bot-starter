@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { createInstance, getInstance } from "../../../lib/buildResell";
+import { paymentsEnabled } from "../../../lib/config";
 
 /**
  * Idempotent: the first call creates the user's one-and-only bot instance;
@@ -44,6 +45,19 @@ export async function POST() {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  // Payment gate (server-side, authoritative): when Stripe is configured, only a
+  // user whose billingStatus is 'active' may provision. This backs the paywall UI
+  // so a crafted request can't get a free bot. NO-PAYMENT mode skips this.
+  if (paymentsEnabled) {
+    const user = await getStore().getUserById(session.userId);
+    if (user?.billingStatus !== "active") {
+      return NextResponse.json(
+        { error: "payment_required", message: "Subscribe to activate your assistant." },
+        { status: 402 }
+      );
+    }
   }
 
   let pending = inflight.get(session.userId);

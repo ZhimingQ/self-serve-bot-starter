@@ -13,14 +13,47 @@ type ProvisionState = "checking" | "provisioning" | "ready" | "error";
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes, covers the 30-90s cold-start window
 
-export default function ChatApp({ email }: { email: string }) {
+export default function ChatApp({
+  email,
+  paid,
+  paymentsEnabled,
+}: {
+  email: string;
+  paid: boolean;
+  paymentsEnabled: boolean;
+}) {
   const router = useRouter();
+  const needsPayment = paymentsEnabled && !paid;
   const [provisionState, setProvisionState] = useState<ProvisionState>("checking");
   const [provisionError, setProvisionError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const startCheckout = useCallback(async () => {
+    if (subscribing) return;
+    setSubscribing(true);
+    setSubscribeError(null);
+    try {
+      const res = await fetch("/api/checkout", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      if (res.ok && data.alreadyPaid) {
+        router.refresh();
+        return;
+      }
+      setSubscribeError(data.message || data.error || "Could not start checkout.");
+    } catch {
+      setSubscribeError("Could not start checkout. Please try again.");
+    }
+    setSubscribing(false);
+  }, [subscribing, router]);
 
   const provision = useCallback(async () => {
     let attempts = 0;
@@ -62,9 +95,12 @@ export default function ChatApp({ email }: { email: string }) {
   }, []);
 
   useEffect(() => {
-    provision();
+    // Only provision once the user is entitled — a paywalled user provisions
+    // after they pay (Stripe redirects back to /app?paid=1 → server passes
+    // paid=true → this effect runs).
+    if (!needsPayment) provision();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [needsPayment]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -136,6 +172,29 @@ export default function ChatApp({ email }: { email: string }) {
     } finally {
       setSending(false);
     }
+  }
+
+  if (needsPayment) {
+    return (
+      <div className="provisioning">
+        <h2>Activate your assistant</h2>
+        <p>
+          You&rsquo;re one step away, {email.split("@")[0]}. Subscribe to spin up your
+          own private AI assistant.
+        </p>
+        {subscribeError && <p style={{ color: "#dc2626" }}>{subscribeError}</p>}
+        <button className="btn btn-primary" onClick={startCheckout} disabled={subscribing}>
+          {subscribing ? "Redirecting…" : "Subscribe & activate"}
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={handleLogout}
+          style={{ marginTop: 10 }}
+        >
+          Log out
+        </button>
+      </div>
+    );
   }
 
   if (provisionState === "checking" || provisionState === "provisioning") {
