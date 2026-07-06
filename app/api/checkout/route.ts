@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { stripe as stripeConfig, paymentsEnabled, appUrl } from "../../../lib/config";
+import { rateLimit } from "../../../lib/rateLimit";
 
 /**
  * Start a Stripe Checkout for the signed-in end user. Returns { url } to redirect
@@ -15,6 +16,17 @@ export async function POST() {
   if (!session) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  // Per-user throttle on Checkout-session creation (10/min) — each call hits the
+  // Stripe API and creates a customer/session, so cap accidental/abusive bursts.
+  const rl = await rateLimit("checkout", session.userId, 10, 60);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "rate_limited", message: "Too many checkout attempts. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+    );
+  }
+
   if (!paymentsEnabled) {
     // Stripe not configured — provisioning is not gated; the client shouldn't
     // reach here, but fail loudly rather than silently.
@@ -64,8 +76,9 @@ export async function POST() {
     }
     return NextResponse.json({ url: checkout.url });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Checkout failed";
-    console.error("[checkout] failed:", message);
-    return NextResponse.json({ error: message }, { status: 502 });
+    // Log the real Stripe error server-side; return a generic message so raw
+    // gateway details aren't exposed to the browser.
+    console.error("[checkout] failed:", err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: "Could not start checkout. Please try again." }, { status: 502 });
   }
 }

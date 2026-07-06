@@ -41,7 +41,10 @@ export interface StoredUser {
 export interface Store {
   getUserByEmail(email: string): Promise<StoredUser | null>;
   getUserById(userId: string): Promise<StoredUser | null>;
-  createUser(user: StoredUser): Promise<StoredUser>;
+  /** Create a user, atomically claiming the email. Returns null if the email was
+   *  already taken — this is the authoritative race guard against two concurrent
+   *  signups for the same address (a pre-check getUserByEmail alone can race). */
+  createUser(user: StoredUser): Promise<StoredUser | null>;
   /** Set the user's Stripe customer id and/or billing status (payment webhook). */
   setUserBilling(
     userId: string,
@@ -106,10 +109,14 @@ class UpstashStore implements Store {
     return raw ? (JSON.parse(raw) as StoredUser) : null;
   }
 
-  async createUser(user: StoredUser): Promise<StoredUser> {
+  async createUser(user: StoredUser): Promise<StoredUser | null> {
     const emailKey = `user:by-email:${normalizeEmail(user.email)}`;
+    // Write the (uuid-keyed) user record first, then atomically claim the email
+    // with SET NX. If the claim loses the race, the record is an unreferenced
+    // orphan — harmless (nothing points to it) — and we report the conflict.
     await this.command(["SET", `user:${user.id}`, JSON.stringify(user)]);
-    await this.command(["SET", emailKey, user.id]);
+    const claimed = await this.command<string | null>(["SET", emailKey, user.id, "NX"]);
+    if (claimed === null) return null; // email already taken
     return user;
   }
 
@@ -168,9 +175,12 @@ class MemoryStore implements Store {
     return this.usersById.get(userId) ?? null;
   }
 
-  async createUser(user: StoredUser): Promise<StoredUser> {
+  async createUser(user: StoredUser): Promise<StoredUser | null> {
+    const emailKey = normalizeEmail(user.email);
+    // Single process + no await between check and set → atomic. Reject dup email.
+    if (this.userIdByEmail.has(emailKey)) return null;
     this.usersById.set(user.id, user);
-    this.userIdByEmail.set(normalizeEmail(user.email), user.id);
+    this.userIdByEmail.set(emailKey, user.id);
     return user;
   }
 
@@ -285,10 +295,14 @@ class FileStore implements Store {
     return snap.usersById[userId] ?? null;
   }
 
-  async createUser(user: StoredUser): Promise<StoredUser> {
+  async createUser(user: StoredUser): Promise<StoredUser | null> {
     const snap = await this.load();
+    const emailKey = normalizeEmail(user.email);
+    // Single process owns the file; the check + mutate below run without an
+    // intervening await, so they're atomic. Reject a duplicate email.
+    if (snap.userIdByEmail[emailKey]) return null;
     snap.usersById[user.id] = user;
-    snap.userIdByEmail[normalizeEmail(user.email)] = user.id;
+    snap.userIdByEmail[emailKey] = user.id;
     await this.persist();
     return user;
   }

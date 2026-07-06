@@ -41,6 +41,11 @@ function authHeaders(extra?: Record<string, string>): Record<string, string> {
   };
 }
 
+// Timeout for the non-streaming control calls (create / list). The streaming
+// chat call is deliberately NOT timed this way — an AbortSignal would truncate a
+// long reply mid-stream — so only the request-boot calls get a hard ceiling.
+const CONTROL_TIMEOUT_MS = 20_000;
+
 /** Create a brand-new bot instance for a user. Takes ~30-90s to become reachable. */
 export async function createInstance(): Promise<BuildResellInstance> {
   const res = await fetch(`${brand.apiBase}/instances`, {
@@ -48,6 +53,7 @@ export async function createInstance(): Promise<BuildResellInstance> {
     headers: authHeaders(),
     body: JSON.stringify({ framework: brand.framework }),
     cache: "no-store",
+    signal: AbortSignal.timeout(CONTROL_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -64,6 +70,7 @@ export async function listInstances(): Promise<BuildResellInstance[]> {
     method: "GET",
     headers: authHeaders(),
     cache: "no-store",
+    signal: AbortSignal.timeout(CONTROL_TIMEOUT_MS),
   });
 
   if (!res.ok) {

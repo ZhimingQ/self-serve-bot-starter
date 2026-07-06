@@ -73,6 +73,37 @@ BOT_FRAMEWORK=openclaw     # or "hermes" — which framework new bots use
 
 No code changes needed to reskin the app for a new reseller.
 
+## Charging your customers (optional payment gate)
+
+By default the app runs in NO-PAYMENT mode: a new signup provisions a bot
+immediately (great for demoing). Set your Stripe keys and the app turns
+`signup → pay → provision`, charging your end users on YOUR OWN Stripe — the
+markup over the ~$6/deploy you pay OpenClaw Launch is yours to keep.
+
+1. Create a Product + Price in your Stripe dashboard. Recurring Price →
+   `STRIPE_MODE=subscription`; one-time Price → `STRIPE_MODE=payment`.
+2. Set `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `APP_URL` (your storefront's
+   public URL), and — for subscription mode — `STRIPE_WEBHOOK_SECRET`.
+3. Add a webhook endpoint in Stripe pointing at
+   `https://your-storefront/api/stripe/webhook`, subscribed to:
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+   `checkout.session.async_payment_failed`, `invoice.paid`,
+   `invoice.payment_failed`, `customer.subscription.deleted`. Copy its signing
+   secret (`whsec_…`) into `STRIPE_WEBHOOK_SECRET`.
+4. To test locally, forward events to your dev server:
+
+   ```bash
+   stripe listen --forward-to localhost:3000/api/stripe/webhook
+   ```
+
+   Pay with Stripe's test card `4242 4242 4242 4242` (any future expiry / CVC).
+
+Entitlement is enforced server-side: `/api/provision` and `/api/chat` both
+return `402` unless the user is `active`, so the paywall can't be bypassed by
+crafting requests. Activation happens two ways for robustness — the success-page
+redirect verifies the Checkout session server-side (instant, no webhook needed),
+and the webhook keeps `billingStatus` in sync on renewals/cancellations.
+
 ## Local development
 
 ```bash
@@ -102,9 +133,17 @@ Open http://localhost:3000.
 | `BOT_FRAMEWORK` | no (defaults to `openclaw`) | `openclaw` or `hermes` |
 | `BUILD_RESELL_API_BASE` | no (defaults to `https://openclawlaunch.com/api/v1`) | |
 | `BUILD_RESELL_API_KEY` | **yes** | Server-side secret. Never exposed to the browser. |
-| `SESSION_SECRET` | **yes** | Random string used to HMAC-sign session cookies. |
-| `UPSTASH_REDIS_REST_URL` | recommended for prod | Falls back to in-memory store if unset |
-| `UPSTASH_REDIS_REST_TOKEN` | recommended for prod | Falls back to in-memory store if unset |
+| `SESSION_SECRET` | **yes** | Long random string used to HMAC-sign session cookies. |
+| `UPSTASH_REDIS_REST_URL` | prod (or `STORE_DIR`) | Persistent store + shared rate-limit counter. Falls back to in-memory if unset. |
+| `UPSTASH_REDIS_REST_TOKEN` | prod (or `STORE_DIR`) | Pairs with the URL above. |
+| `STORE_DIR` | alt to Upstash | Writable dir for the JSON-file store, for a persistent-disk host with no Redis. One process per dir. |
+| `STRIPE_SECRET_KEY` | for payments | Your Stripe secret (`sk_live_…`/`sk_test_…`). Unset + `STRIPE_PRICE_ID` unset ⇒ NO-PAYMENT demo mode. |
+| `STRIPE_PRICE_ID` | for payments | The Stripe Price your customers buy (`price_…`). |
+| `STRIPE_MODE` | no (defaults to `subscription`) | `subscription` (recurring) or `payment` (one-time). Must match the Price. |
+| `STRIPE_WEBHOOK_SECRET` | subscription mode | `whsec_…` — required so renewals/cancellations sync. |
+| `APP_URL` | for payments | This storefront's public URL, for Stripe redirect URLs. |
+
+In production the app validates these at startup (`lib/config.ts` → `instrumentation.ts`) and refuses to boot with a clear error if a required one is missing.
 
 ## Project structure
 
@@ -118,14 +157,19 @@ app/
   api/auth/signup/route.ts   Create account + session cookie
   api/auth/login/route.ts    Verify credentials + session cookie
   api/auth/logout/route.ts   Clear session cookie
-  api/provision/route.ts     Idempotent bot creation + status polling
-  api/chat/route.ts          SSE passthrough to the Build & Resell API
+  api/provision/route.ts     Idempotent bot creation + status polling (payment-gated)
+  api/chat/route.ts          SSE passthrough to the Build & Resell API (payment-gated)
+  api/checkout/route.ts      Start a Stripe Checkout session
+  api/stripe/webhook/route.ts  Stripe webhook → keeps billingStatus in sync
 lib/
-  config.ts                 Brand + API wiring, all from env
+  config.ts                 Brand + API wiring + startup env validation, all from env
   session.ts                 Hand-rolled HMAC-signed cookie session
   password.ts                 scrypt password hashing
-  store.ts                     Pluggable persistence (Upstash / in-memory)
+  store.ts                     Pluggable persistence (Upstash / JSON-file / in-memory)
   buildResell.ts                Server-only Build & Resell API client
+  billing.ts                    Verify a Checkout session + activate the user
+  rateLimit.ts                  Fixed-window limiter (Upstash / in-memory)
+instrumentation.ts          Boot hook → validates env in production
 ```
 
 ## Security notes
@@ -138,3 +182,27 @@ lib/
   beyond what's in this repo.
 - Passwords are hashed with `scrypt` + a random salt per user (also
   `node:crypto`, no external dependency).
+- Public routes are rate-limited (`lib/rateLimit.ts`): login/signup by IP, and
+  provision/chat/checkout by user id — so a script can't brute-force logins,
+  spam signups, or run up your bot/LLM bill. Backed by Upstash when configured
+  (shared across serverless instances), in-memory otherwise.
+
+## Production checklist
+
+Before pointing real customers at your storefront:
+
+- [ ] `SESSION_SECRET` set to a long random string (not the placeholder).
+- [ ] A persistent store configured — Upstash (`UPSTASH_REDIS_REST_*`) or
+      `STORE_DIR`. The in-memory fallback loses every account on restart.
+- [ ] `APP_URL` set to your real public URL.
+- [ ] Upstash configured if you run more than one process/instance, so the
+      rate-limit counter is shared (in-memory limits are per-process).
+- [ ] Payments (if used): `STRIPE_SECRET_KEY` + `STRIPE_PRICE_ID` set, the
+      webhook endpoint added with `STRIPE_WEBHOOK_SECRET`, and a real test
+      purchase completed end-to-end.
+- [ ] Your own Privacy Policy + Terms linked (you are the merchant of record for
+      your customers' payments).
+
+In production the app validates the first three (and the Stripe webhook secret in
+subscription mode) at startup and refuses to boot with a clear error if any are
+missing.

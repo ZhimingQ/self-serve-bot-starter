@@ -3,6 +3,7 @@ import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { createInstance, getInstance } from "../../../lib/buildResell";
 import { paymentsEnabled } from "../../../lib/config";
+import { rateLimit } from "../../../lib/rateLimit";
 
 /**
  * Idempotent: the first call creates the user's one-and-only bot instance;
@@ -45,6 +46,17 @@ export async function POST() {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  // Per-user throttle. Generous (60/min) because the client polls this endpoint
+  // every ~2s while the bot boots — real bot CREATION is already one-per-user
+  // (idempotent) + payment-gated; this cap only stops pathological hammering.
+  const rl = await rateLimit("provision", session.userId, 60, 60);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "rate_limited", message: "Too many requests. Please slow down." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+    );
   }
 
   // Payment gate (server-side, authoritative): when Stripe is configured, only a

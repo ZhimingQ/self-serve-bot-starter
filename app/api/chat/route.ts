@@ -3,6 +3,11 @@ import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { streamResponse } from "../../../lib/buildResell";
 import { paymentsEnabled } from "../../../lib/config";
+import { rateLimit } from "../../../lib/rateLimit";
+
+// Cap message length: protects the reseller's LLM cost and avoids forwarding an
+// accidental multi-MB payload upstream. ~16k chars ≈ a long message, not an essay-bomb.
+const MAX_INPUT_CHARS = 16_000;
 
 /**
  * Pipes the upstream SSE stream from the Build & Resell API straight
@@ -16,6 +21,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
+  // Per-user chat throttle (30 turns / min) — the LLM cost path, so this is the
+  // main guard against a logged-in user running up the reseller's bill.
+  const rl = await rateLimit("chat", session.userId, 30, 60);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "rate_limited", message: "You're sending messages too fast. Please slow down." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+    );
+  }
+
   let body: { input?: string };
   try {
     body = await request.json();
@@ -26,6 +41,12 @@ export async function POST(request: NextRequest) {
   const input = body.input?.trim();
   if (!input) {
     return NextResponse.json({ error: "input is required" }, { status: 400 });
+  }
+  if (input.length > MAX_INPUT_CHARS) {
+    return NextResponse.json(
+      { error: "input_too_long", message: `Message is too long (max ${MAX_INPUT_CHARS} characters).` },
+      { status: 413 }
+    );
   }
 
   const store = getStore();
