@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { streamResponse } from "../../../lib/buildResell";
+import { paymentsEnabled } from "../../../lib/config";
 
 /**
  * Pipes the upstream SSE stream from the Build & Resell API straight
@@ -28,6 +29,20 @@ export async function POST(request: NextRequest) {
   }
 
   const store = getStore();
+
+  // Entitlement gate (server-side, authoritative): when Stripe is configured, a
+  // user whose subscription has lapsed must not keep chatting by POSTing here
+  // directly — the paywall UI alone isn't enough. Mirrors /api/provision.
+  if (paymentsEnabled) {
+    const user = await store.getUserById(session.userId);
+    if (user?.billingStatus !== "active") {
+      return NextResponse.json(
+        { error: "payment_required", message: "Subscribe to activate your assistant." },
+        { status: 402 }
+      );
+    }
+  }
+
   const instanceId = await store.getUserInstance(session.userId);
   if (!instanceId) {
     return NextResponse.json(

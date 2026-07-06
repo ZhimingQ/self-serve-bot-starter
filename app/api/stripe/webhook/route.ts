@@ -6,8 +6,10 @@ import { stripe as stripeConfig } from "../../../../lib/config";
 /**
  * Stripe webhook. Verifies the signature, then keeps each user's billingStatus
  * in sync with their payment/subscription:
- *   - checkout.session.completed  → 'active' (unlocks provisioning)
+ *   - checkout.session.completed / async_payment_succeeded → 'active' ONLY when
+ *     payment_status is paid/no_payment_required (async methods land 'unpaid')
  *   - invoice.paid                → 'active' (subscription renewal)
+ *   - checkout.session.async_payment_failed → 'canceled' (delayed pay never cleared)
  *   - customer.subscription.deleted / invoice.payment_failed → 'canceled'
  *
  * Point your Stripe webhook (or `stripe listen --forward-to`) at
@@ -43,18 +45,23 @@ export async function POST(request: NextRequest) {
   async function applyStatus(
     userId: string | null | undefined,
     billingStatus: "active" | "canceled",
-    customerId?: string | null
+    customerId?: string | null,
+    // Ordering timestamp. Defaults to the event emission time, but checkout-session
+    // events pass the SESSION's own created time so that a late-firing
+    // async_payment_failed for an OLD session can't cancel a user who already paid
+    // via a NEWER session — the older session's created time loses the guard.
+    eventTime: number = event.created
   ) {
     if (!userId) return;
     const user = await store.getUserById(userId);
     if (!user) return;
-    if (user.lastBillingEventAt && event.created < user.lastBillingEventAt) {
+    if (user.lastBillingEventAt && eventTime < user.lastBillingEventAt) {
       console.log("[webhook] skipping stale event", event.id, "for", userId);
       return;
     }
     await store.setUserBilling(userId, {
       billingStatus,
-      lastBillingEventAt: event.created,
+      lastBillingEventAt: eventTime,
       ...(customerId ? { stripeCustomerId: customerId } : {}),
     });
   }
@@ -65,10 +72,23 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
+        const s = event.data.object as Stripe.Checkout.Session;
+        // Only entitle once funds are actually collected. A `completed` session
+        // paid with a delayed/async method arrives `unpaid` — activation for it
+        // must wait for `async_payment_succeeded` (which arrives `paid`).
+        if (s.payment_status !== "paid" && s.payment_status !== "no_payment_required") break;
+        const userId = s.client_reference_id || s.metadata?.appUserId;
+        await applyStatus(userId, "active", customerIdOf(s), s.created);
+        break;
+      }
+      case "checkout.session.async_payment_failed": {
+        // Delayed payment never cleared — make sure we don't leave them active.
+        // Order by s.created so this can't cancel a user who paid via a later session.
         const s = event.data.object as Stripe.Checkout.Session;
         const userId = s.client_reference_id || s.metadata?.appUserId;
-        await applyStatus(userId, "active", customerIdOf(s));
+        await applyStatus(userId, "canceled", customerIdOf(s), s.created);
         break;
       }
       case "invoice.paid": {
