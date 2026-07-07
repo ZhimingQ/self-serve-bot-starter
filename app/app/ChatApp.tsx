@@ -6,7 +6,18 @@ import { useRouter } from "next/navigation";
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  error?: boolean;
 }
+
+// White-label: the end-user must never see the reseller's raw upstream error text
+// (e.g. an account billing/plan message), so any turn failure collapses to this.
+const GENERIC_CHAT_ERROR =
+  "Sorry — your assistant couldn't respond just now. Please try again in a moment.";
+
+// A chat error whose `message` is SAFE to display verbatim (our own friendly copy).
+// Anything thrown that is NOT this (raw fetch/stream exceptions) is shown as the
+// generic line instead, so implementation details never reach the end-user.
+class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
 
@@ -122,6 +133,8 @@ export default function ChatApp({
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     setSending(true);
 
+    let gotContent = false; // did the assistant stream any actual reply text?
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -130,15 +143,20 @@ export default function ChatApp({
       });
 
       if (!res.ok || !res.body) {
+        // Our own API errors carry a friendly `message` (402 pay, 429 slow down,
+        // 413 too long) — show ONLY that (never `data.error`, which can be a raw
+        // code/text). Anything else collapses to the generic line.
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "The assistant could not respond");
+        const known = res.status === 402 || res.status === 429 || res.status === 413;
+        throw new ChatDisplayError((known && data.message) || GENERIC_CHAT_ERROR);
       }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let streamErrored = false;
 
-      while (true) {
+      reading: while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -155,8 +173,15 @@ export default function ChatApp({
 
           try {
             const parsed = JSON.parse(payload);
+            // Upstream surfaces a mid-turn failure as { error }. Without this the
+            // turn dies silently and the bubble hangs on the "…" typing dots.
+            if (parsed?.error) {
+              streamErrored = true;
+              break reading;
+            }
             const delta: string | undefined = parsed?.choices?.[0]?.delta?.content;
             if (delta) {
+              gotContent = true;
               appendToLastAssistantMessage(setMessages, delta);
             }
           } catch {
@@ -164,11 +189,25 @@ export default function ChatApp({
           }
         }
       }
+
+      // The stream ended (or errored) with no reply, OR was interrupted after a
+      // partial reply — surface it instead of leaving an empty/spinning bubble.
+      if (!gotContent) {
+        setLastAssistantMessage(setMessages, GENERIC_CHAT_ERROR, true);
+      } else if (streamErrored) {
+        appendToLastAssistantMessage(setMessages, "\n\n(Interrupted — please try again.)");
+      }
     } catch (err) {
-      appendToLastAssistantMessage(
-        setMessages,
-        err instanceof Error ? `\n\n[Error: ${err.message}]` : "\n\n[Something went wrong]"
-      );
+      // Only our own ChatDisplayError carries a message safe to show; any other
+      // thrown value (raw fetch/stream exception) collapses to the generic line.
+      const msg = err instanceof ChatDisplayError ? err.message : GENERIC_CHAT_ERROR;
+      // If a partial reply already streamed, keep it and add the interrupted note;
+      // otherwise replace the empty placeholder bubble with the error message.
+      if (gotContent) {
+        appendToLastAssistantMessage(setMessages, "\n\n(Interrupted — please try again.)");
+      } else {
+        setLastAssistantMessage(setMessages, msg, true);
+      }
     } finally {
       setSending(false);
     }
@@ -243,6 +282,7 @@ export default function ChatApp({
             <div
               key={index}
               className={message.role === "user" ? "msg msg-user" : "msg msg-assistant"}
+              style={message.error ? { color: "#b91c1c" } : undefined}
             >
               {message.content || (sending && index === messages.length - 1 ? "…" : "")}
             </div>
@@ -276,6 +316,23 @@ function appendToLastAssistantMessage(
     const lastIndex = next.length - 1;
     if (lastIndex >= 0 && next[lastIndex].role === "assistant") {
       next[lastIndex] = { ...next[lastIndex], content: next[lastIndex].content + delta };
+    }
+    return next;
+  });
+}
+
+/** Replace (not append to) the last assistant bubble — used for error states so
+ *  the empty placeholder becomes a readable message instead of hanging on "…". */
+function setLastAssistantMessage(
+  setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
+  content: string,
+  error = false
+) {
+  setMessages((prev) => {
+    const next = [...prev];
+    const lastIndex = next.length - 1;
+    if (lastIndex >= 0 && next[lastIndex].role === "assistant") {
+      next[lastIndex] = { ...next[lastIndex], content, error };
     }
     return next;
   });
