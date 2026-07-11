@@ -159,8 +159,9 @@ In production the app validates these at startup (`lib/config.ts` → `instrumen
 ```
 app/
   page.tsx                 Landing page (Option A: clean minimal SaaS)
-  signup/page.tsx           Sign-up form
-  login/page.tsx            Log-in form
+  LanguageSwitcher.tsx      EN / 简体中文 switch (cookie-backed)
+  signup/SignupForm.tsx     Sign-up form
+  login/LoginForm.tsx       Log-in form
   app/page.tsx               Authed area (server guard) → ChatApp.tsx (client)
   app/ChatApp.tsx            Provisioning + streaming chat UI
   api/auth/signup/route.ts   Create account + session cookie
@@ -172,6 +173,8 @@ app/
   api/stripe/webhook/route.ts  Stripe webhook → keeps billingStatus in sync
 lib/
   config.ts                 Brand + API wiring + startup env validation, all from env
+  i18n.ts                   English + Simplified Chinese UI copy
+  locale.ts                 Server-side locale cookie reader
   session.ts                 Hand-rolled HMAC-signed cookie session
   password.ts                 scrypt password hashing
   store.ts                     Pluggable persistence (Upstash / JSON-file / in-memory)

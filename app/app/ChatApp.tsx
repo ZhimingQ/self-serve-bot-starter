@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { messages as translations, type Locale } from "../../lib/i18n";
+import LanguageSwitcher from "../LanguageSwitcher";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -11,9 +13,6 @@ interface ChatMessage {
 
 // White-label: the end-user must never see the reseller's raw upstream error text
 // (e.g. an account billing/plan message), so any turn failure collapses to this.
-const GENERIC_CHAT_ERROR =
-  "Sorry — your assistant couldn't respond just now. Please try again in a moment.";
-
 // A chat error whose `message` is SAFE to display verbatim (our own friendly copy).
 // Anything thrown that is NOT this (raw fetch/stream exceptions) is shown as the
 // generic line instead, so implementation details never reach the end-user.
@@ -28,11 +27,14 @@ export default function ChatApp({
   email,
   paid,
   paymentsEnabled,
+  locale,
 }: {
   email: string;
   paid: boolean;
   paymentsEnabled: boolean;
+  locale: Locale;
 }) {
+  const copy = translations[locale];
   const router = useRouter();
   const needsPayment = paymentsEnabled && !paid;
   const [provisionState, setProvisionState] = useState<ProvisionState>("checking");
@@ -59,12 +61,12 @@ export default function ChatApp({
         router.refresh();
         return;
       }
-      setSubscribeError(data.message || data.error || "Could not start checkout.");
+      setSubscribeError(copy.checkoutError);
     } catch {
-      setSubscribeError("Could not start checkout. Please try again.");
+      setSubscribeError(copy.checkoutError);
     }
     setSubscribing(false);
-  }, [subscribing, router]);
+  }, [subscribing, router, copy.checkoutError]);
 
   const provision = useCallback(async () => {
     let attempts = 0;
@@ -76,7 +78,7 @@ export default function ChatApp({
         const data = await res.json();
 
         if (!res.ok) {
-          setProvisionError(data.error || "Failed to set up your assistant");
+          setProvisionError(copy.provisionFailed);
           setProvisionState("error");
           return;
         }
@@ -88,7 +90,7 @@ export default function ChatApp({
 
         if (attempts >= MAX_POLL_ATTEMPTS) {
           setProvisionError(
-            "Your assistant is taking longer than usual to start. Please refresh in a moment."
+            copy.provisionSlow
           );
           setProvisionState("error");
           return;
@@ -97,13 +99,13 @@ export default function ChatApp({
         setProvisionState("provisioning");
         setTimeout(poll, POLL_INTERVAL_MS);
       } catch {
-        setProvisionError("Could not reach the server. Please refresh the page.");
+        setProvisionError(copy.serverUnavailable);
         setProvisionState("error");
       }
     };
 
     await poll();
-  }, []);
+  }, [copy.provisionFailed, copy.provisionSlow, copy.serverUnavailable]);
 
   useEffect(() => {
     // Only provision once the user is entitled — a paywalled user provisions
@@ -146,9 +148,10 @@ export default function ChatApp({
         // Our own API errors carry a friendly `message` (402 pay, 429 slow down,
         // 413 too long) — show ONLY that (never `data.error`, which can be a raw
         // code/text). Anything else collapses to the generic line.
-        const data = await res.json().catch(() => ({}));
         const known = res.status === 402 || res.status === 429 || res.status === 413;
-        throw new ChatDisplayError((known && data.message) || GENERIC_CHAT_ERROR);
+        throw new ChatDisplayError(
+          known ? localizedChatError(res.status, locale, copy) : copy.chatError
+        );
       }
 
       const reader = res.body.getReader();
@@ -193,18 +196,18 @@ export default function ChatApp({
       // The stream ended (or errored) with no reply, OR was interrupted after a
       // partial reply — surface it instead of leaving an empty/spinning bubble.
       if (!gotContent) {
-        setLastAssistantMessage(setMessages, GENERIC_CHAT_ERROR, true);
+        setLastAssistantMessage(setMessages, copy.chatError, true);
       } else if (streamErrored) {
-        appendToLastAssistantMessage(setMessages, "\n\n(Interrupted — please try again.)");
+        appendToLastAssistantMessage(setMessages, `\n\n${copy.interrupted}`);
       }
     } catch (err) {
       // Only our own ChatDisplayError carries a message safe to show; any other
       // thrown value (raw fetch/stream exception) collapses to the generic line.
-      const msg = err instanceof ChatDisplayError ? err.message : GENERIC_CHAT_ERROR;
+      const msg = err instanceof ChatDisplayError ? err.message : copy.chatError;
       // If a partial reply already streamed, keep it and add the interrupted note;
       // otherwise replace the empty placeholder bubble with the error message.
       if (gotContent) {
-        appendToLastAssistantMessage(setMessages, "\n\n(Interrupted — please try again.)");
+        appendToLastAssistantMessage(setMessages, `\n\n${copy.interrupted}`);
       } else {
         setLastAssistantMessage(setMessages, msg, true);
       }
@@ -216,21 +219,19 @@ export default function ChatApp({
   if (needsPayment) {
     return (
       <div className="provisioning">
-        <h2>Activate your assistant</h2>
-        <p>
-          You&rsquo;re one step away, {email.split("@")[0]}. Subscribe to spin up your
-          own private AI assistant.
-        </p>
+        <LanguageSwitcher locale={locale} />
+        <h2>{copy.activateTitle}</h2>
+        <p>{copy.activateBody(email.split("@")[0])}</p>
         {subscribeError && <p style={{ color: "#dc2626" }}>{subscribeError}</p>}
         <button className="btn btn-primary" onClick={startCheckout} disabled={subscribing}>
-          {subscribing ? "Redirecting…" : "Subscribe & activate"}
+          {subscribing ? copy.redirecting : copy.subscribe}
         </button>
         <button
           className="btn btn-secondary"
           onClick={handleLogout}
           style={{ marginTop: 10 }}
         >
-          Log out
+          {copy.logout}
         </button>
       </div>
     );
@@ -240,11 +241,9 @@ export default function ChatApp({
     return (
       <div className="provisioning">
         <div className="spinner" />
-        <h2>Spinning up your assistant…</h2>
-        <p>
-          This only happens once — it usually takes under a minute. Hang tight,{" "}
-          {email.split("@")[0]}.
-        </p>
+        <LanguageSwitcher locale={locale} />
+        <h2>{copy.provisioningTitle}</h2>
+        <p>{copy.provisioningBody(email.split("@")[0])}</p>
       </div>
     );
   }
@@ -252,10 +251,11 @@ export default function ChatApp({
   if (provisionState === "error") {
     return (
       <div className="provisioning">
-        <h2>Something went wrong</h2>
+        <LanguageSwitcher locale={locale} />
+        <h2>{copy.wentWrong}</h2>
         <p>{provisionError}</p>
         <button className="btn btn-primary" onClick={() => provision()}>
-          Try again
+          {copy.tryAgain}
         </button>
       </div>
     );
@@ -265,23 +265,25 @@ export default function ChatApp({
     <div className="app-shell">
       <div className="app-topbar">
         <div className="assistant-identity">
-          <span>Private assistant</span>
+          <span>{copy.privateAssistant}</span>
           <strong>{email}</strong>
         </div>
         <button className="btn btn-secondary" onClick={handleLogout}>
-          Log out
+          {copy.logout}
         </button>
+        <LanguageSwitcher locale={locale} />
       </div>
 
       <div className="chat-window">
         <div className="chat-messages">
           {messages.length === 0 && (
-            <p className="chat-empty">Hello. What would you like to work through today?</p>
+            <p className="chat-empty">{copy.chatGreeting}</p>
           )}
           {messages.map((message, index) => (
             <div
               key={index}
               className={message.role === "user" ? "msg msg-user" : "msg msg-assistant"}
+              data-label={message.role === "user" ? copy.you : copy.assistant}
               style={message.error ? { color: "#b91c1c" } : undefined}
             >
               {message.content || (sending && index === messages.length - 1 ? "…" : "")}
@@ -293,18 +295,31 @@ export default function ChatApp({
         <form className="chat-input-row" onSubmit={handleSend}>
           <input
             type="text"
-            placeholder="Message your assistant…"
+            placeholder={copy.messagePlaceholder}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             disabled={sending}
           />
           <button type="submit" className="btn btn-primary" disabled={sending || !input.trim()}>
-            Send
+            {copy.send}
           </button>
         </form>
       </div>
     </div>
   );
+}
+
+function localizedChatError(
+  status: number,
+  locale: Locale,
+  copy: (typeof translations)[Locale]
+): string {
+  if (status === 402) return copy.activateTitle;
+  if (status === 429) {
+    return locale === "zh" ? "消息发送过快，请稍后再试。" : "You’re sending messages too fast. Please slow down.";
+  }
+  if (status === 413) return locale === "zh" ? "消息内容过长。" : "Your message is too long.";
+  return copy.chatError;
 }
 
 function appendToLastAssistantMessage(

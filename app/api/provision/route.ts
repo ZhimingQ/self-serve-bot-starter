@@ -43,15 +43,6 @@ async function provision(userId: string): Promise<{ status: string; instanceId: 
 }
 
 export async function POST() {
-  // Live-demo guard (belt-and-suspenders with the signup gate): never provision a
-  // bot from a public demo storefront, even if a session somehow exists.
-  if (demoMode) {
-    return NextResponse.json(
-      { error: "demo_mode", message: "This is a live demo — provisioning is disabled." },
-      { status: 403 }
-    );
-  }
-
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -79,6 +70,15 @@ export async function POST() {
         { status: 402 }
       );
     }
+  }
+
+  // A public demo must never create a new billable bot. Existing users are
+  // allowed through so login, status polling, and chat keep working.
+  if (demoMode && !(await getStore().getUserInstance(session.userId))) {
+    return NextResponse.json(
+      { error: "demo_mode", message: "This is a live demo — new assistants are disabled." },
+      { status: 403 }
+    );
   }
 
   let pending = inflight.get(session.userId);

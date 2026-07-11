@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../lib/session";
 import { getStore } from "../../lib/store";
-import { paymentsEnabled, demoMode, demoSignupUrl } from "../../lib/config";
+import { paymentsEnabled } from "../../lib/config";
 import { confirmCheckoutSession } from "../../lib/billing";
+import { getLocale } from "../../lib/locale";
 import ChatApp from "./ChatApp";
 
 /**
@@ -16,12 +17,6 @@ export default async function AppPage({
 }: {
   searchParams: Promise<{ session_id?: string }>;
 }) {
-  // Live demo: the authed chat area needs a provisioned bot, which demo mode
-  // disables — so send visitors to the real product instead of a dead-end login.
-  if (demoMode) {
-    redirect(demoSignupUrl);
-  }
-
   const session = await getSession();
   if (!session) {
     redirect("/login");
@@ -44,5 +39,12 @@ export default async function AppPage({
   // client state; /api/provision re-checks it authoritatively too.
   const paid = user?.billingStatus === "active";
 
-  return <ChatApp email={session.email} paid={paid} paymentsEnabled={paymentsEnabled} />;
+  return (
+    <ChatApp
+      email={session.email}
+      paid={paid}
+      paymentsEnabled={paymentsEnabled}
+      locale={await getLocale()}
+    />
+  );
 }

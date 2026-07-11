@@ -1,25 +1,27 @@
 import Link from "next/link";
 import { brand, demoMode, demoSignupUrl } from "../lib/config";
+import { messages } from "../lib/i18n";
+import { getLocale } from "../lib/locale";
+import LanguageSwitcher from "./LanguageSwitcher";
 
-export default function LandingPage() {
-  // In demo mode the sign-up / log-in flows are disabled (this is a public
-  // showcase), so every CTA points at the real product instead — and opens in a
-  // new tab, since the demo itself is the thing being shown off.
+export default async function LandingPage() {
+  const locale = await getLocale();
+  const copy = messages[locale];
+  // Demo mode blocks new accounts, but existing users must retain login/chat.
   const primaryHref = demoMode ? demoSignupUrl : "/signup";
-  const secondaryHref = demoMode ? demoSignupUrl : "/login";
-  const ctaProps = demoMode ? { target: "_blank", rel: "noopener noreferrer" } : {};
+  const primaryProps = demoMode ? { target: "_blank", rel: "noopener noreferrer" } : {};
 
   return (
     <>
       {demoMode && (
         <div className="demo-banner">
-          You&rsquo;re viewing a live demo of the Self-Serve Bot website template.{" "}
+          {copy.demo}{" "}
           <a
             href={demoSignupUrl}
             target="_blank"
             rel="noopener noreferrer"
           >
-            Get this template on OpenClaw Launch →
+            {copy.demoCta}
           </a>
         </div>
       )}
@@ -30,11 +32,12 @@ export default function LandingPage() {
           {brand.name}
         </Link>
         <div className="nav-actions">
-          <Link href={secondaryHref} className="btn btn-secondary" {...ctaProps}>
-            Log in
+          <LanguageSwitcher locale={locale} />
+          <Link href="/login" className="btn btn-secondary">
+            {copy.login}
           </Link>
-          <Link href={primaryHref} className="btn btn-primary" {...ctaProps}>
-            Get started
+          <Link href={primaryHref} className="btn btn-primary" {...primaryProps}>
+            {copy.getStarted}
           </Link>
         </div>
       </nav>
@@ -42,78 +45,77 @@ export default function LandingPage() {
       <main className="landing-main">
         <section className="hero">
           <div className="hero-inner">
-            <span className="eyebrow">Your own AI, in seconds</span>
+            <span className="eyebrow">{copy.heroEyebrow}</span>
             <h1>
-              Your own AI assistant, <em>ready in seconds.</em>
+              {copy.heroTitle} <em>{copy.heroEmphasis}</em>
             </h1>
             <p className="subtitle">
-              Sign up and {brand.name} spins up a private AI assistant just for you — no
-              setup, no waiting around, no shared bot. Just sign up and start chatting.
+              {copy.heroBody(brand.name)}
             </p>
             <div className="hero-ctas">
-              <Link href={primaryHref} className="btn btn-primary" {...ctaProps}>
-                Get your assistant <span aria-hidden="true">→</span>
+              <Link href={primaryHref} className="btn btn-primary" {...primaryProps}>
+                {copy.getAssistant} <span aria-hidden="true">→</span>
               </Link>
-              <Link href={secondaryHref} className="text-link" {...ctaProps}>
-                I already have an account
+              <Link href="/login" className="text-link">
+                {copy.haveAccount}
               </Link>
             </div>
           </div>
 
-          <div className="product-preview" aria-label="Example assistant conversation">
+          <div className="product-preview" aria-label={copy.yourConversation}>
             <div className="preview-header">
               <div>
-                <span className="preview-kicker">Private assistant</span>
-                <strong>Your conversation</strong>
+                <span className="preview-kicker">{copy.privateAssistant}</span>
+                <strong>{copy.yourConversation}</strong>
               </div>
-              <span className="online-status">● Online</span>
+              <span className="online-status">{copy.online}</span>
             </div>
             <div className="preview-messages">
               <div className="preview-message preview-assistant">
-                <span>Assistant</span>
-                <p>Hello. What would you like to work through today?</p>
+                <span>{copy.assistant}</span>
+                <p>{copy.previewAssistant}</p>
               </div>
               <div className="preview-message preview-user">
-                <span>You</span>
-                <p>Turn my meeting notes into a concise project plan.</p>
+                <span>{copy.you}</span>
+                <p>{copy.previewUser}</p>
               </div>
               <div className="preview-message preview-memory">
-                <span>Assistant · remembers context</span>
-                <p>I&rsquo;ll organize the decisions, owners, deadlines, and open questions.</p>
+                <span>{copy.remembersContext}</span>
+                <p>{copy.previewMemory}</p>
               </div>
             </div>
             <div className="preview-composer">
-              <span>Message your assistant…</span>
+              <span>{copy.messagePlaceholder}</span>
               <span className="preview-send" aria-hidden="true">↑</span>
             </div>
           </div>
         </section>
 
-        <section className="features" aria-label="Product benefits">
+        <section className="features" aria-label={copy.benefitsLabel}>
           <div className="feature-card">
             <span className="feature-number">01</span>
-            <h3>Your own bot</h3>
-            <p>Every account gets its own dedicated assistant — never shared, never mixed up.</p>
+            <h3>{copy.feature1Title}</h3>
+            <p>{copy.feature1Body}</p>
           </div>
           <div className="feature-card">
             <span className="feature-number">02</span>
-            <h3>Remembers your conversations</h3>
-            <p>Multi-turn memory means you can pick up right where you left off.</p>
+            <h3>{copy.feature2Title}</h3>
+            <p>{copy.feature2Body}</p>
           </div>
           <div className="feature-card">
             <span className="feature-number">03</span>
-            <h3>Live in under a minute</h3>
-            <p>No install, no config. Sign up and your assistant is ready to chat.</p>
+            <h3>{copy.feature3Title}</h3>
+            <p>{copy.feature3Body}</p>
           </div>
         </section>
 
         <section className="closing-cta">
           <div>
-            <span className="eyebrow">Ready when you are</span>
-            <h2>A clearer next step is one conversation away.</h2>
+            <span className="eyebrow">{copy.readyEyebrow}</span>
+            <h2>{copy.readyTitle}</h2>
           </div>
-          <Link href={primaryHref} className="btn btn-inverse" {...ctaProps}>
-            Get your assistant <span aria-hidden="true">→</span>
+          <Link href={primaryHref} className="btn btn-inverse" {...primaryProps}>
+            {copy.getAssistant} <span aria-hidden="true">→</span>
           </Link>
         </section>
       </main>
@@ -123,7 +125,7 @@ export default function LandingPage() {
           <span className="brand-dot" />
           {brand.name}
         </Link>
-        <span>© {new Date().getFullYear()} {brand.name}. All rights reserved.</span>
+        <span>© {new Date().getFullYear()} {brand.name}. {copy.rights}</span>
       </footer>
     </>
   );

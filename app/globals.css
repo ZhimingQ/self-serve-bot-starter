@@ -52,6 +52,22 @@ input {
   font-family: inherit;
 }
 
+html[lang="zh-CN"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-serif: "Songti SC", "STSong", "Noto Serif SC", serif;
+}
+
+html[lang="zh-CN"] .eyebrow,
+html[lang="zh-CN"] .preview-kicker,
+html[lang="zh-CN"] .preview-message > span,
+html[lang="zh-CN"] .auth-context-mark,
+html[lang="zh-CN"] .auth-kicker,
+html[lang="zh-CN"] .assistant-identity span,
+html[lang="zh-CN"] .msg::before {
+  letter-spacing: 0.08em;
+  text-transform: none;
+}
+
 button,
 a {
   -webkit-tap-highlight-color: transparent;
@@ -111,6 +127,23 @@ a {
   display: flex;
   align-items: center;
   gap: 18px;
+}
+
+.language-switcher {
+  min-width: 42px;
+  padding: 5px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.language-switcher:hover {
+  border-color: var(--text);
+  color: var(--text);
 }
 
 .landing-main {
@@ -453,6 +486,19 @@ a {
   background: var(--cream);
 }
 
+.auth-context-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-home {
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  text-decoration: none;
+}
+
 .auth-context-mark {
   color: var(--text-muted);
   font-size: 10px;
@@ -724,19 +770,18 @@ a {
   text-align: right;
 }
 
-.msg-user::before {
-  content: "You";
-}
-
 .msg-assistant {
   align-self: flex-start;
   padding-left: 18px;
   border-left: 2px solid var(--accent);
 }
 
+.msg::before {
+  content: attr(data-label);
+}
+
 .msg-assistant::before {
   color: var(--accent-hover);
-  content: "Assistant";
 }
 
 .chat-input-row {

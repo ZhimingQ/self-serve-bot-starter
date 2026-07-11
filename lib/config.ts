@@ -87,10 +87,10 @@ export const appUrl = process.env.APP_URL || "http://localhost:3000";
 // ── Live demo mode ─────────────────────────────────────────────────────────
 // When DEMO_MODE=1 this storefront is a PUBLIC, read-only showcase — safe to link
 // from a marketing page. Signup and bot provisioning are HARD-DISABLED server-side
-// (app/api/auth/signup + app/api/provision return 403; app/app redirects out), so
-// an anonymous visitor can never spin up a real bot. The landing still renders in
-// full, but its Get-started / Log-in CTAs point at DEMO_SIGNUP_URL instead of the
-// in-app /signup flow. Leave DEMO_MODE unset for a normal, sign-uppable storefront.
+// (app/api/auth/signup + new-instance provisioning return 403), so an anonymous
+// visitor can never spin up a real bot. Existing users can still log in and use
+// an already-provisioned assistant. The landing's signup CTAs point at
+// DEMO_SIGNUP_URL; login stays in-app. Leave DEMO_MODE unset for a normal storefront.
 export const demoMode = process.env.DEMO_MODE === "1";
 export const demoSignupUrl =
   process.env.DEMO_SIGNUP_URL || "https://openclawlaunch.com/developer-api/templates";
