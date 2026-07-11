@@ -6,7 +6,13 @@ import { useRouter } from "next/navigation";
 import { messages, type Locale } from "../../lib/i18n";
 import LanguageSwitcher from "../LanguageSwitcher";
 
-export default function SignupForm({ locale }: { locale: Locale }) {
+export default function SignupForm({
+  locale,
+  localeLocked,
+}: {
+  locale: Locale;
+  localeLocked: boolean;
+}) {
   const copy = messages[locale];
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -41,7 +47,7 @@ export default function SignupForm({ locale }: { locale: Locale }) {
       <aside className="auth-context">
         <div className="auth-context-top">
           <Link href="/" className="auth-home">←</Link>
-          <LanguageSwitcher locale={locale} />
+          <LanguageSwitcher locale={locale} locked={localeLocked} />
         </div>
         <span className="auth-context-mark">{copy.signupMark}</span>
         <div>

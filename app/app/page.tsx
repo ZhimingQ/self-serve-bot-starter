@@ -3,7 +3,7 @@ import { getSession } from "../../lib/session";
 import { getStore } from "../../lib/store";
 import { paymentsEnabled } from "../../lib/config";
 import { confirmCheckoutSession } from "../../lib/billing";
-import { getLocale } from "../../lib/locale";
+import { getLocaleState } from "../../lib/locale";
 import ChatApp from "./ChatApp";
 
 /**
@@ -38,13 +38,15 @@ export default async function AppPage({
   // Entitlement is read server-side so the paywall can't be bypassed by editing
   // client state; /api/provision re-checks it authoritatively too.
   const paid = user?.billingStatus === "active";
+  const { locale, locked } = await getLocaleState();
 
   return (
     <ChatApp
       email={session.email}
       paid={paid}
       paymentsEnabled={paymentsEnabled}
-      locale={await getLocale()}
+      locale={locale}
+      localeLocked={locked}
     />
   );
 }

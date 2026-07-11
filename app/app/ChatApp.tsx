@@ -28,11 +28,13 @@ export default function ChatApp({
   paid,
   paymentsEnabled,
   locale,
+  localeLocked,
 }: {
   email: string;
   paid: boolean;
   paymentsEnabled: boolean;
   locale: Locale;
+  localeLocked: boolean;
 }) {
   const copy = translations[locale];
   const router = useRouter();
@@ -219,7 +221,7 @@ export default function ChatApp({
   if (needsPayment) {
     return (
       <div className="provisioning">
-        <LanguageSwitcher locale={locale} />
+        <LanguageSwitcher locale={locale} locked={localeLocked} />
         <h2>{copy.activateTitle}</h2>
         <p>{copy.activateBody(email.split("@")[0])}</p>
         {subscribeError && <p style={{ color: "#dc2626" }}>{subscribeError}</p>}
@@ -241,7 +243,7 @@ export default function ChatApp({
     return (
       <div className="provisioning">
         <div className="spinner" />
-        <LanguageSwitcher locale={locale} />
+        <LanguageSwitcher locale={locale} locked={localeLocked} />
         <h2>{copy.provisioningTitle}</h2>
         <p>{copy.provisioningBody(email.split("@")[0])}</p>
       </div>
@@ -251,7 +253,7 @@ export default function ChatApp({
   if (provisionState === "error") {
     return (
       <div className="provisioning">
-        <LanguageSwitcher locale={locale} />
+        <LanguageSwitcher locale={locale} locked={localeLocked} />
         <h2>{copy.wentWrong}</h2>
         <p>{provisionError}</p>
         <button className="btn btn-primary" onClick={() => provision()}>
@@ -271,7 +273,7 @@ export default function ChatApp({
         <button className="btn btn-secondary" onClick={handleLogout}>
           {copy.logout}
         </button>
-        <LanguageSwitcher locale={locale} />
+        <LanguageSwitcher locale={locale} locked={localeLocked} />
       </div>
 
       <div className="chat-window">

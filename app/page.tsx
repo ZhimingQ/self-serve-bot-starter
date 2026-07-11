@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { brand, demoMode, demoSignupUrl } from "../lib/config";
 import { messages } from "../lib/i18n";
-import { getLocale } from "../lib/locale";
+import { getLocaleState } from "../lib/locale";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 export default async function LandingPage() {
-  const locale = await getLocale();
+  const { locale, locked } = await getLocaleState();
   const copy = messages[locale];
   // Demo mode blocks new accounts, but existing users must retain login/chat.
   const primaryHref = demoMode ? demoSignupUrl : "/signup";
@@ -32,7 +32,7 @@ export default async function LandingPage() {
           {brand.name}
         </Link>
         <div className="nav-actions">
-          <LanguageSwitcher locale={locale} />
+          <LanguageSwitcher locale={locale} locked={locked} />
           <Link href="/login" className="btn btn-secondary">
             {copy.login}
           </Link>

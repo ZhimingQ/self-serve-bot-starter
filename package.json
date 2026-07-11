@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test:locale": "node --experimental-strip-types --test lib/localeConfig.test.mjs",
     "start": "next start",
     "lint": "next lint"
   },

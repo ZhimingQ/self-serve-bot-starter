@@ -7,6 +7,8 @@
 
 export type BotFramework = "openclaw" | "hermes";
 
+import { validateLocaleConfig } from "./localeConfig";
+
 export interface BrandConfig {
   name: string;
   accent: string;
@@ -103,6 +105,7 @@ export function validateEnv(): void {
   if (process.env.NODE_ENV !== "production") return;
 
   const problems: string[] = [];
+  problems.push(...validateLocaleConfig(process.env));
 
   if (!buildResellApiKey) {
     problems.push("BUILD_RESELL_API_KEY is required (your sk_live_… Build & Resell key).");

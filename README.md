@@ -151,6 +151,9 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | `STRIPE_MODE` | no (defaults to `subscription`) | `subscription` (recurring) or `payment` (one-time). Must match the Price. |
 | `STRIPE_WEBHOOK_SECRET` | subscription mode | `whsec_…` — required so renewals/cancellations sync. |
 | `APP_URL` | for payments | This storefront's public URL, for Stripe redirect URLs. |
+| `SITE_LOCALE` | no | `en` or `zh` locks the entire deployment to one language and hides the switcher. |
+| `LOCALE_HOST_EN` | no | Comma-separated hostnames that always render English and hide the switcher. |
+| `LOCALE_HOST_ZH` | no | Comma-separated hostnames that always render Simplified Chinese and hide the switcher. |
 
 In production the app validates these at startup (`lib/config.ts` → `instrumentation.ts`) and refuses to boot with a clear error if a required one is missing.
 
@@ -159,7 +162,7 @@ In production the app validates these at startup (`lib/config.ts` → `instrumen
 ```
 app/
   page.tsx                 Landing page (Option A: clean minimal SaaS)
-  LanguageSwitcher.tsx      EN / 简体中文 switch (cookie-backed)
+  LanguageSwitcher.tsx      EN / 简体中文 switch (hidden on locale-locked hosts)
   signup/SignupForm.tsx     Sign-up form
   login/LoginForm.tsx       Log-in form
   app/page.tsx               Authed area (server guard) → ChatApp.tsx (client)
@@ -174,7 +177,8 @@ app/
 lib/
   config.ts                 Brand + API wiring + startup env validation, all from env
   i18n.ts                   English + Simplified Chinese UI copy
-  locale.ts                 Server-side locale cookie reader
+  locale.ts                 Server-side fixed/host/cookie locale resolver
+  localeConfig.ts           Locale/hostname normalization + production validation
   session.ts                 Hand-rolled HMAC-signed cookie session
   password.ts                 scrypt password hashing
   store.ts                     Pluggable persistence (Upstash / JSON-file / in-memory)

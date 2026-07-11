@@ -3,9 +3,17 @@
 import { useRouter } from "next/navigation";
 import { LOCALE_COOKIE, messages, type Locale } from "../lib/i18n";
 
-export default function LanguageSwitcher({ locale }: { locale: Locale }) {
+export default function LanguageSwitcher({
+  locale,
+  locked = false,
+}: {
+  locale: Locale;
+  locked?: boolean;
+}) {
   const router = useRouter();
   const nextLocale = locale === "en" ? "zh" : "en";
+
+  if (locked) return null;
 
   return (
     <button

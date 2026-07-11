@@ -8,9 +8,11 @@ import LanguageSwitcher from "../LanguageSwitcher";
 
 export default function LoginForm({
   locale,
+  localeLocked,
   signupHref,
 }: {
   locale: Locale;
+  localeLocked: boolean;
   signupHref: string;
 }) {
   const copy = messages[locale];
@@ -44,7 +46,7 @@ export default function LoginForm({
       <aside className="auth-context">
         <div className="auth-context-top">
           <Link href="/" className="auth-home">←</Link>
-          <LanguageSwitcher locale={locale} />
+          <LanguageSwitcher locale={locale} locked={localeLocked} />
         </div>
         <span className="auth-context-mark">{copy.loginMark}</span>
         <div>
