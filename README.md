@@ -67,7 +67,7 @@ Everything user-facing is driven by env vars, read in `lib/config.ts`:
 
 ```
 BRAND_NAME=YourBrand       # shown in nav, hero, page titles
-BRAND_ACCENT=#4f46e5       # single accent color used across the whole UI
+BRAND_ACCENT=#777e69       # single accent color used across the whole UI
 BOT_FRAMEWORK=openclaw     # or "hermes" — which framework new bots use
 ```
 
@@ -116,20 +116,29 @@ Open http://localhost:3000.
 
 ## Deploy to Vercel
 
-1. Push this directory to its own git repo — TODO: (operator to publish the
-   canonical starter repo URL here).
-2. Import it into [Vercel](https://vercel.com/new).
-3. Add the environment variables from `.env.example` in the Vercel project
-   settings (Production + Preview).
-4. Attach a Vercel KV / Upstash Redis integration for persistence.
-5. Deploy.
+One click clones this repo into your own Vercel account and prompts you for the
+env vars you need:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FZhimingQ%2Fself-serve-bot-starter&env=BUILD_RESELL_API_KEY,SESSION_SECRET,BRAND_NAME,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN&envDescription=Your%20Build%20%26%20Resell%20API%20key%2C%20a%20random%20SESSION_SECRET%2C%20your%20brand%20name%2C%20and%20a%20free%20Upstash%20Redis%20database%20for%20persistence.&envLink=https%3A%2F%2Fopenclawlaunch.com%2Fdeveloper-api%2Ftemplates)
+
+Vercel is serverless, so the `STORE_DIR` JSON-file store does **not** persist
+there — you must attach a Redis. Create a free
+[Upstash Redis](https://upstash.com) database (or add Vercel's native Upstash
+integration from the Marketplace) and paste its REST URL + token into
+`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` when prompted. Generate
+`SESSION_SECRET` with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+
+Prefer a true one-click deploy with persistence already wired? Use **Deploy via
+your bot** from the OpenClaw Launch → Build & Resell → Templates page instead —
+it installs this template onto your running OpenClaw bot and serves it on an
+`openclawlaunch.app` subdomain, no Vercel or Upstash setup required.
 
 ## Environment variables
 
 | Variable | Required | Notes |
 |---|---|---|
 | `BRAND_NAME` | no (defaults to `YourBrand`) | Shown throughout the UI |
-| `BRAND_ACCENT` | no (defaults to `#4f46e5`) | Single accent color, hex |
+| `BRAND_ACCENT` | no (defaults to `#777e69`) | Single accent color, hex |
 | `BOT_FRAMEWORK` | no (defaults to `openclaw`) | `openclaw` or `hermes` |
 | `BUILD_RESELL_API_BASE` | no (defaults to `https://openclawlaunch.com/api/v1`) | |
 | `BUILD_RESELL_API_KEY` | **yes** | Server-side secret. Never exposed to the browser. |
