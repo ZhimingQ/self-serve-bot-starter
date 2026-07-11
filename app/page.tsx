@@ -7,9 +7,10 @@ import LanguageSwitcher from "./LanguageSwitcher";
 export default async function LandingPage() {
   const { locale, locked } = await getLocaleState();
   const copy = messages[locale];
-  // Demo mode blocks new accounts, but existing users must retain login/chat.
-  const primaryHref = demoMode ? demoSignupUrl : "/signup";
-  const primaryProps = demoMode ? { target: "_blank", rel: "noopener noreferrer" } : {};
+  // Demo mode blocks public signup/provisioning, so its primary CTAs lead
+  // existing demo users into the working login/chat flow. The banner below is
+  // the only marketplace link.
+  const primaryHref = demoMode ? "/login" : "/signup";
 
   return (
     <>
@@ -36,7 +37,7 @@ export default async function LandingPage() {
           <Link href="/login" className="btn btn-secondary">
             {copy.login}
           </Link>
-          <Link href={primaryHref} className="btn btn-primary" {...primaryProps}>
+          <Link href={primaryHref} className="btn btn-primary">
             {copy.getStarted}
           </Link>
         </div>
@@ -53,7 +54,7 @@ export default async function LandingPage() {
               {copy.heroBody(brand.name)}
             </p>
             <div className="hero-ctas">
-              <Link href={primaryHref} className="btn btn-primary" {...primaryProps}>
+              <Link href={primaryHref} className="btn btn-primary">
                 {copy.getAssistant} <span aria-hidden="true">→</span>
               </Link>
               <Link href="/login" className="text-link">
@@ -114,7 +115,7 @@ export default async function LandingPage() {
             <span className="eyebrow">{copy.readyEyebrow}</span>
             <h2>{copy.readyTitle}</h2>
           </div>
-          <Link href={primaryHref} className="btn btn-inverse" {...primaryProps}>
+          <Link href={primaryHref} className="btn btn-inverse">
             {copy.getAssistant} <span aria-hidden="true">→</span>
           </Link>
         </section>
