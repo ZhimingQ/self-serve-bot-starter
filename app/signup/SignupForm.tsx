@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { messages, type Locale } from "../../lib/i18n";
 import LanguageSwitcher from "../LanguageSwitcher";
 
+class SignupDisplayError extends Error {}
+
 export default function SignupForm({
   locale,
   localeLocked,
@@ -32,12 +34,18 @@ export default function SignupForm({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error === "demo_mode" ? copy.signupDisabled : copy.genericError);
+        let message: string = copy.genericError;
+        if (data.error === "demo_mode") message = copy.signupDisabled;
+        else if (data.error === "rate_limited" || res.status === 429) message = copy.signupRateLimited;
+        else if (res.status === 409) message = copy.signupAccountExists;
+        else if (data.error === "A valid email is required") message = copy.signupInvalidEmail;
+        else if (data.error === "Password must be between 8 and 200 characters") message = copy.signupInvalidPassword;
+        throw new SignupDisplayError(message);
       }
       router.push("/app");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : copy.genericError);
+      setError(err instanceof SignupDisplayError ? err.message : copy.genericError);
       setLoading(false);
     }
   }
