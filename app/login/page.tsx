@@ -36,43 +36,58 @@ export default function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <div className="auth-card">
-        <h1>Welcome back</h1>
-        <p className="hint">Log in to chat with your assistant.</p>
+      <aside className="auth-context">
+        <span className="auth-context-mark">Continue the conversation</span>
+        <div>
+          <h2>Pick up right where you left off.</h2>
+          <p>
+            Your private assistant remembers the conversation, so your context is ready
+            when you return.
+          </p>
+        </div>
+        <span className="auth-context-foot">Private by default · Your context continues</span>
+      </aside>
 
-        {error && <div className="form-error">{error}</div>}
+      <div className="auth-form-side">
+        <div className="auth-card">
+          <p className="auth-kicker">Welcome back</p>
+          <h1>Log in</h1>
+          <p className="hint">Continue chatting with your assistant.</p>
 
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </div>
-          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? "Logging in…" : "Log in"}
-          </button>
-        </form>
+          {error && <div className="form-error">{error}</div>}
 
-        <p className="auth-switch">
-          Don&apos;t have an account? <Link href="/signup">Sign up</Link>
-        </p>
+          <form onSubmit={handleSubmit}>
+            <div className="field">
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+            <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+              {loading ? "Logging in…" : "Log in"}
+            </button>
+          </form>
+
+          <p className="auth-switch">
+            Don&apos;t have an account? <Link href="/signup">Sign up</Link>
+          </p>
+        </div>
       </div>
     </div>
   );

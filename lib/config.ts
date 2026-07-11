@@ -19,10 +19,18 @@ function isBotFramework(value: string): value is BotFramework {
 }
 
 const rawFramework = process.env.BOT_FRAMEWORK ?? "openclaw";
+const configuredBrandName = process.env.BRAND_NAME?.trim() || "YourBrand";
+
+// Keep infrastructure/business-model language out of the customer-facing brand.
+// Existing demo environments may still have a legacy "... Reseller" BRAND_NAME;
+// normalize it here so metadata and every rendered surface stay customer-friendly.
+const publicBrandName =
+  configuredBrandName.replace(/\breseller\b/gi, "").replace(/\s{2,}/g, " ").trim() ||
+  "YourBrand";
 
 export const brand: BrandConfig = {
-  name: process.env.BRAND_NAME || "YourBrand",
-  accent: process.env.BRAND_ACCENT || "#4f46e5",
+  name: publicBrandName,
+  accent: process.env.BRAND_ACCENT || "#777e69",
   framework: isBotFramework(rawFramework) ? rawFramework : "openclaw",
   apiBase: process.env.BUILD_RESELL_API_BASE || "https://openclawlaunch.com/api/v1",
 };

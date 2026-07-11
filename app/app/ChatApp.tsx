@@ -264,10 +264,10 @@ export default function ChatApp({
   return (
     <div className="app-shell">
       <div className="app-topbar">
-        <span className="brand">
-          <span className="brand-dot" />
-          {email}
-        </span>
+        <div className="assistant-identity">
+          <span>Private assistant</span>
+          <strong>{email}</strong>
+        </div>
         <button className="btn btn-secondary" onClick={handleLogout}>
           Log out
         </button>
@@ -276,7 +276,7 @@ export default function ChatApp({
       <div className="chat-window">
         <div className="chat-messages">
           {messages.length === 0 && (
-            <p className="chat-empty">Say hello to your new assistant.</p>
+            <p className="chat-empty">Hello. What would you like to work through today?</p>
           )}
           {messages.map((message, index) => (
             <div
