@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { createInstance, getInstance } from "../../../lib/buildResell";
-import { paymentsEnabled } from "../../../lib/config";
+import { paymentsEnabled, demoMode } from "../../../lib/config";
 import { rateLimit } from "../../../lib/rateLimit";
 
 /**
@@ -43,6 +43,15 @@ async function provision(userId: string): Promise<{ status: string; instanceId: 
 }
 
 export async function POST() {
+  // Live-demo guard (belt-and-suspenders with the signup gate): never provision a
+  // bot from a public demo storefront, even if a session somehow exists.
+  if (demoMode) {
+    return NextResponse.json(
+      { error: "demo_mode", message: "This is a live demo — provisioning is disabled." },
+      { status: 403 }
+    );
+  }
+
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });

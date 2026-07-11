@@ -1,19 +1,49 @@
 import Link from "next/link";
-import { brand } from "../lib/config";
+import { brand, demoMode, demoSignupUrl } from "../lib/config";
 
 export default function LandingPage() {
+  // In demo mode the sign-up / log-in flows are disabled (this is a public
+  // showcase), so every CTA points at the real product instead — and opens in a
+  // new tab, since the demo itself is the thing being shown off.
+  const primaryHref = demoMode ? demoSignupUrl : "/signup";
+  const secondaryHref = demoMode ? demoSignupUrl : "/login";
+  const ctaProps = demoMode ? { target: "_blank", rel: "noopener noreferrer" } : {};
+
   return (
     <>
+      {demoMode && (
+        <div
+          style={{
+            background: "var(--accent, #4f46e5)",
+            color: "#fff",
+            textAlign: "center",
+            fontSize: 13.5,
+            padding: "9px 16px",
+            lineHeight: 1.5,
+          }}
+        >
+          You&rsquo;re viewing a live demo of the Self-Serve Bot storefront template.{" "}
+          <a
+            href={demoSignupUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#fff", fontWeight: 600, textDecoration: "underline" }}
+          >
+            Get this template on OpenClaw Launch →
+          </a>
+        </div>
+      )}
+
       <nav className="nav">
         <Link href="/" className="brand">
           <span className="brand-dot" />
           {brand.name}
         </Link>
         <div className="nav-actions">
-          <Link href="/login" className="btn btn-secondary">
+          <Link href={secondaryHref} className="btn btn-secondary" {...ctaProps}>
             Log in
           </Link>
-          <Link href="/signup" className="btn btn-primary">
+          <Link href={primaryHref} className="btn btn-primary" {...ctaProps}>
             Get started
           </Link>
         </div>
@@ -28,10 +58,10 @@ export default function LandingPage() {
             setup, no waiting around, no shared bot. Just sign up and start chatting.
           </p>
           <div className="hero-ctas">
-            <Link href="/signup" className="btn btn-primary">
+            <Link href={primaryHref} className="btn btn-primary" {...ctaProps}>
               Get your assistant
             </Link>
-            <Link href="/login" className="btn btn-secondary">
+            <Link href={secondaryHref} className="btn btn-secondary" {...ctaProps}>
               I already have an account
             </Link>
           </div>

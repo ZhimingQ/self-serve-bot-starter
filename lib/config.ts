@@ -76,6 +76,17 @@ export const paymentsEnabled = Boolean(stripe.secretKey && stripe.priceId);
 // build Stripe Checkout success/cancel redirect URLs. Falls back to localhost.
 export const appUrl = process.env.APP_URL || "http://localhost:3000";
 
+// ── Live demo mode ─────────────────────────────────────────────────────────
+// When DEMO_MODE=1 this storefront is a PUBLIC, read-only showcase — safe to link
+// from a marketing page. Signup and bot provisioning are HARD-DISABLED server-side
+// (app/api/auth/signup + app/api/provision return 403; app/app redirects out), so
+// an anonymous visitor can never spin up a real bot. The landing still renders in
+// full, but its Get-started / Log-in CTAs point at DEMO_SIGNUP_URL instead of the
+// in-app /signup flow. Leave DEMO_MODE unset for a normal, sign-uppable storefront.
+export const demoMode = process.env.DEMO_MODE === "1";
+export const demoSignupUrl =
+  process.env.DEMO_SIGNUP_URL || "https://openclawlaunch.com/developer-api/templates";
+
 // ── Startup validation ────────────────────────────────────────────────────
 // Fail fast in production on a misconfigured deploy instead of limping along
 // (unsigned sessions, no persistence, broken Stripe redirects). Called once from

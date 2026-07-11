@@ -4,8 +4,18 @@ import { getStore } from "../../../../lib/store";
 import { hashPassword } from "../../../../lib/password";
 import { setSession } from "../../../../lib/session";
 import { rateLimit, clientIp } from "../../../../lib/rateLimit";
+import { demoMode } from "../../../../lib/config";
 
 export async function POST(request: NextRequest) {
+  // Live-demo guard: in DEMO_MODE this storefront is a public showcase, so signup
+  // is hard-off — no account is ever created, so no bot is ever provisioned.
+  if (demoMode) {
+    return NextResponse.json(
+      { error: "demo_mode", message: "Sign-ups are turned off in this live demo." },
+      { status: 403 }
+    );
+  }
+
   // Throttle signup spam per IP (5 accounts / hour). Public route → keyed by IP.
   const rl = await rateLimit("signup", clientIp(request), 5, 3600);
   if (!rl.ok) {
