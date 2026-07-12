@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
-import { createInstance, getInstance } from "../../../lib/buildResell";
+import { BuildResellApiError, createInstance, getInstance } from "../../../lib/buildResell";
 import { paymentsEnabled, demoMode } from "../../../lib/config";
 import { rateLimit } from "../../../lib/rateLimit";
 
@@ -89,7 +89,32 @@ export async function POST() {
 
   try {
     return NextResponse.json(await pending);
-  } catch {
+  } catch (err) {
+    // These failures mean the storefront owner has not enabled or funded their
+    // Build & Resell plan. Keep platform billing details away from end-users,
+    // but return a stable code so the storefront can show the right next step.
+    if (
+      err instanceof BuildResellApiError &&
+      [
+        "subscription_required",
+        "payment_required",
+        "insufficient_balance",
+        "reload_failed",
+        "balance_race",
+        "instance_quota_exceeded",
+        "model_source_required",
+        "agnes_key_required",
+        "openrouter_key_required",
+        "llm_provisioning_failed",
+      ].includes(err.code ?? "")
+    ) {
+      console.error("[provision] storefront owner action required", {
+        status: err.status,
+        code: err.code,
+      });
+      return NextResponse.json({ error: "storefront_unavailable" }, { status: 503 });
+    }
+    console.error("[provision] failed", err);
     return NextResponse.json({ error: "Provisioning failed. Please try again." }, { status: 502 });
   }
 }

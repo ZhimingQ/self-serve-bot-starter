@@ -28,6 +28,26 @@ interface ListInstancesResponse {
   data: BuildResellInstance[];
 }
 
+export class BuildResellApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string | null,
+    operation: "createInstance" | "listInstances",
+  ) {
+    super(`${operation} failed (${status})${code ? `: ${code}` : ""}`);
+    this.name = "BuildResellApiError";
+  }
+}
+
+async function upstreamError(
+  res: Response,
+  operation: "createInstance" | "listInstances",
+): Promise<BuildResellApiError> {
+  const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+  const code = typeof body?.error === "string" ? body.error : null;
+  return new BuildResellApiError(res.status, code, operation);
+}
+
 function authHeaders(extra?: Record<string, string>): Record<string, string> {
   if (!buildResellApiKey) {
     throw new Error(
@@ -57,8 +77,7 @@ export async function createInstance(): Promise<BuildResellInstance> {
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`createInstance failed (${res.status}): ${text}`);
+    throw await upstreamError(res, "createInstance");
   }
 
   return (await res.json()) as BuildResellInstance;
@@ -74,8 +93,7 @@ export async function listInstances(): Promise<BuildResellInstance[]> {
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`listInstances failed (${res.status}): ${text}`);
+    throw await upstreamError(res, "listInstances");
   }
 
   const body = (await res.json()) as ListInstancesResponse;

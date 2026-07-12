@@ -80,7 +80,11 @@ export default function ChatApp({
         const data = await res.json();
 
         if (!res.ok) {
-          setProvisionError(copy.provisionFailed);
+          setProvisionError(
+            data?.error === "storefront_unavailable"
+              ? copy.storefrontUnavailable
+              : copy.provisionFailed
+          );
           setProvisionState("error");
           return;
         }
@@ -107,7 +111,7 @@ export default function ChatApp({
     };
 
     await poll();
-  }, [copy.provisionFailed, copy.provisionSlow, copy.serverUnavailable]);
+  }, [copy.provisionFailed, copy.provisionSlow, copy.serverUnavailable, copy.storefrontUnavailable]);
 
   useEffect(() => {
     // Only provision once the user is entitled — a paywalled user provisions
