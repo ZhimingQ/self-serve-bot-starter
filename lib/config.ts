@@ -12,6 +12,12 @@ import { validateLocaleConfig } from "./localeConfig";
 export interface BrandConfig {
   name: string;
   accent: string;
+  logoUrl: string;
+  priceLabel: string;
+  priceNote: string;
+  supportEmail: string;
+  privacyUrl: string;
+  termsUrl: string;
   framework: BotFramework;
   apiBase: string;
 }
@@ -33,6 +39,12 @@ const publicBrandName =
 export const brand: BrandConfig = {
   name: publicBrandName,
   accent: process.env.BRAND_ACCENT || "#777e69",
+  logoUrl: process.env.BRAND_LOGO_URL?.trim() || "",
+  priceLabel: process.env.PUBLIC_PRICE_LABEL?.trim() || "",
+  priceNote: process.env.PUBLIC_PRICE_NOTE?.trim() || "",
+  supportEmail: process.env.SUPPORT_EMAIL?.trim() || "",
+  privacyUrl: process.env.PRIVACY_URL?.trim() || "",
+  termsUrl: process.env.TERMS_URL?.trim() || "",
   framework: isBotFramework(rawFramework) ? rawFramework : "openclaw",
   apiBase: process.env.BUILD_RESELL_API_BASE || "https://openclawlaunch.com/api/v1",
 };

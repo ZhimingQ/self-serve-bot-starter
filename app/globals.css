@@ -123,6 +123,13 @@ a {
   background: var(--accent);
 }
 
+.brand-logo {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
 .nav-actions {
   display: flex;
   align-items: center;
@@ -157,7 +164,7 @@ a {
   gap: clamp(48px, 7vw, 88px);
   width: min(1160px, calc(100% - 48px));
   margin: 0 auto;
-  padding: clamp(76px, 9vw, 126px) 0 96px;
+  padding: clamp(54px, 7vw, 92px) 0 88px;
 }
 
 .hero-inner {
@@ -204,6 +211,24 @@ a {
   align-items: center;
   gap: 22px;
   margin-top: 34px;
+}
+
+.hero-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.hero-proof span::before {
+  margin-right: 8px;
+  color: var(--accent-hover);
+  content: "✓";
 }
 
 .text-link {
@@ -360,6 +385,228 @@ a {
   line-height: 1.7;
 }
 
+.section-heading {
+  max-width: 680px;
+}
+
+.section-heading h2 {
+  margin: 17px 0 0;
+  font-family: var(--font-serif);
+  font-size: clamp(38px, 4.6vw, 58px);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.04;
+}
+
+.section-heading > p {
+  max-width: 610px;
+  margin: 20px 0 0;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.use-cases,
+.pricing-section,
+.faq-section {
+  width: min(1160px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 112px 0;
+}
+
+.use-case-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 54px;
+  border: 1px solid var(--border);
+  background: var(--border);
+}
+
+.use-case-card {
+  min-height: 260px;
+  padding: 34px;
+  background: var(--paper);
+}
+
+.use-case-card > span,
+.pricing-label {
+  color: var(--accent-hover);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.use-case-card h3 {
+  max-width: 280px;
+  margin: 54px 0 0;
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.18;
+}
+
+.use-case-card p {
+  margin: 14px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.how-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(420px, 1.15fr);
+  gap: clamp(54px, 8vw, 110px);
+  width: min(1280px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 86px clamp(42px, 6vw, 78px);
+  background: var(--ink);
+  color: #fff;
+}
+
+.section-heading-light .eyebrow {
+  color: color-mix(in srgb, var(--accent) 65%, white);
+}
+
+.section-heading-light > p {
+  color: #aaa69e;
+}
+
+.how-steps {
+  border-top: 1px solid #494740;
+}
+
+.how-steps article {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 20px;
+  padding: 25px 0 28px;
+  border-bottom: 1px solid #494740;
+}
+
+.how-steps article > span {
+  padding-top: 4px;
+  color: #858178;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.how-steps h3 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.how-steps p {
+  margin: 7px 0 0;
+  color: #aaa69e;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.pricing-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(500px, 1.2fr);
+  gap: clamp(54px, 8vw, 104px);
+  align-items: start;
+}
+
+.pricing-card {
+  display: grid;
+  grid-template-columns: 1fr 0.9fr;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--border);
+}
+
+.pricing-card > div {
+  padding: 30px 28px 32px 0;
+}
+
+.pricing-card > div + div {
+  padding-left: 30px;
+  border-left: 1px solid var(--border);
+}
+
+.pricing-card p {
+  margin: 18px 0 25px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.pricing-includes {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.pricing-includes strong {
+  margin-bottom: 3px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.pricing-includes span::before {
+  margin-right: 9px;
+  color: var(--accent-hover);
+  content: "✓";
+}
+
+.faq-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(500px, 1.25fr);
+  gap: clamp(54px, 8vw, 104px);
+  padding-top: 0;
+}
+
+.faq-list {
+  border-top: 1px solid var(--ink);
+}
+
+.faq-list details {
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-list summary {
+  position: relative;
+  padding: 23px 40px 23px 0;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.faq-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-list summary::after {
+  position: absolute;
+  top: 23px;
+  right: 2px;
+  color: var(--text-muted);
+  content: "+";
+  font-family: var(--font-sans);
+}
+
+.faq-list details[open] summary::after {
+  content: "−";
+}
+
+.faq-list p {
+  max-width: 620px;
+  margin: -7px 0 23px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
 .closing-cta {
   display: flex;
   align-items: flex-end;
@@ -401,6 +648,36 @@ a {
 
 .footer-brand {
   font-size: 17px;
+}
+
+.footer-brand .brand-logo {
+  width: 24px;
+  height: 24px;
+}
+
+.footer-meta {
+  text-align: right;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+  margin-bottom: 7px;
+}
+
+.footer-links:empty {
+  display: none;
+}
+
+.footer-links a {
+  color: var(--text);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--accent-hover);
 }
 
 .btn {
@@ -821,6 +1098,21 @@ a {
     width: min(620px, 100%);
   }
 
+  .how-section,
+  .pricing-section,
+  .faq-section {
+    grid-template-columns: 1fr;
+  }
+
+  .how-section {
+    gap: 52px;
+  }
+
+  .pricing-section,
+  .faq-section {
+    gap: 42px;
+  }
+
   .auth-shell {
     grid-template-columns: minmax(280px, 0.8fr) minmax(390px, 1.2fr);
   }
@@ -830,6 +1122,10 @@ a {
   .nav,
   .hero,
   .features,
+  .use-cases,
+  .how-section,
+  .pricing-section,
+  .faq-section,
   .closing-cta,
   .site-footer,
   .app-shell {
@@ -872,6 +1168,43 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .use-cases,
+  .pricing-section {
+    padding: 76px 0;
+  }
+
+  .faq-section {
+    padding-bottom: 76px;
+  }
+
+  .use-case-grid,
+  .pricing-card {
+    grid-template-columns: 1fr;
+  }
+
+  .use-case-card {
+    min-height: auto;
+    padding: 28px;
+  }
+
+  .use-case-card h3 {
+    margin-top: 34px;
+  }
+
+  .how-section {
+    padding: 54px 28px;
+  }
+
+  .pricing-card > div {
+    padding: 28px 0;
+  }
+
+  .pricing-card > div + div {
+    padding-left: 0;
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+
   .feature-card {
     padding: 28px 0;
   }
@@ -891,6 +1224,14 @@ a {
   .site-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .footer-meta {
+    text-align: left;
+  }
+
+  .footer-links {
+    justify-content: flex-start;
   }
 
   .auth-shell {

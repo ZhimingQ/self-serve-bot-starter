@@ -68,6 +68,12 @@ Everything user-facing is driven by env vars, read in `lib/config.ts`:
 ```
 BRAND_NAME=YourBrand       # shown in nav, hero, page titles
 BRAND_ACCENT=#777e69       # single accent color used across the whole UI
+BRAND_LOGO_URL=             # optional public URL for your logo
+PUBLIC_PRICE_LABEL=        # e.g. "$29 / month"
+PUBLIC_PRICE_NOTE=         # short billing or trial note
+SUPPORT_EMAIL=             # shown as a mailto link in the footer
+PRIVACY_URL=               # public Privacy Policy URL
+TERMS_URL=                 # public Terms URL
 BOT_FRAMEWORK=openclaw     # or "hermes" — which framework new bots use
 ```
 
@@ -139,6 +145,12 @@ it installs this template onto your running OpenClaw bot and serves it on an
 |---|---|---|
 | `BRAND_NAME` | no (defaults to `YourBrand`) | Shown throughout the UI |
 | `BRAND_ACCENT` | no (defaults to `#777e69`) | Single accent color, hex |
+| `BRAND_LOGO_URL` | no | Public logo URL shown in the header and footer. |
+| `PUBLIC_PRICE_LABEL` | no | Customer-facing price shown on the landing page. Defaults to a generic free/subscription label. |
+| `PUBLIC_PRICE_NOTE` | no | Short billing, trial, or checkout note shown beside the price. |
+| `SUPPORT_EMAIL` | recommended | Support address shown in the footer. |
+| `PRIVACY_URL` | recommended | Public Privacy Policy link shown in the footer. |
+| `TERMS_URL` | recommended | Public Terms link shown in the footer. |
 | `BOT_FRAMEWORK` | no (defaults to `openclaw`) | `openclaw` or `hermes` |
 | `BUILD_RESELL_API_BASE` | no (defaults to `https://openclawlaunch.com/api/v1`) | |
 | `BUILD_RESELL_API_KEY` | **yes** | Server-side secret. Never exposed to the browser. |
@@ -216,8 +228,10 @@ Before pointing real customers at your storefront:
 - [ ] Payments (if used): `STRIPE_SECRET_KEY` + `STRIPE_PRICE_ID` set, the
       webhook endpoint added with `STRIPE_WEBHOOK_SECRET`, and a real test
       purchase completed end-to-end.
-- [ ] Your own Privacy Policy + Terms linked (you are the merchant of record for
-      your customers' payments).
+- [ ] `PUBLIC_PRICE_LABEL` and `PUBLIC_PRICE_NOTE` match the real offer in your
+      Stripe checkout.
+- [ ] `SUPPORT_EMAIL`, `PRIVACY_URL`, and `TERMS_URL` point to your own business
+      pages (you are the merchant of record for your customers' payments).
 
 In production the app validates the first three (and the Stripe webhook secret in
 subscription mode) at startup and refuses to boot with a clear error if any are
