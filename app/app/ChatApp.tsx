@@ -309,7 +309,7 @@ export default function ChatApp({
       : copy.planIncluded;
   const userTurns = messages.filter((message) => message.role === "user").length;
   const assistantReplies = messages.filter(
-    (message) => message.role === "assistant" && Boolean(message.content)
+    (message) => message.role === "assistant" && !message.error && Boolean(message.content)
   ).length;
   const primaryNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "overview", label: copy.controlOverview, icon: "⌂" },
