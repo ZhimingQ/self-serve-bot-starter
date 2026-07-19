@@ -11,7 +11,7 @@ export default async function LandingPage() {
   // Demo mode blocks public signup/provisioning. Keep login available for
   // existing demo users, while the primary marketing path takes new visitors
   // to the template instead of dropping them onto a login dead end.
-  const primaryHref = demoMode ? demoSignupUrl : "/signup";
+  const primaryHref = demoMode ? "/demo" : "/signup";
   const primaryLabel = demoMode
     ? copy.demoPrimary
     : paymentsEnabled
@@ -29,13 +29,7 @@ export default async function LandingPage() {
 
   function PrimaryAction({ className }: { className: string }) {
     const content = <>{primaryLabel} <span aria-hidden="true">→</span></>;
-    return demoMode ? (
-      <a href={primaryHref} className={className} target="_blank" rel="noopener noreferrer">
-        {content}
-      </a>
-    ) : (
-      <Link href={primaryHref} className={className}>{content}</Link>
-    );
+    return <Link href={primaryHref} className={className}>{content}</Link>;
   }
 
   return (

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../lib/session";
 import { getStore } from "../../lib/store";
-import { paymentsEnabled } from "../../lib/config";
+import { brand, demoSignupUrl, paymentsEnabled } from "../../lib/config";
 import { confirmCheckoutSession } from "../../lib/billing";
 import { getLocaleState } from "../../lib/locale";
 import ChatApp from "./ChatApp";
@@ -47,6 +47,9 @@ export default async function AppPage({
       paymentsEnabled={paymentsEnabled}
       locale={locale}
       localeLocked={locked}
+      brandName={brand.name}
+      brandLogoUrl={brand.logoUrl}
+      templateUrl={demoSignupUrl}
     />
   );
 }

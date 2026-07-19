@@ -19,6 +19,7 @@ interface ChatMessage {
 class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
+type Panel = "overview" | "assistant" | "account";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes, covers the 30-90s cold-start window
@@ -29,24 +30,37 @@ export default function ChatApp({
   paymentsEnabled,
   locale,
   localeLocked,
+  brandName,
+  brandLogoUrl,
+  templateUrl,
+  preview = false,
 }: {
   email: string;
   paid: boolean;
   paymentsEnabled: boolean;
   locale: Locale;
   localeLocked: boolean;
+  brandName: string;
+  brandLogoUrl: string;
+  templateUrl: string;
+  preview?: boolean;
 }) {
   const copy = translations[locale];
   const router = useRouter();
   const needsPayment = paymentsEnabled && !paid;
-  const [provisionState, setProvisionState] = useState<ProvisionState>("checking");
+  const [provisionState, setProvisionState] = useState<ProvisionState>(preview ? "ready" : "checking");
   const [provisionError, setProvisionError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  const [panel, setPanel] = useState<Panel>("overview");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+  }, [locale]);
 
   const startCheckout = useCallback(async () => {
     if (subscribing) return;
@@ -117,7 +131,7 @@ export default function ChatApp({
     // Only provision once the user is entitled — a paywalled user provisions
     // after they pay (Stripe redirects back to /app?paid=1 → server passes
     // paid=true → this effect runs).
-    if (!needsPayment) provision();
+    if (!preview && !needsPayment) provision();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsPayment]);
 
@@ -140,6 +154,14 @@ export default function ChatApp({
     setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     setSending(true);
+
+    if (preview) {
+      window.setTimeout(() => {
+        setLastAssistantMessage(setMessages, copy.demoChatResponse);
+        setSending(false);
+      }, 450);
+      return;
+    }
 
     let gotContent = false; // did the assistant stream any actual reply text?
 
@@ -222,6 +244,11 @@ export default function ChatApp({
     }
   }
 
+  function openPrompt(prompt: string) {
+    setInput(prompt);
+    setPanel("assistant");
+  }
+
   if (needsPayment) {
     return (
       <div className="provisioning">
@@ -267,50 +294,164 @@ export default function ChatApp({
     );
   }
 
+  const displayName = preview ? copy.demoAccount : email.split("@")[0];
+  const planName = preview
+    ? copy.demoPlan
+    : paymentsEnabled
+      ? copy.planSubscription
+      : copy.planIncluded;
+
   return (
-    <div className="app-shell">
-      <div className="app-topbar">
-        <div className="assistant-identity">
-          <span>{copy.privateAssistant}</span>
-          <strong>{email}</strong>
-        </div>
-        <button className="btn btn-secondary" onClick={handleLogout}>
-          {copy.logout}
-        </button>
-        <LanguageSwitcher locale={locale} locked={localeLocked} />
-      </div>
-
-      <div className="chat-window">
-        <div className="chat-messages">
-          {messages.length === 0 && (
-            <p className="chat-empty">{copy.chatGreeting}</p>
-          )}
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={message.role === "user" ? "msg msg-user" : "msg msg-assistant"}
-              data-label={message.role === "user" ? copy.you : copy.assistant}
-              style={message.error ? { color: "#b91c1c" } : undefined}
-            >
-              {message.content || (sending && index === messages.length - 1 ? "…" : "")}
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
+    <div className="control-shell">
+      <aside className="control-sidebar">
+        <div className="control-brand">
+          {brandLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brandLogoUrl} alt="" />
+          ) : <span aria-hidden="true" />}
+          <strong>{brandName}</strong>
         </div>
 
-        <form className="chat-input-row" onSubmit={handleSend}>
-          <input
-            type="text"
-            placeholder={copy.messagePlaceholder}
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            disabled={sending}
-          />
-          <button type="submit" className="btn btn-primary" disabled={sending || !input.trim()}>
-            {copy.send}
+        <nav className="control-nav" aria-label={copy.navigationLabel}>
+          <button
+            className={panel === "overview" ? "active" : ""}
+            aria-current={panel === "overview" ? "page" : undefined}
+            onClick={() => setPanel("overview")}
+          >
+            <span aria-hidden="true">⌂</span>{copy.controlOverview}
           </button>
-        </form>
-      </div>
+          <button
+            className={panel === "assistant" ? "active" : ""}
+            aria-current={panel === "assistant" ? "page" : undefined}
+            onClick={() => setPanel("assistant")}
+          >
+            <span aria-hidden="true">✦</span>{copy.controlAssistant}
+          </button>
+          <button
+            className={panel === "account" ? "active" : ""}
+            aria-current={panel === "account" ? "page" : undefined}
+            onClick={() => setPanel("account")}
+          >
+            <span aria-hidden="true">○</span>{copy.controlAccount}
+          </button>
+        </nav>
+
+        <div className="control-sidebar-account">
+          <span>{copy.signedInAs}</span>
+          <strong>{displayName}</strong>
+          {preview && <em>{copy.previewMode}</em>}
+        </div>
+      </aside>
+
+      <main className="control-main">
+        <header className="control-topbar">
+          <div>
+            <span>{copy.workspace}</span>
+            <strong>{panel === "overview" ? copy.controlOverview : panel === "assistant" ? copy.controlAssistant : copy.controlAccount}</strong>
+          </div>
+          <div className="control-topbar-actions">
+            <span className="control-live"><i />{copy.onlineNow}</span>
+            <LanguageSwitcher locale={locale} locked={localeLocked} />
+          </div>
+        </header>
+
+        {panel === "overview" && (
+          <div className="control-content">
+            {preview && (
+              <section className="control-demo-banner">
+                <div><span>{copy.previewMode}</span><strong>{copy.demoPanelTitle}</strong><p>{copy.demoPanelBody}</p></div>
+                <a href={templateUrl} target="_blank" rel="noopener noreferrer">{copy.getTemplate} <b aria-hidden="true">↗</b></a>
+              </section>
+            )}
+
+            <section className="control-heading">
+              <span>{copy.dashboardEyebrow}</span>
+              <h1>{copy.welcomeDashboard(displayName)}</h1>
+              <p>{copy.dashboardSubtitle}</p>
+            </section>
+
+            <section className="control-stats" aria-label={copy.statusSummary}>
+              <article><span>{copy.statusLabel}</span><strong><i className="status-dot" />{copy.assistantOnline}</strong><p>{copy.statusReadyBody}</p></article>
+              <article><span>{copy.privacyLabel}</span><strong>{copy.privateToYou}</strong><p>{copy.privacyStatusBody}</p></article>
+              <article><span>{copy.memoryLabel}</span><strong>{copy.contextOn}</strong><p>{copy.memoryStatusBody}</p></article>
+            </section>
+
+            <section className="control-grid">
+              <article className="assistant-card">
+                <div className="assistant-card-top">
+                  <div className="assistant-orb" aria-hidden="true">✦</div>
+                  <span>{copy.privateAssistant}</span>
+                </div>
+                <h2>{copy.assistantReadyTitle}</h2>
+                <p>{copy.assistantReadyBody}</p>
+                <button className="btn btn-primary" onClick={() => setPanel("assistant")}>{copy.openAssistant} <span aria-hidden="true">→</span></button>
+              </article>
+
+              <article className="quick-start-card">
+                <span>{copy.quickStart}</span>
+                <h2>{copy.quickStartTitle}</h2>
+                <p>{copy.quickStartBody}</p>
+                <div className="quick-prompts">
+                  {[copy.promptOne, copy.promptTwo, copy.promptThree].map((prompt) => (
+                    <button key={prompt} onClick={() => openPrompt(prompt)}>{prompt}<span aria-hidden="true">→</span></button>
+                  ))}
+                </div>
+              </article>
+            </section>
+
+            <section className="control-plan-strip">
+              <div><span>{copy.planLabel}</span><strong>{planName}</strong></div>
+              <div><span>{copy.accessLabel}</span><strong>{copy.activeAccess}</strong></div>
+              <button onClick={() => setPanel("account")}>{copy.viewAccount} <span aria-hidden="true">→</span></button>
+            </section>
+          </div>
+        )}
+
+        {panel === "assistant" && (
+          <div className="control-content control-chat-content">
+            <section className="control-heading control-heading-row">
+              <div><span>{copy.privateAssistant}</span><h1>{copy.chatTitle}</h1><p>{copy.chatSubtitle}</p></div>
+              <button className="btn btn-secondary" onClick={() => setPanel("overview")}>{copy.backToOverview}</button>
+            </section>
+            <div className="chat-window">
+              <div className="chat-messages">
+                {messages.length === 0 && <p className="chat-empty">{copy.chatGreeting}</p>}
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={message.role === "user" ? "msg msg-user" : "msg msg-assistant"}
+                    data-label={message.role === "user" ? copy.you : copy.assistant}
+                    style={message.error ? { color: "#b91c1c" } : undefined}
+                  >
+                    {message.content || (sending && index === messages.length - 1 ? "…" : "")}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+              <form className="chat-input-row" onSubmit={handleSend}>
+                <input type="text" placeholder={copy.messagePlaceholder} value={input} onChange={(event) => setInput(event.target.value)} disabled={sending} />
+                <button type="submit" className="btn btn-primary" disabled={sending || !input.trim()}>{copy.send}</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {panel === "account" && (
+          <div className="control-content">
+            <section className="control-heading"><span>{copy.accountEyebrow}</span><h1>{copy.accountTitle}</h1><p>{copy.accountSubtitle}</p></section>
+            <section className="account-panel">
+              <div><span>{copy.emailLabel}</span><strong>{email}</strong></div>
+              <div><span>{copy.planLabel}</span><strong>{planName}</strong></div>
+              <div><span>{copy.assistantAccessLabel}</span><strong><i className="status-dot" />{copy.activeAccess}</strong></div>
+              {preview ? (
+                <a className="btn btn-primary" href={templateUrl} target="_blank" rel="noopener noreferrer">{copy.getTemplate}</a>
+              ) : (
+                <button className="btn btn-secondary" onClick={handleLogout}>{copy.logout}</button>
+              )}
+            </section>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

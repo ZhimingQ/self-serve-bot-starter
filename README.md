@@ -2,7 +2,8 @@
 
 A standalone Next.js 15 starter for **resellers** of OpenClaw Launch. Deploy this
 app, and every one of your end-users signs up and gets their **own** AI
-assistant to chat with — powered by OpenClaw Launch's Build & Resell API.
+assistant plus a branded customer control panel — powered by OpenClaw Launch's
+Build & Resell API.
 
 This template is fully self-contained. It does not import anything from the
 main OpenClaw Launch app and can be copied out into its own git repo and
@@ -17,7 +18,7 @@ deployed on its own.
                            (hashes password, sets
                             session cookie)
 
-  2. Land on /app  ────▶  POST /api/provision  ─────────▶  POST /v1/instances
+  2. Open control panel ▶ POST /api/provision  ─────────▶  POST /v1/instances
                            (idempotent — creates              (creates a bot,
                             the user's bot on first             ~30-90s to boot)
                             call, polls status on
@@ -120,6 +121,10 @@ npm run dev
 
 Open http://localhost:3000.
 
+The authenticated `/app` includes an overview, assistant, and account panel.
+Set `DEMO_MODE=1` to expose a safe public preview at `/demo`; its sample chat
+uses a local canned response and never provisions a bot or spends model credits.
+
 ## Deploy to Vercel
 
 One click clones this repo into your own Vercel account and prompts you for the
@@ -173,12 +178,13 @@ In production the app validates these at startup (`lib/config.ts` → `instrumen
 
 ```
 app/
-  page.tsx                 Landing page (Option A: clean minimal SaaS)
+  page.tsx                  Landing page (Option A: clean minimal SaaS)
   LanguageSwitcher.tsx      EN / 简体中文 switch (hidden on locale-locked hosts)
   signup/SignupForm.tsx     Sign-up form
   login/LoginForm.tsx       Log-in form
+  demo/page.tsx              Safe public control-panel preview (demo mode only)
   app/page.tsx               Authed area (server guard) → ChatApp.tsx (client)
-  app/ChatApp.tsx            Provisioning + streaming chat UI
+  app/ChatApp.tsx            Control panel + provisioning + streaming chat UI
   api/auth/signup/route.ts   Create account + session cookie
   api/auth/login/route.ts    Verify credentials + session cookie
   api/auth/logout/route.ts   Clear session cookie
