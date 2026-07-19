@@ -23,6 +23,7 @@ export default async function DemoControlPanel({
       email="demo@launchbot.example"
       paid
       paymentsEnabled={false}
+      billingMode="none"
       locale={locale}
       localeLocked={localeLocked}
       brandName={brand.name}

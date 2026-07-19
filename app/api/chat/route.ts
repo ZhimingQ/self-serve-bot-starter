@@ -1,9 +1,15 @@
+import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { streamResponse } from "../../../lib/buildResell";
 import { paymentsEnabled } from "../../../lib/config";
 import { rateLimit } from "../../../lib/rateLimit";
+import {
+  consumeAssistantSseText,
+  createAssistantStreamCapture,
+  prepareAssistantInput,
+} from "../../../lib/customerWorkspace";
 
 // Cap message length: protects the reseller's LLM cost and avoids forwarding an
 // accidental multi-MB payload upstream. ~16k chars ≈ a long message, not an essay-bomb.
@@ -48,6 +54,7 @@ export async function POST(request: NextRequest) {
       { status: 413 }
     );
   }
+  const turnStartedAt = new Date().toISOString();
 
   const store = getStore();
 
@@ -72,13 +79,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const writeFence = await store.beginUserChat(session.userId);
   const existingSessionId = await store.getUserSession(session.userId);
+  const preferences = await store.getUserPreferences(session.userId);
 
   let upstream: Response;
   try {
     upstream = await streamResponse({
       instanceId,
-      input,
+      input: prepareAssistantInput(input, preferences),
       sessionId: existingSessionId,
     });
   } catch (error) {
@@ -88,10 +97,46 @@ export async function POST(request: NextRequest) {
 
   const newSessionId = upstream.headers.get("x-openclaw-session-id");
   if (newSessionId && newSessionId !== existingSessionId) {
-    await store.setUserSession(session.userId, newSessionId);
+    await store.setUserSessionIfCurrent(session.userId, newSessionId, writeFence.generation);
   }
 
-  return new Response(upstream.body, {
+  const capture = createAssistantStreamCapture();
+  const decoder = new TextDecoder();
+  const historyBody = upstream.body!.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      controller.enqueue(chunk);
+      consumeAssistantSseText(capture, decoder.decode(chunk, { stream: true }));
+    },
+    async flush() {
+      consumeAssistantSseText(capture, decoder.decode(), true);
+      if (!capture.content.trim()) return;
+      try {
+        await store.appendUserHistory(session.userId, [
+          {
+            id: randomUUID(),
+            role: "user",
+            content: input,
+            createdAt: turnStartedAt,
+            turnSequence: writeFence.turnSequence,
+          },
+          {
+            id: randomUUID(),
+            role: "assistant",
+            content: capture.content.trim(),
+            createdAt: turnStartedAt,
+            turnSequence: writeFence.turnSequence,
+            ...(capture.error ? { error: true } : {}),
+          },
+        ], writeFence.generation);
+      } catch (error) {
+        // History is useful but must never turn a completed assistant reply into
+        // a failed chat request when persistent storage is temporarily full.
+        console.error("[chat] failed to save history:", error instanceof Error ? error.message : error);
+      }
+    },
+  }));
+
+  return new Response(historyBody, {
     status: 200,
     headers: {
       "Content-Type": "text/event-stream",

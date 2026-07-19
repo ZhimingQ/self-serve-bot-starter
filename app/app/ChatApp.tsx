@@ -4,10 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { messages as translations, type Locale } from "../../lib/i18n";
 import LanguageSwitcher from "../LanguageSwitcher";
+import {
+  defaultAssistantPreferences,
+  MAX_CUSTOM_INSTRUCTIONS_CHARS,
+  type AssistantPreferences,
+  type StoredChatMessage,
+} from "../../lib/customerWorkspace";
 
 interface ChatMessage {
+  id?: string;
   role: "user" | "assistant";
   content: string;
+  createdAt?: string;
   error?: boolean;
 }
 
@@ -19,7 +27,7 @@ interface ChatMessage {
 class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "prompts" | "activity" | "usage" | "account" | "support";
+type Panel = "overview" | "assistant" | "prompts" | "history" | "usage" | "billing" | "settings" | "account" | "privacy" | "support";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes, covers the 30-90s cold-start window
@@ -28,6 +36,7 @@ export default function ChatApp({
   email,
   paid,
   paymentsEnabled,
+  billingMode,
   locale,
   localeLocked,
   brandName,
@@ -41,6 +50,7 @@ export default function ChatApp({
   email: string;
   paid: boolean;
   paymentsEnabled: boolean;
+  billingMode: "subscription" | "payment" | "none";
   locale: Locale;
   localeLocked: boolean;
   brandName: string;
@@ -62,11 +72,38 @@ export default function ChatApp({
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>("overview");
+  const [sessionUserTurns, setSessionUserTurns] = useState(0);
+  const [sessionAssistantReplies, setSessionAssistantReplies] = useState(0);
+  const [preferences, setPreferences] = useState<AssistantPreferences>({ ...defaultAssistantPreferences });
+  const [preferencesDraft, setPreferencesDraft] = useState<AssistantPreferences>({ ...defaultAssistantPreferences });
+  const [preferencesStatus, setPreferencesStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [billingStatus, setBillingStatus] = useState<"idle" | "opening" | "error">("idle");
+  const [dataStatus, setDataStatus] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [confirmClear, setConfirmClear] = useState(false);
+  const hasLocalActivityRef = useRef(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
   }, [locale]);
+
+  useEffect(() => {
+    if (preview) return;
+    let cancelled = false;
+    Promise.all([
+      fetch("/api/history", { cache: "no-store" }).then((res) => res.ok ? res.json() : { messages: [] }),
+      fetch("/api/preferences", { cache: "no-store" }).then((res) => res.ok ? res.json() : { preferences: defaultAssistantPreferences }),
+    ]).then(([historyData, preferenceData]) => {
+      if (cancelled) return;
+      if (!hasLocalActivityRef.current && Array.isArray(historyData.messages)) {
+        setMessages(historyData.messages as StoredChatMessage[]);
+      }
+      const next = preferenceData.preferences ?? defaultAssistantPreferences;
+      setPreferences(next);
+      setPreferencesDraft(next);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [preview]);
 
   const startCheckout = useCallback(async () => {
     if (subscribing) return;
@@ -146,6 +183,10 @@ export default function ChatApp({
     container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [panel]);
+
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
@@ -157,14 +198,17 @@ export default function ChatApp({
     const trimmed = input.trim();
     if (!trimmed || sending) return;
 
+    hasLocalActivityRef.current = true;
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setSessionUserTurns((count) => count + 1);
     setSending(true);
 
     if (preview) {
       window.setTimeout(() => {
         setLastAssistantMessage(setMessages, copy.demoChatResponse);
+        setSessionAssistantReplies((count) => count + 1);
         setSending(false);
       }, 450);
       return;
@@ -234,6 +278,8 @@ export default function ChatApp({
         setLastAssistantMessage(setMessages, copy.chatError, true);
       } else if (streamErrored) {
         appendToLastAssistantMessage(setMessages, `\n\n${copy.interrupted}`);
+      } else {
+        setSessionAssistantReplies((count) => count + 1);
       }
     } catch (err) {
       // Only our own ChatDisplayError carries a message safe to show; any other
@@ -249,6 +295,82 @@ export default function ChatApp({
     } finally {
       setSending(false);
     }
+  }
+
+  async function savePreferences(event: React.FormEvent) {
+    event.preventDefault();
+    setPreferencesStatus("saving");
+    if (preview) {
+      setPreferences(preferencesDraft);
+      setPreferencesStatus("saved");
+      return;
+    }
+    try {
+      const res = await fetch("/api/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(preferencesDraft),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setPreferences(data.preferences);
+      setPreferencesDraft(data.preferences);
+      setPreferencesStatus("saved");
+    } catch { setPreferencesStatus("error"); }
+  }
+
+  async function openBillingPortal() {
+    setBillingStatus("opening");
+    try {
+      const res = await fetch("/api/billing/portal", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error();
+      window.location.href = data.url;
+    } catch { setBillingStatus("error"); }
+  }
+
+  async function downloadData() {
+    setDataStatus("working");
+    try {
+      let blob: Blob;
+      if (preview) {
+        blob = new Blob([JSON.stringify({
+          exportedAt: new Date().toISOString(),
+          scope: "Preview customer workspace data",
+          account: { email, accessStatus: "preview", billingMode: "none" },
+          assistantPreferences: preferences,
+          conversationHistory: messages.filter((message) => message.content),
+        }, null, 2)], { type: "application/json" });
+      } else {
+        const res = await fetch("/api/account/export", { cache: "no-store" });
+        if (!res.ok) throw new Error();
+        blob = await res.blob();
+      }
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "customer-workspace-data.json";
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setDataStatus("done");
+    } catch { setDataStatus("error"); }
+  }
+
+  async function clearHistory() {
+    if (sending) return;
+    if (!confirmClear) { setDataStatus("idle"); setConfirmClear(true); return; }
+    setDataStatus("working");
+    try {
+      if (!preview) {
+        const res = await fetch("/api/history", { method: "DELETE" });
+        if (!res.ok) throw new Error();
+      }
+      setMessages([]);
+      setSessionUserTurns(0);
+      setSessionAssistantReplies(0);
+      setConfirmClear(false);
+      setDataStatus("done");
+    } catch { setDataStatus("error"); }
   }
 
   function openPrompt(prompt: string) {
@@ -307,19 +429,21 @@ export default function ChatApp({
     : paymentsEnabled
       ? copy.planSubscription
       : copy.planIncluded;
-  const userTurns = messages.filter((message) => message.role === "user").length;
-  const assistantReplies = messages.filter(
-    (message) => message.role === "assistant" && !message.error && Boolean(message.content)
-  ).length;
+  const userTurns = sessionUserTurns;
+  const assistantReplies = sessionAssistantReplies;
+  const savedTurns = messages.filter((message) => message.role === "user" && message.content).length;
   const primaryNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "overview", label: copy.controlOverview, icon: "⌂" },
     { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
     { panel: "prompts", label: copy.controlPrompts, icon: "⌘" },
-    { panel: "activity", label: copy.controlActivity, icon: "↻" },
+    { panel: "history", label: copy.controlHistory, icon: "↻" },
     { panel: "usage", label: copy.controlUsage, icon: "◫" },
   ];
   const manageNav: { panel: Panel; label: string; icon: string }[] = [
+    { panel: "billing", label: copy.controlBilling, icon: "$" },
+    { panel: "settings", label: copy.controlSettings, icon: "⚙" },
     { panel: "account", label: copy.controlAccount, icon: "○" },
+    { panel: "privacy", label: copy.controlPrivacy, icon: "⌁" },
     { panel: "support", label: copy.controlSupport, icon: "?" },
   ];
   const currentPanelTitle = [...primaryNav, ...manageNav].find(
@@ -347,7 +471,7 @@ export default function ChatApp({
               onClick={() => setPanel(item.panel)}
             >
               <span aria-hidden="true">{item.icon}</span>{item.label}
-              {item.panel === "activity" && userTurns > 0 && <b>{userTurns}</b>}
+              {item.panel === "history" && savedTurns > 0 && <b>{savedTurns}</b>}
             </button>
           ))}
           <span className="control-nav-label control-nav-manage">{copy.manageNavLabel}</span>
@@ -437,9 +561,9 @@ export default function ChatApp({
                 <div><strong>{copy.controlPrompts}</strong><p>{copy.promptsToolBody}</p></div>
                 <b aria-hidden="true">→</b>
               </button>
-              <button onClick={() => setPanel("activity")}>
+              <button onClick={() => setPanel("history")}>
                 <span aria-hidden="true">↻</span>
-                <div><strong>{copy.controlActivity}</strong><p>{copy.activityToolBody}</p></div>
+                <div><strong>{copy.controlHistory}</strong><p>{copy.historyToolBody}</p></div>
                 <b aria-hidden="true">→</b>
               </button>
               <button onClick={() => setPanel("usage")}>
@@ -455,7 +579,7 @@ export default function ChatApp({
             </section>
 
             <section className="dashboard-activity-card">
-              <header><div><span>{copy.activityEyebrow}</span><h2>{copy.recentActivityTitle}</h2></div><button onClick={() => setPanel("activity")}>{copy.viewAll}</button></header>
+              <header><div><span>{copy.activityEyebrow}</span><h2>{copy.recentActivityTitle}</h2></div><button onClick={() => setPanel("history")}>{copy.viewAll}</button></header>
               <div className="dashboard-activity-list">
                 <div><i className="status-dot" /><span><strong>{copy.activityAssistantReady}</strong><small>{copy.activityAssistantReadyBody}</small></span><em>{copy.nowLabel}</em></div>
                 <div><i>✓</i><span><strong>{copy.activityMemoryReady}</strong><small>{copy.activityMemoryReadyBody}</small></span><em>{copy.activeAccess}</em></div>
@@ -526,28 +650,28 @@ export default function ChatApp({
           </div>
         )}
 
-        {panel === "activity" && (
+        {panel === "history" && (
           <div className="control-content">
             <section className="control-heading">
-              <span>{copy.activityEyebrow}</span>
-              <h1>{copy.activityTitle}</h1>
-              <p>{copy.activitySubtitle}</p>
+              <span>{copy.historyEyebrow}</span>
+              <h1>{copy.historyTitle}</h1>
+              <p>{copy.historySubtitle}</p>
             </section>
             <section className="activity-summary-grid">
+              <article><span>{copy.savedConversations}</span><strong>{copy.turnCount(savedTurns)}</strong><p>{copy.savedHistoryBody}</p></article>
               <article><span>{copy.currentSession}</span><strong>{copy.turnCount(userTurns)}</strong><p>{copy.sessionTurnsBody}</p></article>
-              <article><span>{copy.assistantRepliesLabel}</span><strong>{assistantReplies}</strong><p>{copy.assistantRepliesBody}</p></article>
               <article><span>{copy.workspaceStatus}</span><strong><i className="status-dot" />{copy.assistantOnline}</strong><p>{copy.statusReadyBody}</p></article>
             </section>
             <section className="session-activity-panel">
-              <header><div><span>{copy.currentSession}</span><h2>{copy.sessionActivityTitle}</h2></div><button onClick={() => setPanel("assistant")}>{copy.continueConversation}</button></header>
+              <header><div><span>{copy.savedHistory}</span><h2>{copy.historyListTitle}</h2></div><button onClick={() => setPanel("assistant")}>{copy.continueConversation}</button></header>
               {messages.length === 0 ? (
-                <div className="activity-empty"><span aria-hidden="true">↻</span><strong>{copy.noActivityTitle}</strong><p>{copy.noActivityBody}</p><button className="btn btn-primary" onClick={() => setPanel("prompts")}>{copy.browsePrompts}</button></div>
+                <div className="activity-empty"><span aria-hidden="true">↻</span><strong>{copy.noHistoryTitle}</strong><p>{copy.noHistoryBody}</p><button className="btn btn-primary" onClick={() => setPanel("prompts")}>{copy.browsePrompts}</button></div>
               ) : (
                 <div className="session-message-list">
-                  {messages.filter((message) => message.content).slice(-8).map((message, index) => (
-                    <div key={`${message.role}-${index}`}>
+                  {messages.filter((message) => message.content).map((message, index) => (
+                    <div key={message.id ?? `${message.role}-${index}`}>
                       <span>{message.role === "user" ? copy.you : copy.assistant}</span>
-                      <p>{message.content}</p>
+                      <p>{message.content}</p>{message.createdAt && <time>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(message.createdAt))}</time>}
                     </div>
                   ))}
                 </div>
@@ -587,6 +711,35 @@ export default function ChatApp({
           </div>
         )}
 
+        {panel === "billing" && (
+          <div className="control-content">
+            <section className="control-heading"><span>{copy.billingEyebrow}</span><h1>{copy.billingTitle}</h1><p>{copy.billingSubtitle}</p></section>
+            <section className="billing-grid">
+              <article className="billing-plan-card">
+                <span>{copy.currentPlan}</span><h2>{planName}</h2><p>{billingMode === "subscription" ? copy.subscriptionBillingBody : billingMode === "payment" ? copy.oneTimeBillingBody : copy.includedBillingBody}</p>
+                <div><span>{copy.accessLabel}</span><strong><i className="status-dot" />{copy.activeAccess}</strong></div>
+                {billingMode === "subscription" && !preview && <button className="btn btn-primary" onClick={openBillingPortal} disabled={billingStatus === "opening"}>{billingStatus === "opening" ? copy.openingBilling : copy.manageBilling}</button>}
+                {preview && <a className="btn btn-primary" href={templateUrl} target="_blank" rel="noopener noreferrer">{copy.getTemplate}</a>}
+                {billingStatus === "error" && <p className="panel-error" role="alert">{copy.billingError}</p>}
+              </article>
+              <article className="billing-info-card"><span>{copy.billingHelp}</span><h2>{copy.billingHelpTitle}</h2><p>{copy.billingHelpBody}</p>{supportEmail ? <a href={`mailto:${supportEmail}`}>{copy.emailSupport} <b aria-hidden="true">→</b></a> : <p>{copy.contactOwner}</p>}</article>
+            </section>
+          </div>
+        )}
+
+        {panel === "settings" && (
+          <div className="control-content">
+            <section className="control-heading"><span>{copy.settingsEyebrow}</span><h1>{copy.settingsTitle}</h1><p>{copy.settingsSubtitle}</p></section>
+            <form className="settings-panel" onSubmit={savePreferences}>
+              <fieldset><legend>{copy.responseStyle}</legend><p>{copy.responseStyleBody}</p><div className="style-options">
+                {(["concise", "balanced", "detailed"] as const).map((style) => <label key={style} className={preferencesDraft.responseStyle === style ? "selected" : ""}><input type="radio" name="responseStyle" value={style} checked={preferencesDraft.responseStyle === style} onChange={() => { setPreferencesDraft((current) => ({ ...current, responseStyle: style })); setPreferencesStatus("idle"); }} /><strong>{style === "concise" ? copy.styleConcise : style === "balanced" ? copy.styleBalanced : copy.styleDetailed}</strong><span>{style === "concise" ? copy.styleConciseBody : style === "balanced" ? copy.styleBalancedBody : copy.styleDetailedBody}</span></label>)}
+              </div></fieldset>
+              <label className="instructions-field"><strong>{copy.customInstructions}</strong><span>{copy.customInstructionsBody}</span><textarea value={preferencesDraft.customInstructions} maxLength={MAX_CUSTOM_INSTRUCTIONS_CHARS} rows={5} placeholder={copy.customInstructionsPlaceholder} onChange={(event) => { setPreferencesDraft((current) => ({ ...current, customInstructions: event.target.value })); setPreferencesStatus("idle"); }} /><small>{preferencesDraft.customInstructions.length}/{MAX_CUSTOM_INSTRUCTIONS_CHARS}</small></label>
+              <div className="settings-actions"><button type="submit" className="btn btn-primary" disabled={preferencesStatus === "saving"}>{preferencesStatus === "saving" ? copy.saving : copy.saveSettings}</button>{preferencesStatus === "saved" && <span role="status">✓ {copy.settingsSaved}</span>}{preferencesStatus === "error" && <span className="panel-error" role="alert">{copy.settingsError}</span>}</div>
+            </form>
+          </div>
+        )}
+
         {panel === "account" && (
           <div className="control-content">
             <section className="control-heading"><span>{copy.accountEyebrow}</span><h1>{copy.accountTitle}</h1><p>{copy.accountSubtitle}</p></section>
@@ -604,6 +757,19 @@ export default function ChatApp({
               <article><span>{copy.workspacePreferences}</span><h2>{copy.languageAndRegion}</h2><p>{locale === "zh" ? copy.simplifiedChinese : copy.englishLanguage}</p><LanguageSwitcher locale={locale} locked={localeLocked} /></article>
               <article><span>{copy.privacyLabel}</span><h2>{copy.privateWorkspaceTitle}</h2><p>{copy.privateWorkspaceBody}</p><button onClick={() => setPanel("support")}>{copy.learnMore}</button></article>
             </section>
+          </div>
+        )}
+
+        {panel === "privacy" && (
+          <div className="control-content">
+            <section className="control-heading"><span>{copy.privacyDataEyebrow}</span><h1>{copy.privacyDataTitle}</h1><p>{copy.privacyDataSubtitle}</p></section>
+            <section className="privacy-grid">
+              <article><span aria-hidden="true">⇩</span><div><h2>{copy.downloadDataTitle}</h2><p>{copy.downloadDataBody}</p><button className="btn btn-secondary" onClick={downloadData} disabled={dataStatus === "working"}>{dataStatus === "working" ? copy.preparingData : copy.downloadData}</button></div></article>
+              <article><span aria-hidden="true">↻</span><div><h2>{copy.clearHistoryTitle}</h2><p>{copy.clearHistoryBody}</p><button className={`btn ${confirmClear ? "btn-danger" : "btn-secondary"}`} onClick={clearHistory} disabled={dataStatus === "working" || sending}>{confirmClear ? copy.confirmClearHistory : copy.clearHistory}</button>{confirmClear && <button className="privacy-cancel" onClick={() => setConfirmClear(false)}>{copy.cancel}</button>}</div></article>
+              <article><span aria-hidden="true">✉</span><div><h2>{copy.deleteAccountTitle}</h2><p>{copy.deleteAccountBody}</p>{supportEmail ? <a className="btn btn-secondary" href={`mailto:${supportEmail}?subject=${encodeURIComponent(copy.deleteAccountSubject)}`}>{copy.requestDeletion}</a> : <p>{copy.contactOwner}</p>}</div></article>
+            </section>
+            <p className="privacy-note">{copy.dataScopeNote}</p>
+            {dataStatus === "done" && <p className="panel-success" role="status">✓ {copy.dataActionDone}</p>}{dataStatus === "error" && <p className="panel-error" role="alert">{copy.dataActionError}</p>}
           </div>
         )}
 

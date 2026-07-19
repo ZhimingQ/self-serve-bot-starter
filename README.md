@@ -91,13 +91,17 @@ markup over the ~$6/deploy you pay OpenClaw Launch is yours to keep.
    `STRIPE_MODE=subscription`; one-time Price → `STRIPE_MODE=payment`.
 2. Set `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `APP_URL` (your storefront's
    public URL), and — for subscription mode — `STRIPE_WEBHOOK_SECRET`.
-3. Add a webhook endpoint in Stripe pointing at
+3. In Stripe, open Settings → Billing → Customer portal, choose the payment
+   methods and cancellation options customers may manage, then activate the
+   portal configuration. The control panel's Manage billing button opens this
+   Stripe-hosted portal for subscription customers.
+4. Add a webhook endpoint in Stripe pointing at
    `https://your-storefront/api/stripe/webhook`, subscribed to:
    `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
    `checkout.session.async_payment_failed`, `invoice.paid`,
    `invoice.payment_failed`, `customer.subscription.deleted`. Copy its signing
    secret (`whsec_…`) into `STRIPE_WEBHOOK_SECRET`.
-4. To test locally, forward events to your dev server:
+5. To test locally, forward events to your dev server:
 
    ```bash
    stripe listen --forward-to localhost:3000/api/stripe/webhook
@@ -121,10 +125,14 @@ npm run dev
 
 Open http://localhost:3000.
 
-The authenticated `/app` includes a seven-section customer workspace: overview,
-assistant, prompt library, current-session activity, usage and access, account,
-and help and support. Session figures are intentionally presented as current
-browser-session activity rather than invented billing quotas or stored history.
+The authenticated `/app` includes a ten-section customer workspace: overview,
+assistant, prompt library, persistent conversation history, usage and access,
+billing, assistant settings, account, privacy and data, and help and support.
+Customers can carry saved conversation history and response preferences across
+devices, open Stripe's customer portal for recurring subscriptions, download a
+storefront-only data export, and clear the history displayed by the storefront.
+Session figures are intentionally presented as current browser-session activity
+rather than invented billing quotas.
 Set `DEMO_MODE=1` to expose a safe public preview at `/demo`; its sample chat
 uses a local canned response and never provisions a bot or spends model credits.
 

@@ -19,6 +19,14 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { storeDir, upstash } from "./config";
+import {
+  defaultAssistantPreferences,
+  limitStoredHistory,
+  MAX_HISTORY_MESSAGES,
+  orderStoredHistory,
+  type AssistantPreferences,
+  type StoredChatMessage,
+} from "./customerWorkspace";
 
 export interface StoredUser {
   id: string;
@@ -36,6 +44,11 @@ export interface StoredUser {
    *  The webhook ignores events older than this, so a replayed/out-of-order
    *  activate can't override a newer revoke. */
   lastBillingEventAt?: number;
+}
+
+export interface ChatWriteFence {
+  generation: number;
+  turnSequence: number;
 }
 
 export interface Store {
@@ -62,7 +75,17 @@ export interface Store {
    * confused with the browser auth-cookie session in lib/session.ts.
    */
   getUserSession(userId: string): Promise<string | null>;
-  setUserSession(userId: string, sessionId: string): Promise<void>;
+  beginUserChat(userId: string): Promise<ChatWriteFence>;
+  setUserSessionIfCurrent(userId: string, sessionId: string, generation: number): Promise<boolean>;
+  getUserHistory(userId: string): Promise<StoredChatMessage[]>;
+  appendUserHistory(
+    userId: string,
+    messages: StoredChatMessage[],
+    generation: number
+  ): Promise<boolean>;
+  clearUserConversation(userId: string): Promise<void>;
+  getUserPreferences(userId: string): Promise<AssistantPreferences>;
+  setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void>;
 }
 
 function normalizeEmail(email: string): string {
@@ -72,10 +95,13 @@ function normalizeEmail(email: string): string {
 // ── Backend 1: Upstash Redis via REST (plain fetch, no SDK) ──────────────
 
 class UpstashStore implements Store {
-  constructor(
-    private readonly url: string,
-    private readonly token: string
-  ) {}
+  private readonly url: string;
+  private readonly token: string;
+
+  constructor(url: string, token: string) {
+    this.url = url;
+    this.token = token;
+  }
 
   private async command<T = unknown>(cmd: (string | number)[]): Promise<T> {
     const res = await fetch(this.url, {
@@ -150,18 +176,90 @@ class UpstashStore implements Store {
     return this.command<string | null>(["GET", `chatsession:${userId}`]);
   }
 
-  async setUserSession(userId: string, sessionId: string): Promise<void> {
-    await this.command(["SET", `chatsession:${userId}`, sessionId]);
+  async beginUserChat(userId: string): Promise<ChatWriteFence> {
+    const result = await this.command<[string | number, number]>([
+      "EVAL",
+      "local g=redis.call('GET',KEYS[1]) or '0'; local s=redis.call('INCR',KEYS[2]); return {g,s}",
+      2,
+      `historygen:${userId}`,
+      `historyseq:${userId}`,
+    ]);
+    return { generation: Number(result[0]), turnSequence: Number(result[1]) };
+  }
+
+  async setUserSessionIfCurrent(
+    userId: string,
+    sessionId: string,
+    generation: number
+  ): Promise<boolean> {
+    const changed = await this.command<number>([
+      "EVAL",
+      "local g=redis.call('GET',KEYS[1]) or '0'; if tostring(g)~=ARGV[1] then return 0 end; redis.call('SET',KEYS[2],ARGV[2]); return 1",
+      2,
+      `historygen:${userId}`,
+      `chatsession:${userId}`,
+      generation,
+      sessionId,
+    ]);
+    return changed === 1;
+  }
+
+  async getUserHistory(userId: string): Promise<StoredChatMessage[]> {
+    const rows = await this.command<string[]>(["LRANGE", `history:${userId}`, 0, -1]);
+    return orderStoredHistory(rows.map((row) => JSON.parse(row) as StoredChatMessage));
+  }
+
+  async appendUserHistory(
+    userId: string,
+    messages: StoredChatMessage[],
+    generation: number
+  ): Promise<boolean> {
+    if (!messages.length) return true;
+    const changed = await this.command<number>([
+      "EVAL",
+      "local g=redis.call('GET',KEYS[1]) or '0'; if tostring(g)~=ARGV[1] then return 0 end; for i=3,#ARGV do redis.call('RPUSH',KEYS[2],ARGV[i]) end; local raw=redis.call('LRANGE',KEYS[2],0,-1); local rows={}; for i,v in ipairs(raw) do local m=cjson.decode(v); table.insert(rows,{raw=v,idx=i,seq=m.turnSequence,role=m.role}) end; table.sort(rows,function(a,b) if a.seq==nil and b.seq==nil then return a.idx<b.idx end; if a.seq==nil then return true end; if b.seq==nil then return false end; if a.seq~=b.seq then return a.seq<b.seq end; if a.role~=b.role then return a.role=='user' end; return a.idx<b.idx end); redis.call('DEL',KEYS[2]); local first=math.max(1,#rows-tonumber(ARGV[2])+1); for i=first,#rows do redis.call('RPUSH',KEYS[2],rows[i].raw) end; return 1",
+      2,
+      `historygen:${userId}`,
+      `history:${userId}`,
+      generation,
+      MAX_HISTORY_MESSAGES,
+      ...messages.map((message) => JSON.stringify(message)),
+    ]);
+    return changed === 1;
+  }
+
+  async clearUserConversation(userId: string): Promise<void> {
+    await this.command([
+      "EVAL",
+      "redis.call('DEL',KEYS[1]); redis.call('INCR',KEYS[2]); redis.call('DEL',KEYS[3]); return 1",
+      3,
+      `chatsession:${userId}`,
+      `historygen:${userId}`,
+      `history:${userId}`,
+    ]);
+  }
+
+  async getUserPreferences(userId: string): Promise<AssistantPreferences> {
+    const raw = await this.command<string | null>(["GET", `preferences:${userId}`]);
+    return raw ? (JSON.parse(raw) as AssistantPreferences) : { ...defaultAssistantPreferences };
+  }
+
+  async setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void> {
+    await this.command(["SET", `preferences:${userId}`, JSON.stringify(preferences)]);
   }
 }
 
 // ── Backend 2: in-memory fallback for local dev ───────────────────────────
 
-class MemoryStore implements Store {
+export class MemoryStore implements Store {
   private usersById = new Map<string, StoredUser>();
   private userIdByEmail = new Map<string, string>();
   private instanceByUserId = new Map<string, string>();
   private sessionByUserId = new Map<string, string>();
+  private historyByUserId = new Map<string, StoredChatMessage[]>();
+  private historyGenerationByUserId = new Map<string, number>();
+  private historySequenceByUserId = new Map<string, number>();
+  private preferencesByUserId = new Map<string, AssistantPreferences>();
 
   private userIdByCustomer = new Map<string, string>();
 
@@ -211,8 +309,44 @@ class MemoryStore implements Store {
     return this.sessionByUserId.get(userId) ?? null;
   }
 
-  async setUserSession(userId: string, sessionId: string): Promise<void> {
+  async beginUserChat(userId: string): Promise<ChatWriteFence> {
+    const generation = this.historyGenerationByUserId.get(userId) ?? 0;
+    const turnSequence = (this.historySequenceByUserId.get(userId) ?? 0) + 1;
+    this.historySequenceByUserId.set(userId, turnSequence);
+    return { generation, turnSequence };
+  }
+
+  async setUserSessionIfCurrent(userId: string, sessionId: string, generation: number): Promise<boolean> {
+    if ((this.historyGenerationByUserId.get(userId) ?? 0) !== generation) return false;
     this.sessionByUserId.set(userId, sessionId);
+    return true;
+  }
+
+  async getUserHistory(userId: string): Promise<StoredChatMessage[]> {
+    return orderStoredHistory(this.historyByUserId.get(userId) ?? []);
+  }
+  async appendUserHistory(
+    userId: string,
+    messages: StoredChatMessage[],
+    generation: number
+  ): Promise<boolean> {
+    if ((this.historyGenerationByUserId.get(userId) ?? 0) !== generation) return false;
+    this.historyByUserId.set(
+      userId,
+      limitStoredHistory(orderStoredHistory([...(this.historyByUserId.get(userId) ?? []), ...messages]))
+    );
+    return true;
+  }
+  async clearUserConversation(userId: string): Promise<void> {
+    this.sessionByUserId.delete(userId);
+    this.historyGenerationByUserId.set(userId, (this.historyGenerationByUserId.get(userId) ?? 0) + 1);
+    this.historyByUserId.delete(userId);
+  }
+  async getUserPreferences(userId: string): Promise<AssistantPreferences> {
+    return this.preferencesByUserId.get(userId) ?? { ...defaultAssistantPreferences };
+  }
+  async setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void> {
+    this.preferencesByUserId.set(userId, preferences);
   }
 }
 
@@ -231,19 +365,35 @@ interface FileSnapshot {
   userIdByCustomer: Record<string, string>;
   instanceByUserId: Record<string, string>;
   sessionByUserId: Record<string, string>;
+  historyByUserId: Record<string, StoredChatMessage[]>;
+  historyGenerationByUserId: Record<string, number>;
+  historySequenceByUserId: Record<string, number>;
+  preferencesByUserId: Record<string, AssistantPreferences>;
 }
 
 function emptySnapshot(): FileSnapshot {
-  return { usersById: {}, userIdByEmail: {}, userIdByCustomer: {}, instanceByUserId: {}, sessionByUserId: {} };
+  return {
+    usersById: {},
+    userIdByEmail: {},
+    userIdByCustomer: {},
+    instanceByUserId: {},
+    sessionByUserId: {},
+    historyByUserId: {},
+    historyGenerationByUserId: {},
+    historySequenceByUserId: {},
+    preferencesByUserId: {},
+  };
 }
 
-class FileStore implements Store {
+export class FileStore implements Store {
+  private readonly dir: string;
   private readonly file: string;
   private snapshot: FileSnapshot | null = null;
   private loadPromise: Promise<FileSnapshot> | null = null;
   private writeChain: Promise<void> = Promise.resolve();
 
-  constructor(private readonly dir: string) {
+  constructor(dir: string) {
+    this.dir = dir;
     this.file = path.join(dir, "store.json");
   }
 
@@ -341,9 +491,63 @@ class FileStore implements Store {
     return snap.sessionByUserId[userId] ?? null;
   }
 
-  async setUserSession(userId: string, sessionId: string): Promise<void> {
+  async beginUserChat(userId: string): Promise<ChatWriteFence> {
     const snap = await this.load();
+    const generation = snap.historyGenerationByUserId[userId] ?? 0;
+    const turnSequence = (snap.historySequenceByUserId[userId] ?? 0) + 1;
+    snap.historySequenceByUserId[userId] = turnSequence;
+    await this.persist();
+    return { generation, turnSequence };
+  }
+
+  async setUserSessionIfCurrent(
+    userId: string,
+    sessionId: string,
+    generation: number
+  ): Promise<boolean> {
+    const snap = await this.load();
+    if ((snap.historyGenerationByUserId[userId] ?? 0) !== generation) return false;
     snap.sessionByUserId[userId] = sessionId;
+    await this.persist();
+    return true;
+  }
+
+  async getUserHistory(userId: string): Promise<StoredChatMessage[]> {
+    const snap = await this.load();
+    return orderStoredHistory(snap.historyByUserId[userId] ?? []);
+  }
+
+  async appendUserHistory(
+    userId: string,
+    messages: StoredChatMessage[],
+    generation: number
+  ): Promise<boolean> {
+    const snap = await this.load();
+    if ((snap.historyGenerationByUserId[userId] ?? 0) !== generation) return false;
+    snap.historyByUserId[userId] = limitStoredHistory(orderStoredHistory([
+      ...(snap.historyByUserId[userId] ?? []),
+      ...messages,
+    ]));
+    await this.persist();
+    return true;
+  }
+
+  async clearUserConversation(userId: string): Promise<void> {
+    const snap = await this.load();
+    delete snap.sessionByUserId[userId];
+    snap.historyGenerationByUserId[userId] = (snap.historyGenerationByUserId[userId] ?? 0) + 1;
+    delete snap.historyByUserId[userId];
+    await this.persist();
+  }
+
+  async getUserPreferences(userId: string): Promise<AssistantPreferences> {
+    const snap = await this.load();
+    return snap.preferencesByUserId[userId] ?? { ...defaultAssistantPreferences };
+  }
+
+  async setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void> {
+    const snap = await this.load();
+    snap.preferencesByUserId[userId] = preferences;
     await this.persist();
   }
 }
