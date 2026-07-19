@@ -19,7 +19,7 @@ interface ChatMessage {
 class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "account";
+type Panel = "overview" | "assistant" | "prompts" | "activity" | "usage" | "account" | "support";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes, covers the 30-90s cold-start window
@@ -33,6 +33,9 @@ export default function ChatApp({
   brandName,
   brandLogoUrl,
   templateUrl,
+  supportEmail,
+  privacyUrl,
+  termsUrl,
   preview = false,
 }: {
   email: string;
@@ -43,6 +46,9 @@ export default function ChatApp({
   brandName: string;
   brandLogoUrl: string;
   templateUrl: string;
+  supportEmail: string;
+  privacyUrl: string;
+  termsUrl: string;
   preview?: boolean;
 }) {
   const copy = translations[locale];
@@ -56,7 +62,7 @@ export default function ChatApp({
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>("overview");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
@@ -136,7 +142,8 @@ export default function ChatApp({
   }, [needsPayment]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = chatMessagesRef.current;
+    container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   async function handleLogout() {
@@ -300,6 +307,24 @@ export default function ChatApp({
     : paymentsEnabled
       ? copy.planSubscription
       : copy.planIncluded;
+  const userTurns = messages.filter((message) => message.role === "user").length;
+  const assistantReplies = messages.filter(
+    (message) => message.role === "assistant" && Boolean(message.content)
+  ).length;
+  const primaryNav: { panel: Panel; label: string; icon: string }[] = [
+    { panel: "overview", label: copy.controlOverview, icon: "⌂" },
+    { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
+    { panel: "prompts", label: copy.controlPrompts, icon: "⌘" },
+    { panel: "activity", label: copy.controlActivity, icon: "↻" },
+    { panel: "usage", label: copy.controlUsage, icon: "◫" },
+  ];
+  const manageNav: { panel: Panel; label: string; icon: string }[] = [
+    { panel: "account", label: copy.controlAccount, icon: "○" },
+    { panel: "support", label: copy.controlSupport, icon: "?" },
+  ];
+  const currentPanelTitle = [...primaryNav, ...manageNav].find(
+    (item) => item.panel === panel
+  )?.label;
 
   return (
     <div className="control-shell">
@@ -313,27 +338,29 @@ export default function ChatApp({
         </div>
 
         <nav className="control-nav" aria-label={copy.navigationLabel}>
-          <button
-            className={panel === "overview" ? "active" : ""}
-            aria-current={panel === "overview" ? "page" : undefined}
-            onClick={() => setPanel("overview")}
-          >
-            <span aria-hidden="true">⌂</span>{copy.controlOverview}
-          </button>
-          <button
-            className={panel === "assistant" ? "active" : ""}
-            aria-current={panel === "assistant" ? "page" : undefined}
-            onClick={() => setPanel("assistant")}
-          >
-            <span aria-hidden="true">✦</span>{copy.controlAssistant}
-          </button>
-          <button
-            className={panel === "account" ? "active" : ""}
-            aria-current={panel === "account" ? "page" : undefined}
-            onClick={() => setPanel("account")}
-          >
-            <span aria-hidden="true">○</span>{copy.controlAccount}
-          </button>
+          <span className="control-nav-label">{copy.workspaceNavLabel}</span>
+          {primaryNav.map((item) => (
+            <button
+              key={item.panel}
+              className={panel === item.panel ? "active" : ""}
+              aria-current={panel === item.panel ? "page" : undefined}
+              onClick={() => setPanel(item.panel)}
+            >
+              <span aria-hidden="true">{item.icon}</span>{item.label}
+              {item.panel === "activity" && userTurns > 0 && <b>{userTurns}</b>}
+            </button>
+          ))}
+          <span className="control-nav-label control-nav-manage">{copy.manageNavLabel}</span>
+          {manageNav.map((item) => (
+            <button
+              key={item.panel}
+              className={panel === item.panel ? "active" : ""}
+              aria-current={panel === item.panel ? "page" : undefined}
+              onClick={() => setPanel(item.panel)}
+            >
+              <span aria-hidden="true">{item.icon}</span>{item.label}
+            </button>
+          ))}
         </nav>
 
         <div className="control-sidebar-account">
@@ -347,7 +374,7 @@ export default function ChatApp({
         <header className="control-topbar">
           <div>
             <span>{copy.workspace}</span>
-            <strong>{panel === "overview" ? copy.controlOverview : panel === "assistant" ? copy.controlAssistant : copy.controlAccount}</strong>
+            <strong>{currentPanelTitle}</strong>
           </div>
           <div className="control-topbar-actions">
             <span className="control-live"><i />{copy.onlineNow}</span>
@@ -399,6 +426,43 @@ export default function ChatApp({
               </article>
             </section>
 
+            <section className="dashboard-section-heading">
+              <div><span>{copy.workspaceToolsEyebrow}</span><h2>{copy.workspaceToolsTitle}</h2></div>
+              <p>{copy.workspaceToolsBody}</p>
+            </section>
+
+            <section className="workspace-tools-grid">
+              <button onClick={() => setPanel("prompts")}>
+                <span aria-hidden="true">⌘</span>
+                <div><strong>{copy.controlPrompts}</strong><p>{copy.promptsToolBody}</p></div>
+                <b aria-hidden="true">→</b>
+              </button>
+              <button onClick={() => setPanel("activity")}>
+                <span aria-hidden="true">↻</span>
+                <div><strong>{copy.controlActivity}</strong><p>{copy.activityToolBody}</p></div>
+                <b aria-hidden="true">→</b>
+              </button>
+              <button onClick={() => setPanel("usage")}>
+                <span aria-hidden="true">◫</span>
+                <div><strong>{copy.controlUsage}</strong><p>{copy.usageToolBody}</p></div>
+                <b aria-hidden="true">→</b>
+              </button>
+              <button onClick={() => setPanel("support")}>
+                <span aria-hidden="true">?</span>
+                <div><strong>{copy.controlSupport}</strong><p>{copy.supportToolBody}</p></div>
+                <b aria-hidden="true">→</b>
+              </button>
+            </section>
+
+            <section className="dashboard-activity-card">
+              <header><div><span>{copy.activityEyebrow}</span><h2>{copy.recentActivityTitle}</h2></div><button onClick={() => setPanel("activity")}>{copy.viewAll}</button></header>
+              <div className="dashboard-activity-list">
+                <div><i className="status-dot" /><span><strong>{copy.activityAssistantReady}</strong><small>{copy.activityAssistantReadyBody}</small></span><em>{copy.nowLabel}</em></div>
+                <div><i>✓</i><span><strong>{copy.activityMemoryReady}</strong><small>{copy.activityMemoryReadyBody}</small></span><em>{copy.activeAccess}</em></div>
+                <div><i>⌁</i><span><strong>{copy.activityPrivacyReady}</strong><small>{copy.activityPrivacyReadyBody}</small></span><em>{copy.activeAccess}</em></div>
+              </div>
+            </section>
+
             <section className="control-plan-strip">
               <div><span>{copy.planLabel}</span><strong>{planName}</strong></div>
               <div><span>{copy.accessLabel}</span><strong>{copy.activeAccess}</strong></div>
@@ -414,7 +478,7 @@ export default function ChatApp({
               <button className="btn btn-secondary" onClick={() => setPanel("overview")}>{copy.backToOverview}</button>
             </section>
             <div className="chat-window">
-              <div className="chat-messages">
+              <div className="chat-messages" ref={chatMessagesRef}>
                 {messages.length === 0 && <p className="chat-empty">{copy.chatGreeting}</p>}
                 {messages.map((message, index) => (
                   <div
@@ -426,13 +490,100 @@ export default function ChatApp({
                     {message.content || (sending && index === messages.length - 1 ? "…" : "")}
                   </div>
                 ))}
-                <div ref={messagesEndRef} />
               </div>
               <form className="chat-input-row" onSubmit={handleSend}>
                 <input type="text" placeholder={copy.messagePlaceholder} value={input} onChange={(event) => setInput(event.target.value)} disabled={sending} />
                 <button type="submit" className="btn btn-primary" disabled={sending || !input.trim()}>{copy.send}</button>
               </form>
             </div>
+          </div>
+        )}
+
+        {panel === "prompts" && (
+          <div className="control-content">
+            <section className="control-heading">
+              <span>{copy.promptsEyebrow}</span>
+              <h1>{copy.promptsTitle}</h1>
+              <p>{copy.promptsSubtitle}</p>
+            </section>
+            <section className="prompt-library-grid">
+              {[
+                [copy.promptOne, copy.promptOneBody, copy.promptCategoryPlan],
+                [copy.promptTwo, copy.promptTwoBody, copy.promptCategoryWrite],
+                [copy.promptThree, copy.promptThreeBody, copy.promptCategoryThink],
+                [copy.promptFour, copy.promptFourBody, copy.promptCategorySummarize],
+                [copy.promptFive, copy.promptFiveBody, copy.promptCategoryCreate],
+                [copy.promptSix, copy.promptSixBody, copy.promptCategoryDecide],
+              ].map(([prompt, body, category]) => (
+                <button key={prompt} onClick={() => openPrompt(prompt)}>
+                  <span>{category}</span>
+                  <strong>{prompt}</strong>
+                  <p>{body}</p>
+                  <b>{copy.usePrompt} <i aria-hidden="true">→</i></b>
+                </button>
+              ))}
+            </section>
+          </div>
+        )}
+
+        {panel === "activity" && (
+          <div className="control-content">
+            <section className="control-heading">
+              <span>{copy.activityEyebrow}</span>
+              <h1>{copy.activityTitle}</h1>
+              <p>{copy.activitySubtitle}</p>
+            </section>
+            <section className="activity-summary-grid">
+              <article><span>{copy.currentSession}</span><strong>{copy.turnCount(userTurns)}</strong><p>{copy.sessionTurnsBody}</p></article>
+              <article><span>{copy.assistantRepliesLabel}</span><strong>{assistantReplies}</strong><p>{copy.assistantRepliesBody}</p></article>
+              <article><span>{copy.workspaceStatus}</span><strong><i className="status-dot" />{copy.assistantOnline}</strong><p>{copy.statusReadyBody}</p></article>
+            </section>
+            <section className="session-activity-panel">
+              <header><div><span>{copy.currentSession}</span><h2>{copy.sessionActivityTitle}</h2></div><button onClick={() => setPanel("assistant")}>{copy.continueConversation}</button></header>
+              {messages.length === 0 ? (
+                <div className="activity-empty"><span aria-hidden="true">↻</span><strong>{copy.noActivityTitle}</strong><p>{copy.noActivityBody}</p><button className="btn btn-primary" onClick={() => setPanel("prompts")}>{copy.browsePrompts}</button></div>
+              ) : (
+                <div className="session-message-list">
+                  {messages.filter((message) => message.content).slice(-8).map((message, index) => (
+                    <div key={`${message.role}-${index}`}>
+                      <span>{message.role === "user" ? copy.you : copy.assistant}</span>
+                      <p>{message.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {panel === "usage" && (
+          <div className="control-content">
+            <section className="control-heading">
+              <span>{copy.usageEyebrow}</span>
+              <h1>{copy.usageTitle}</h1>
+              <p>{copy.usageSubtitle}</p>
+            </section>
+            <section className="usage-grid">
+              <article className="usage-metric-card"><span>{copy.messagesThisSession}</span><strong>{userTurns}</strong><p>{copy.messagesThisSessionBody}</p></article>
+              <article className="usage-metric-card"><span>{copy.repliesThisSession}</span><strong>{assistantReplies}</strong><p>{copy.repliesThisSessionBody}</p></article>
+              <article className="usage-metric-card"><span>{copy.contextStatus}</span><strong>{copy.contextOn}</strong><p>{copy.memoryStatusBody}</p></article>
+            </section>
+            <section className="usage-detail-grid">
+              <article className="usage-plan-card">
+                <span>{copy.planLabel}</span><h2>{planName}</h2><p>{copy.usagePlanBody}</p>
+                <div><span>{copy.assistantAccessLabel}</span><strong><i className="status-dot" />{copy.activeAccess}</strong></div>
+                <div><span>{copy.privacyLabel}</span><strong>{copy.privateToYou}</strong></div>
+                <button className="btn btn-secondary" onClick={() => setPanel("account")}>{copy.viewAccount}</button>
+              </article>
+              <article className="usage-session-card">
+                <span>{copy.sessionBreakdown}</span><h2>{copy.sessionBreakdownTitle}</h2><p>{copy.sessionBreakdownBody}</p>
+                <div className="usage-bars">
+                  <div><span>{copy.yourMessages}</span><b style={{ width: `${Math.min(100, Math.max(8, userTurns * 18))}%` }} /></div>
+                  <div><span>{copy.assistantRepliesLabel}</span><b style={{ width: `${Math.min(100, Math.max(8, assistantReplies * 18))}%` }} /></div>
+                </div>
+                <small>{copy.usageNoQuotaNote}</small>
+              </article>
+            </section>
           </div>
         )}
 
@@ -448,6 +599,39 @@ export default function ChatApp({
               ) : (
                 <button className="btn btn-secondary" onClick={handleLogout}>{copy.logout}</button>
               )}
+            </section>
+            <section className="account-info-grid">
+              <article><span>{copy.workspacePreferences}</span><h2>{copy.languageAndRegion}</h2><p>{locale === "zh" ? copy.simplifiedChinese : copy.englishLanguage}</p><LanguageSwitcher locale={locale} locked={localeLocked} /></article>
+              <article><span>{copy.privacyLabel}</span><h2>{copy.privateWorkspaceTitle}</h2><p>{copy.privateWorkspaceBody}</p><button onClick={() => setPanel("support")}>{copy.learnMore}</button></article>
+            </section>
+          </div>
+        )}
+
+        {panel === "support" && (
+          <div className="control-content">
+            <section className="control-heading">
+              <span>{copy.supportEyebrow}</span>
+              <h1>{copy.supportTitle}</h1>
+              <p>{copy.supportSubtitle}</p>
+            </section>
+            <section className="support-grid">
+              <article className="support-contact-card">
+                <span>{copy.contactSupport}</span><h2>{copy.needHelpTitle}</h2><p>{copy.needHelpBody}</p>
+                {supportEmail ? <a className="btn btn-primary" href={`mailto:${supportEmail}`}>{copy.emailSupport}</a> : <p className="support-unavailable">{copy.contactOwner}</p>}
+              </article>
+              <article className="support-links-card">
+                <span>{copy.resources}</span><h2>{copy.accountResources}</h2>
+                <button onClick={() => setPanel("prompts")}><strong>{copy.controlPrompts}</strong><small>{copy.promptsToolBody}</small><b aria-hidden="true">→</b></button>
+                <button onClick={() => setPanel("usage")}><strong>{copy.controlUsage}</strong><small>{copy.usageToolBody}</small><b aria-hidden="true">→</b></button>
+                {privacyUrl && <a href={privacyUrl} target="_blank" rel="noopener noreferrer"><strong>{copy.privacyPolicy}</strong><small>{copy.privacyPolicyBody}</small><b aria-hidden="true">↗</b></a>}
+                {termsUrl && <a href={termsUrl} target="_blank" rel="noopener noreferrer"><strong>{copy.termsOfService}</strong><small>{copy.termsOfServiceBody}</small><b aria-hidden="true">↗</b></a>}
+              </article>
+            </section>
+            <section className="faq-panel">
+              <header><span>{copy.commonQuestions}</span><h2>{copy.faqPanelTitle}</h2></header>
+              <details><summary>{copy.controlFaqOneQuestion}</summary><p>{copy.controlFaqOneAnswer}</p></details>
+              <details><summary>{copy.controlFaqTwoQuestion}</summary><p>{copy.controlFaqTwoAnswer}</p></details>
+              <details><summary>{copy.controlFaqThreeQuestion}</summary><p>{copy.controlFaqThreeAnswer}</p></details>
             </section>
           </div>
         )}

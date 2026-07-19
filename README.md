@@ -121,7 +121,10 @@ npm run dev
 
 Open http://localhost:3000.
 
-The authenticated `/app` includes an overview, assistant, and account panel.
+The authenticated `/app` includes a seven-section customer workspace: overview,
+assistant, prompt library, current-session activity, usage and access, account,
+and help and support. Session figures are intentionally presented as current
+browser-session activity rather than invented billing quotas or stored history.
 Set `DEMO_MODE=1` to expose a safe public preview at `/demo`; its sample chat
 uses a local canned response and never provisions a bot or spends model credits.
 

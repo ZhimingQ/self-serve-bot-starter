@@ -50,6 +50,9 @@ export default async function AppPage({
       brandName={brand.name}
       brandLogoUrl={brand.logoUrl}
       templateUrl={demoSignupUrl}
+      supportEmail={brand.supportEmail}
+      privacyUrl={brand.privacyUrl}
+      termsUrl={brand.termsUrl}
     />
   );
 }
