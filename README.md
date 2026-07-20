@@ -130,7 +130,10 @@ assistant, prompt library, persistent conversation history, usage and access,
 billing, assistant settings, account, privacy and data, and help and support.
 Customers can carry saved conversation history and response preferences across
 devices, open Stripe's customer portal for recurring subscriptions, download a
-storefront-only data export, and clear the history displayed by the storefront.
+storefront-only data export, clear the history displayed by the storefront, and
+permanently delete their account after an email-confirmation step. Account
+deletion retires the dedicated bot, cancels any connected Stripe customer and
+subscription, clears the session, and removes storefront-owned account data.
 Session figures are intentionally presented as current browser-session activity
 rather than invented billing quotas.
 Set `DEMO_MODE=1` to expose a safe public preview at `/demo`; its sample chat
@@ -199,6 +202,8 @@ app/
   api/auth/signup/route.ts   Create account + session cookie
   api/auth/login/route.ts    Verify credentials + session cookie
   api/auth/logout/route.ts   Clear session cookie
+  api/account/route.ts       Confirmed account + bot + billing deletion
+  api/account/export/route.ts Download storefront-owned customer data
   api/provision/route.ts     Idempotent bot creation + status polling (payment-gated)
   api/chat/route.ts          SSE passthrough to the Build & Resell API (payment-gated)
   api/checkout/route.ts      Start a Stripe Checkout session

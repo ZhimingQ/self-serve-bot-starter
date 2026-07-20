@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "test:locale": "node --experimental-strip-types --test lib/localeConfig.test.mjs",
+    "test:store": "tsx --test lib/store.test.mjs",
     "test:workspace": "node --experimental-strip-types --test lib/customerWorkspace.test.mjs",
     "start": "next start",
     "lint": "next lint"
@@ -24,6 +25,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.0",
+    "tsx": "^4.23.1",
     "typescript": "^5.7.0"
   },
   "engines": {

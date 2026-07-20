@@ -32,7 +32,7 @@ export class BuildResellApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly code: string | null,
-    operation: "createInstance" | "listInstances",
+    operation: "createInstance" | "listInstances" | "deleteInstance",
   ) {
     super(`${operation} failed (${status})${code ? `: ${code}` : ""}`);
     this.name = "BuildResellApiError";
@@ -41,7 +41,7 @@ export class BuildResellApiError extends Error {
 
 async function upstreamError(
   res: Response,
-  operation: "createInstance" | "listInstances",
+  operation: "createInstance" | "listInstances" | "deleteInstance",
 ): Promise<BuildResellApiError> {
   const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
   const code = typeof body?.error === "string" ? body.error : null;
@@ -104,6 +104,21 @@ export async function listInstances(): Promise<BuildResellInstance[]> {
 export async function getInstance(instanceId: string): Promise<BuildResellInstance | null> {
   const instances = await listInstances();
   return instances.find((instance) => instance.id === instanceId) ?? null;
+}
+
+/** Permanently retire a customer's bot. A missing bot is already deleted, so
+ *  retries remain safe after a partial account-deletion attempt. */
+export async function deleteInstance(instanceId: string): Promise<void> {
+  const res = await fetch(`${brand.apiBase}/instances/${encodeURIComponent(instanceId)}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    cache: "no-store",
+    signal: AbortSignal.timeout(CONTROL_TIMEOUT_MS),
+  });
+
+  if (!res.ok && res.status !== 404) {
+    throw await upstreamError(res, "deleteInstance");
+  }
 }
 
 export interface StreamResponseParams {

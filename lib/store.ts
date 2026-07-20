@@ -86,6 +86,10 @@ export interface Store {
   clearUserConversation(userId: string): Promise<void>;
   getUserPreferences(userId: string): Promise<AssistantPreferences>;
   setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void>;
+  /** Remove the local storefront account and all customer-owned workspace data.
+   *  The history generation fence is retained/incremented so an in-flight chat
+   *  cannot recreate history after deletion. */
+  deleteUserData(userId: string): Promise<void>;
 }
 
 function normalizeEmail(email: string): string {
@@ -247,6 +251,28 @@ class UpstashStore implements Store {
   async setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void> {
     await this.command(["SET", `preferences:${userId}`, JSON.stringify(preferences)]);
   }
+
+  async deleteUserData(userId: string): Promise<void> {
+    const user = await this.getUserById(userId);
+    if (!user) return;
+    const keys = [
+      `user:${userId}`,
+      `user:by-email:${normalizeEmail(user.email)}`,
+      `instance:${userId}`,
+      `chatsession:${userId}`,
+      `history:${userId}`,
+      `historyseq:${userId}`,
+      `preferences:${userId}`,
+    ];
+    if (user.stripeCustomerId) keys.push(`user:by-customer:${user.stripeCustomerId}`);
+    await this.command([
+      "EVAL",
+      "redis.call('INCR',KEYS[1]); for i=2,#KEYS do redis.call('DEL',KEYS[i]) end; return 1",
+      keys.length + 1,
+      `historygen:${userId}`,
+      ...keys,
+    ]);
+  }
 }
 
 // ── Backend 2: in-memory fallback for local dev ───────────────────────────
@@ -347,6 +373,19 @@ export class MemoryStore implements Store {
   }
   async setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void> {
     this.preferencesByUserId.set(userId, preferences);
+  }
+  async deleteUserData(userId: string): Promise<void> {
+    const user = this.usersById.get(userId);
+    if (!user) return;
+    this.usersById.delete(userId);
+    this.userIdByEmail.delete(normalizeEmail(user.email));
+    if (user.stripeCustomerId) this.userIdByCustomer.delete(user.stripeCustomerId);
+    this.instanceByUserId.delete(userId);
+    this.sessionByUserId.delete(userId);
+    this.historyByUserId.delete(userId);
+    this.historySequenceByUserId.delete(userId);
+    this.preferencesByUserId.delete(userId);
+    this.historyGenerationByUserId.set(userId, (this.historyGenerationByUserId.get(userId) ?? 0) + 1);
   }
 }
 
@@ -548,6 +587,22 @@ export class FileStore implements Store {
   async setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void> {
     const snap = await this.load();
     snap.preferencesByUserId[userId] = preferences;
+    await this.persist();
+  }
+
+  async deleteUserData(userId: string): Promise<void> {
+    const snap = await this.load();
+    const user = snap.usersById[userId];
+    if (!user) return;
+    delete snap.usersById[userId];
+    delete snap.userIdByEmail[normalizeEmail(user.email)];
+    if (user.stripeCustomerId) delete snap.userIdByCustomer[user.stripeCustomerId];
+    delete snap.instanceByUserId[userId];
+    delete snap.sessionByUserId[userId];
+    delete snap.historyByUserId[userId];
+    delete snap.historySequenceByUserId[userId];
+    delete snap.preferencesByUserId[userId];
+    snap.historyGenerationByUserId[userId] = (snap.historyGenerationByUserId[userId] ?? 0) + 1;
     await this.persist();
   }
 }

@@ -28,6 +28,8 @@ class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
 type Panel = "overview" | "assistant" | "prompts" | "history" | "usage" | "billing" | "settings" | "account" | "privacy" | "support";
+type AsyncStatus = "idle" | "working" | "done" | "error";
+type WorkspaceLoadStatus = "loading" | "ready" | "error";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes, covers the 30-90s cold-start window
@@ -78,8 +80,14 @@ export default function ChatApp({
   const [preferencesDraft, setPreferencesDraft] = useState<AssistantPreferences>({ ...defaultAssistantPreferences });
   const [preferencesStatus, setPreferencesStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [billingStatus, setBillingStatus] = useState<"idle" | "opening" | "error">("idle");
-  const [dataStatus, setDataStatus] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [workspaceLoadStatus, setWorkspaceLoadStatus] = useState<WorkspaceLoadStatus>(preview ? "ready" : "loading");
+  const [downloadStatus, setDownloadStatus] = useState<AsyncStatus>("idle");
+  const [clearStatus, setClearStatus] = useState<AsyncStatus>("idle");
+  const [deleteStatus, setDeleteStatus] = useState<AsyncStatus>("idle");
+  const [logoutStatus, setLogoutStatus] = useState<"idle" | "working" | "error">("idle");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const hasLocalActivityRef = useRef(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
 
@@ -87,23 +95,37 @@ export default function ChatApp({
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
   }, [locale]);
 
-  useEffect(() => {
+  const loadWorkspace = useCallback(async (signal?: AbortSignal) => {
     if (preview) return;
-    let cancelled = false;
-    Promise.all([
-      fetch("/api/history", { cache: "no-store" }).then((res) => res.ok ? res.json() : { messages: [] }),
-      fetch("/api/preferences", { cache: "no-store" }).then((res) => res.ok ? res.json() : { preferences: defaultAssistantPreferences }),
-    ]).then(([historyData, preferenceData]) => {
-      if (cancelled) return;
+    setWorkspaceLoadStatus("loading");
+    try {
+      const [historyResponse, preferenceResponse] = await Promise.all([
+        fetch("/api/history", { cache: "no-store", signal }),
+        fetch("/api/preferences", { cache: "no-store", signal }),
+      ]);
+      if (!historyResponse.ok || !preferenceResponse.ok) throw new Error("workspace_load_failed");
+      const [historyData, preferenceData] = await Promise.all([
+        historyResponse.json(),
+        preferenceResponse.json(),
+      ]);
       if (!hasLocalActivityRef.current && Array.isArray(historyData.messages)) {
         setMessages(historyData.messages as StoredChatMessage[]);
       }
       const next = preferenceData.preferences ?? defaultAssistantPreferences;
       setPreferences(next);
       setPreferencesDraft(next);
-    }).catch(() => {});
-    return () => { cancelled = true; };
+      setWorkspaceLoadStatus("ready");
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") setWorkspaceLoadStatus("error");
+    }
   }, [preview]);
+
+  useEffect(() => {
+    if (preview) return;
+    const controller = new AbortController();
+    void loadWorkspace(controller.signal);
+    return () => controller.abort();
+  }, [loadWorkspace, preview]);
 
   const startCheckout = useCallback(async () => {
     if (subscribing) return;
@@ -188,9 +210,15 @@ export default function ChatApp({
   }, [panel]);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/");
-    router.refresh();
+    setLogoutStatus("working");
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error();
+      router.push("/");
+      router.refresh();
+    } catch {
+      setLogoutStatus("error");
+    }
   }
 
   async function handleSend(event: React.FormEvent) {
@@ -299,6 +327,7 @@ export default function ChatApp({
 
   async function savePreferences(event: React.FormEvent) {
     event.preventDefault();
+    if (workspaceLoadStatus !== "ready") return;
     setPreferencesStatus("saving");
     if (preview) {
       setPreferences(preferencesDraft);
@@ -330,7 +359,7 @@ export default function ChatApp({
   }
 
   async function downloadData() {
-    setDataStatus("working");
+    setDownloadStatus("working");
     try {
       let blob: Blob;
       if (preview) {
@@ -350,16 +379,18 @@ export default function ChatApp({
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = "customer-workspace-data.json";
+      document.body.appendChild(anchor);
       anchor.click();
-      URL.revokeObjectURL(url);
-      setDataStatus("done");
-    } catch { setDataStatus("error"); }
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      setDownloadStatus("done");
+    } catch { setDownloadStatus("error"); }
   }
 
   async function clearHistory() {
     if (sending) return;
-    if (!confirmClear) { setDataStatus("idle"); setConfirmClear(true); return; }
-    setDataStatus("working");
+    if (!confirmClear) { setClearStatus("idle"); setConfirmClear(true); return; }
+    setClearStatus("working");
     try {
       if (!preview) {
         const res = await fetch("/api/history", { method: "DELETE" });
@@ -369,8 +400,33 @@ export default function ChatApp({
       setSessionUserTurns(0);
       setSessionAssistantReplies(0);
       setConfirmClear(false);
-      setDataStatus("done");
-    } catch { setDataStatus("error"); }
+      setClearStatus("done");
+    } catch { setClearStatus("error"); }
+  }
+
+  async function deleteAccount() {
+    if (!confirmDelete) {
+      setDeleteStatus("idle");
+      setConfirmDelete(true);
+      return;
+    }
+    if (deleteConfirmation.trim().toLowerCase() !== email.toLowerCase()) return;
+    setDeleteStatus("working");
+    if (preview) {
+      window.setTimeout(() => setDeleteStatus("done"), 350);
+      return;
+    }
+    try {
+      const response = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: deleteConfirmation }),
+      });
+      if (!response.ok) throw new Error();
+      window.location.assign("/");
+    } catch {
+      setDeleteStatus("error");
+    }
   }
 
   function openPrompt(prompt: string) {
@@ -449,6 +505,9 @@ export default function ChatApp({
   const currentPanelTitle = [...primaryNav, ...manageNav].find(
     (item) => item.panel === panel
   )?.label;
+  const supportHref = supportEmail
+    ? `mailto:${supportEmail}?subject=${encodeURIComponent(copy.supportEmailSubject)}&body=${encodeURIComponent(copy.supportEmailBody(email))}`
+    : "";
 
   return (
     <div className="control-shell">
@@ -501,10 +560,20 @@ export default function ChatApp({
             <strong>{currentPanelTitle}</strong>
           </div>
           <div className="control-topbar-actions">
-            <span className="control-live"><i />{copy.onlineNow}</span>
+            <span className="control-live" role="status">
+              {workspaceLoadStatus === "loading" ? <span className="mini-spinner" aria-hidden="true" /> : <i />}
+              {workspaceLoadStatus === "loading" ? copy.syncingWorkspace : copy.onlineNow}
+            </span>
             <LanguageSwitcher locale={locale} locked={localeLocked} />
           </div>
         </header>
+
+        {workspaceLoadStatus === "error" && (
+          <div className="workspace-notice" role="alert">
+            <div><strong>{copy.workspaceLoadErrorTitle}</strong><span>{copy.workspaceLoadErrorBody}</span></div>
+            <button type="button" onClick={() => void loadWorkspace()}>{copy.tryAgain}</button>
+          </div>
+        )}
 
         {panel === "overview" && (
           <div className="control-content">
@@ -664,7 +733,11 @@ export default function ChatApp({
             </section>
             <section className="session-activity-panel">
               <header><div><span>{copy.savedHistory}</span><h2>{copy.historyListTitle}</h2></div><button onClick={() => setPanel("assistant")}>{copy.continueConversation}</button></header>
-              {messages.length === 0 ? (
+              {workspaceLoadStatus === "loading" ? (
+                <div className="panel-loading" role="status"><span className="spinner" aria-hidden="true" /><strong>{copy.loadingHistory}</strong><p>{copy.loadingHistoryBody}</p></div>
+              ) : workspaceLoadStatus === "error" ? (
+                <div className="activity-empty"><span aria-hidden="true">!</span><strong>{copy.historyUnavailableTitle}</strong><p>{copy.historyUnavailableBody}</p><button className="btn btn-primary" type="button" onClick={() => void loadWorkspace()}>{copy.tryAgain}</button></div>
+              ) : messages.length === 0 ? (
                 <div className="activity-empty"><span aria-hidden="true">↻</span><strong>{copy.noHistoryTitle}</strong><p>{copy.noHistoryBody}</p><button className="btn btn-primary" onClick={() => setPanel("prompts")}>{copy.browsePrompts}</button></div>
               ) : (
                 <div className="session-message-list">
@@ -722,7 +795,7 @@ export default function ChatApp({
                 {preview && <a className="btn btn-primary" href={templateUrl} target="_blank" rel="noopener noreferrer">{copy.getTemplate}</a>}
                 {billingStatus === "error" && <p className="panel-error" role="alert">{copy.billingError}</p>}
               </article>
-              <article className="billing-info-card"><span>{copy.billingHelp}</span><h2>{copy.billingHelpTitle}</h2><p>{copy.billingHelpBody}</p>{supportEmail ? <a href={`mailto:${supportEmail}`}>{copy.emailSupport} <b aria-hidden="true">→</b></a> : <p>{copy.contactOwner}</p>}</article>
+              <article className="billing-info-card"><span>{copy.billingHelp}</span><h2>{copy.billingHelpTitle}</h2><p>{copy.billingHelpBody}</p>{supportEmail ? <a href={supportHref}>{copy.emailSupport} <b aria-hidden="true">→</b></a> : <p>{copy.contactOwner}</p>}</article>
             </section>
           </div>
         )}
@@ -731,11 +804,13 @@ export default function ChatApp({
           <div className="control-content">
             <section className="control-heading"><span>{copy.settingsEyebrow}</span><h1>{copy.settingsTitle}</h1><p>{copy.settingsSubtitle}</p></section>
             <form className="settings-panel" onSubmit={savePreferences}>
-              <fieldset><legend>{copy.responseStyle}</legend><p>{copy.responseStyleBody}</p><div className="style-options">
+              {workspaceLoadStatus === "loading" && <div className="settings-state" role="status"><span className="mini-spinner" aria-hidden="true" />{copy.loadingPreferences}</div>}
+              {workspaceLoadStatus === "error" && <div className="settings-state panel-error" role="alert"><span>{copy.preferencesUnavailable}</span><button type="button" onClick={() => void loadWorkspace()}>{copy.tryAgain}</button></div>}
+              <fieldset disabled={workspaceLoadStatus !== "ready" || preferencesStatus === "saving"}><legend>{copy.responseStyle}</legend><p>{copy.responseStyleBody}</p><div className="style-options">
                 {(["concise", "balanced", "detailed"] as const).map((style) => <label key={style} className={preferencesDraft.responseStyle === style ? "selected" : ""}><input type="radio" name="responseStyle" value={style} checked={preferencesDraft.responseStyle === style} onChange={() => { setPreferencesDraft((current) => ({ ...current, responseStyle: style })); setPreferencesStatus("idle"); }} /><strong>{style === "concise" ? copy.styleConcise : style === "balanced" ? copy.styleBalanced : copy.styleDetailed}</strong><span>{style === "concise" ? copy.styleConciseBody : style === "balanced" ? copy.styleBalancedBody : copy.styleDetailedBody}</span></label>)}
               </div></fieldset>
-              <label className="instructions-field"><strong>{copy.customInstructions}</strong><span>{copy.customInstructionsBody}</span><textarea value={preferencesDraft.customInstructions} maxLength={MAX_CUSTOM_INSTRUCTIONS_CHARS} rows={5} placeholder={copy.customInstructionsPlaceholder} onChange={(event) => { setPreferencesDraft((current) => ({ ...current, customInstructions: event.target.value })); setPreferencesStatus("idle"); }} /><small>{preferencesDraft.customInstructions.length}/{MAX_CUSTOM_INSTRUCTIONS_CHARS}</small></label>
-              <div className="settings-actions"><button type="submit" className="btn btn-primary" disabled={preferencesStatus === "saving"}>{preferencesStatus === "saving" ? copy.saving : copy.saveSettings}</button>{preferencesStatus === "saved" && <span role="status">✓ {copy.settingsSaved}</span>}{preferencesStatus === "error" && <span className="panel-error" role="alert">{copy.settingsError}</span>}</div>
+              <fieldset className="instructions-field" disabled={workspaceLoadStatus !== "ready" || preferencesStatus === "saving"}><legend>{copy.customInstructions}</legend><span>{copy.customInstructionsBody}</span><textarea value={preferencesDraft.customInstructions} maxLength={MAX_CUSTOM_INSTRUCTIONS_CHARS} rows={5} placeholder={copy.customInstructionsPlaceholder} onChange={(event) => { setPreferencesDraft((current) => ({ ...current, customInstructions: event.target.value })); setPreferencesStatus("idle"); }} /><small>{preferencesDraft.customInstructions.length}/{MAX_CUSTOM_INSTRUCTIONS_CHARS}</small></fieldset>
+              <div className="settings-actions"><button type="submit" className="btn btn-primary" disabled={workspaceLoadStatus !== "ready" || preferencesStatus === "saving"}>{preferencesStatus === "saving" ? copy.saving : copy.saveSettings}</button><button type="button" className="settings-reset" disabled={workspaceLoadStatus !== "ready" || preferencesStatus === "saving"} onClick={() => { setPreferencesDraft(preferences); setPreferencesStatus("idle"); }}>{copy.discardChanges}</button>{preferencesStatus === "saved" && <span role="status">✓ {copy.settingsSaved}</span>}{preferencesStatus === "error" && <span className="panel-error" role="alert">{copy.settingsError}</span>}</div>
             </form>
           </div>
         )}
@@ -750,8 +825,9 @@ export default function ChatApp({
               {preview ? (
                 <a className="btn btn-primary" href={templateUrl} target="_blank" rel="noopener noreferrer">{copy.getTemplate}</a>
               ) : (
-                <button className="btn btn-secondary" onClick={handleLogout}>{copy.logout}</button>
+                <button className="btn btn-secondary" onClick={handleLogout} disabled={logoutStatus === "working"}>{logoutStatus === "working" ? copy.loggingOut : copy.logout}</button>
               )}
+              {logoutStatus === "error" && <p className="panel-error account-action-message" role="alert">{copy.logoutError}</p>}
             </section>
             <section className="account-info-grid">
               <article><span>{copy.workspacePreferences}</span><h2>{copy.languageAndRegion}</h2><p>{locale === "zh" ? copy.simplifiedChinese : copy.englishLanguage}</p><LanguageSwitcher locale={locale} locked={localeLocked} /></article>
@@ -764,12 +840,11 @@ export default function ChatApp({
           <div className="control-content">
             <section className="control-heading"><span>{copy.privacyDataEyebrow}</span><h1>{copy.privacyDataTitle}</h1><p>{copy.privacyDataSubtitle}</p></section>
             <section className="privacy-grid">
-              <article><span aria-hidden="true">⇩</span><div><h2>{copy.downloadDataTitle}</h2><p>{copy.downloadDataBody}</p><button className="btn btn-secondary" onClick={downloadData} disabled={dataStatus === "working"}>{dataStatus === "working" ? copy.preparingData : copy.downloadData}</button></div></article>
-              <article><span aria-hidden="true">↻</span><div><h2>{copy.clearHistoryTitle}</h2><p>{copy.clearHistoryBody}</p><button className={`btn ${confirmClear ? "btn-danger" : "btn-secondary"}`} onClick={clearHistory} disabled={dataStatus === "working" || sending}>{confirmClear ? copy.confirmClearHistory : copy.clearHistory}</button>{confirmClear && <button className="privacy-cancel" onClick={() => setConfirmClear(false)}>{copy.cancel}</button>}</div></article>
-              <article><span aria-hidden="true">✉</span><div><h2>{copy.deleteAccountTitle}</h2><p>{copy.deleteAccountBody}</p>{supportEmail ? <a className="btn btn-secondary" href={`mailto:${supportEmail}?subject=${encodeURIComponent(copy.deleteAccountSubject)}`}>{copy.requestDeletion}</a> : <p>{copy.contactOwner}</p>}</div></article>
+              <article><span aria-hidden="true">⇩</span><div><h2>{copy.downloadDataTitle}</h2><p>{copy.downloadDataBody}</p><button className="btn btn-secondary" onClick={downloadData} disabled={downloadStatus === "working"}>{downloadStatus === "working" ? copy.preparingData : copy.downloadData}</button>{downloadStatus === "done" && <p className="panel-success" role="status">✓ {copy.downloadComplete}</p>}{downloadStatus === "error" && <p className="panel-error" role="alert">{copy.downloadError}</p>}</div></article>
+              <article><span aria-hidden="true">↻</span><div><h2>{copy.clearHistoryTitle}</h2><p>{copy.clearHistoryBody}</p><button className={`btn ${confirmClear ? "btn-danger" : "btn-secondary"}`} onClick={clearHistory} disabled={clearStatus === "working" || sending}>{clearStatus === "working" ? copy.clearingHistory : confirmClear ? copy.confirmClearHistory : copy.clearHistory}</button>{confirmClear && clearStatus !== "working" && <button className="privacy-cancel" onClick={() => setConfirmClear(false)}>{copy.cancel}</button>}{clearStatus === "done" && <p className="panel-success" role="status">✓ {copy.historyCleared}</p>}{clearStatus === "error" && <p className="panel-error" role="alert">{copy.clearHistoryError}</p>}</div></article>
+              <article className="danger-zone-card"><span aria-hidden="true">!</span><div><h2>{copy.deleteAccountTitle}</h2><p>{copy.deleteAccountBody}</p>{!confirmDelete ? <button className="btn btn-secondary" type="button" onClick={deleteAccount}>{copy.deleteAccount}</button> : <div className="delete-confirmation"><label htmlFor="delete-confirmation"><strong>{copy.deleteConfirmLabel(email)}</strong><input id="delete-confirmation" type="email" autoComplete="off" value={deleteConfirmation} onChange={(event) => { setDeleteConfirmation(event.target.value); setDeleteStatus("idle"); }} placeholder={email} /></label><div><button className="btn btn-danger" type="button" onClick={deleteAccount} disabled={deleteStatus === "working" || deleteConfirmation.trim().toLowerCase() !== email.toLowerCase()}>{deleteStatus === "working" ? copy.deletingAccount : copy.confirmDeleteAccount}</button><button className="privacy-cancel" type="button" disabled={deleteStatus === "working"} onClick={() => { setConfirmDelete(false); setDeleteConfirmation(""); setDeleteStatus("idle"); }}>{copy.cancel}</button></div></div>}{deleteStatus === "done" && <p className="panel-success" role="status">✓ {copy.previewDeleteComplete}</p>}{deleteStatus === "error" && <p className="panel-error" role="alert">{copy.deleteAccountError}</p>}</div></article>
             </section>
             <p className="privacy-note">{copy.dataScopeNote}</p>
-            {dataStatus === "done" && <p className="panel-success" role="status">✓ {copy.dataActionDone}</p>}{dataStatus === "error" && <p className="panel-error" role="alert">{copy.dataActionError}</p>}
           </div>
         )}
 
@@ -783,7 +858,7 @@ export default function ChatApp({
             <section className="support-grid">
               <article className="support-contact-card">
                 <span>{copy.contactSupport}</span><h2>{copy.needHelpTitle}</h2><p>{copy.needHelpBody}</p>
-                {supportEmail ? <a className="btn btn-primary" href={`mailto:${supportEmail}`}>{copy.emailSupport}</a> : <p className="support-unavailable">{copy.contactOwner}</p>}
+                {supportEmail ? <a className="btn btn-primary" href={supportHref}>{copy.emailSupport}</a> : <p className="support-unavailable">{copy.supportUnavailableTitle}<small>{copy.contactOwner}</small></p>}
               </article>
               <article className="support-links-card">
                 <span>{copy.resources}</span><h2>{copy.accountResources}</h2>
