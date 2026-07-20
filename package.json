@@ -8,6 +8,7 @@
     "build": "next build",
     "test:locale": "node --experimental-strip-types --test lib/localeConfig.test.mjs",
     "test:store": "tsx --test lib/store.test.mjs",
+    "test:session": "tsx --test lib/session.test.mjs",
     "test:workspace": "node --experimental-strip-types --test lib/customerWorkspace.test.mjs",
     "start": "next start",
     "lint": "next lint"

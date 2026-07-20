@@ -75,6 +75,10 @@ export interface Store {
    * confused with the browser auth-cookie session in lib/session.ts.
    */
   getUserSession(userId: string): Promise<string | null>;
+  /** Version embedded in browser auth cookies. Rotating it revokes every
+   * previously issued cookie for the user. */
+  getUserSessionVersion(userId: string): Promise<number>;
+  rotateUserSessionVersion(userId: string): Promise<number>;
   beginUserChat(userId: string): Promise<ChatWriteFence>;
   setUserSessionIfCurrent(userId: string, sessionId: string, generation: number): Promise<boolean>;
   getUserHistory(userId: string): Promise<StoredChatMessage[]>;
@@ -180,6 +184,15 @@ class UpstashStore implements Store {
     return this.command<string | null>(["GET", `chatsession:${userId}`]);
   }
 
+  async getUserSessionVersion(userId: string): Promise<number> {
+    const version = await this.command<string | number | null>(["GET", `authversion:${userId}`]);
+    return Number(version ?? 0);
+  }
+
+  async rotateUserSessionVersion(userId: string): Promise<number> {
+    return Number(await this.command<number>(["INCR", `authversion:${userId}`]));
+  }
+
   async beginUserChat(userId: string): Promise<ChatWriteFence> {
     const result = await this.command<[string | number, number]>([
       "EVAL",
@@ -263,6 +276,7 @@ class UpstashStore implements Store {
       `history:${userId}`,
       `historyseq:${userId}`,
       `preferences:${userId}`,
+      `authversion:${userId}`,
     ];
     if (user.stripeCustomerId) keys.push(`user:by-customer:${user.stripeCustomerId}`);
     await this.command([
@@ -282,6 +296,7 @@ export class MemoryStore implements Store {
   private userIdByEmail = new Map<string, string>();
   private instanceByUserId = new Map<string, string>();
   private sessionByUserId = new Map<string, string>();
+  private sessionVersionByUserId = new Map<string, number>();
   private historyByUserId = new Map<string, StoredChatMessage[]>();
   private historyGenerationByUserId = new Map<string, number>();
   private historySequenceByUserId = new Map<string, number>();
@@ -334,6 +349,14 @@ export class MemoryStore implements Store {
   async getUserSession(userId: string): Promise<string | null> {
     return this.sessionByUserId.get(userId) ?? null;
   }
+  async getUserSessionVersion(userId: string): Promise<number> {
+    return this.sessionVersionByUserId.get(userId) ?? 0;
+  }
+  async rotateUserSessionVersion(userId: string): Promise<number> {
+    const version = (this.sessionVersionByUserId.get(userId) ?? 0) + 1;
+    this.sessionVersionByUserId.set(userId, version);
+    return version;
+  }
 
   async beginUserChat(userId: string): Promise<ChatWriteFence> {
     const generation = this.historyGenerationByUserId.get(userId) ?? 0;
@@ -382,6 +405,7 @@ export class MemoryStore implements Store {
     if (user.stripeCustomerId) this.userIdByCustomer.delete(user.stripeCustomerId);
     this.instanceByUserId.delete(userId);
     this.sessionByUserId.delete(userId);
+    this.sessionVersionByUserId.delete(userId);
     this.historyByUserId.delete(userId);
     this.historySequenceByUserId.delete(userId);
     this.preferencesByUserId.delete(userId);
@@ -404,6 +428,7 @@ interface FileSnapshot {
   userIdByCustomer: Record<string, string>;
   instanceByUserId: Record<string, string>;
   sessionByUserId: Record<string, string>;
+  sessionVersionByUserId: Record<string, number>;
   historyByUserId: Record<string, StoredChatMessage[]>;
   historyGenerationByUserId: Record<string, number>;
   historySequenceByUserId: Record<string, number>;
@@ -417,6 +442,7 @@ function emptySnapshot(): FileSnapshot {
     userIdByCustomer: {},
     instanceByUserId: {},
     sessionByUserId: {},
+    sessionVersionByUserId: {},
     historyByUserId: {},
     historyGenerationByUserId: {},
     historySequenceByUserId: {},
@@ -530,6 +556,19 @@ export class FileStore implements Store {
     return snap.sessionByUserId[userId] ?? null;
   }
 
+  async getUserSessionVersion(userId: string): Promise<number> {
+    const snap = await this.load();
+    return snap.sessionVersionByUserId[userId] ?? 0;
+  }
+
+  async rotateUserSessionVersion(userId: string): Promise<number> {
+    const snap = await this.load();
+    const version = (snap.sessionVersionByUserId[userId] ?? 0) + 1;
+    snap.sessionVersionByUserId[userId] = version;
+    await this.persist();
+    return version;
+  }
+
   async beginUserChat(userId: string): Promise<ChatWriteFence> {
     const snap = await this.load();
     const generation = snap.historyGenerationByUserId[userId] ?? 0;
@@ -599,6 +638,7 @@ export class FileStore implements Store {
     if (user.stripeCustomerId) delete snap.userIdByCustomer[user.stripeCustomerId];
     delete snap.instanceByUserId[userId];
     delete snap.sessionByUserId[userId];
+    delete snap.sessionVersionByUserId[userId];
     delete snap.historyByUserId[userId];
     delete snap.historySequenceByUserId[userId];
     delete snap.preferencesByUserId[userId];

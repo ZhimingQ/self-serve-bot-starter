@@ -27,18 +27,35 @@ interface ChatMessage {
 class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "prompts" | "history" | "usage" | "billing" | "settings" | "account" | "privacy" | "support";
+type Panel = "overview" | "assistant" | "prompts" | "history" | "usage" | "notifications" | "billing" | "settings" | "security" | "account" | "privacy" | "support";
 type AsyncStatus = "idle" | "working" | "done" | "error";
 type WorkspaceLoadStatus = "loading" | "ready" | "error";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes, covers the 30-90s cold-start window
 
+function summarizeSavedHistory(messages: StoredChatMessage[]) {
+  return {
+    userTurns: messages.filter((message) => message.role === "user" && message.content).length,
+    assistantReplies: messages.filter(
+      (message) => message.role === "assistant" && message.content && !message.error
+    ).length,
+    latestActivityAt: messages.reduce<string | null>((latest, message) => {
+      if (!message.createdAt || !message.content) return latest;
+      return !latest || new Date(message.createdAt) > new Date(latest) ? message.createdAt : latest;
+    }, null),
+  };
+}
+
 export default function ChatApp({
   email,
   paid,
   paymentsEnabled,
   billingMode,
+  billingStatus: accountBillingStatus,
+  accountCreatedAt,
+  sessionStartedAt,
+  sessionExpiresAt,
   locale,
   localeLocked,
   brandName,
@@ -53,6 +70,10 @@ export default function ChatApp({
   paid: boolean;
   paymentsEnabled: boolean;
   billingMode: "subscription" | "payment" | "none";
+  billingStatus: "active" | "canceled" | "none";
+  accountCreatedAt: string | null;
+  sessionStartedAt: string;
+  sessionExpiresAt: string;
   locale: Locale;
   localeLocked: boolean;
   brandName: string;
@@ -76,6 +97,9 @@ export default function ChatApp({
   const [panel, setPanel] = useState<Panel>("overview");
   const [sessionUserTurns, setSessionUserTurns] = useState(0);
   const [sessionAssistantReplies, setSessionAssistantReplies] = useState(0);
+  const [savedUserTurns, setSavedUserTurns] = useState(0);
+  const [savedAssistantReplies, setSavedAssistantReplies] = useState(0);
+  const [savedLatestActivityAt, setSavedLatestActivityAt] = useState<string | null>(null);
   const [preferences, setPreferences] = useState<AssistantPreferences>({ ...defaultAssistantPreferences });
   const [preferencesDraft, setPreferencesDraft] = useState<AssistantPreferences>({ ...defaultAssistantPreferences });
   const [preferencesStatus, setPreferencesStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -85,11 +109,15 @@ export default function ChatApp({
   const [clearStatus, setClearStatus] = useState<AsyncStatus>("idle");
   const [deleteStatus, setDeleteStatus] = useState<AsyncStatus>("idle");
   const [logoutStatus, setLogoutStatus] = useState<"idle" | "working" | "error">("idle");
+  const [sessionStatus, setSessionStatus] = useState<AsyncStatus>("idle");
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const hasLocalActivityRef = useRef(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLElement>(null);
+  const panelInitializedRef = useRef(false);
 
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
@@ -108,8 +136,13 @@ export default function ChatApp({
         historyResponse.json(),
         preferenceResponse.json(),
       ]);
-      if (!hasLocalActivityRef.current && Array.isArray(historyData.messages)) {
-        setMessages(historyData.messages as StoredChatMessage[]);
+      if (Array.isArray(historyData.messages)) {
+        const storedMessages = historyData.messages as StoredChatMessage[];
+        const usage = summarizeSavedHistory(storedMessages);
+        if (!hasLocalActivityRef.current) setMessages(storedMessages);
+        setSavedUserTurns(usage.userTurns);
+        setSavedAssistantReplies(usage.assistantReplies);
+        setSavedLatestActivityAt(usage.latestActivityAt);
       }
       const next = preferenceData.preferences ?? defaultAssistantPreferences;
       setPreferences(next);
@@ -117,6 +150,22 @@ export default function ChatApp({
       setWorkspaceLoadStatus("ready");
     } catch (error) {
       if ((error as Error).name !== "AbortError") setWorkspaceLoadStatus("error");
+    }
+  }, [preview]);
+
+  const refreshSavedUsage = useCallback(async () => {
+    if (preview) return;
+    try {
+      const response = await fetch("/api/history", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!Array.isArray(data.messages)) return;
+      const usage = summarizeSavedHistory(data.messages as StoredChatMessage[]);
+      setSavedUserTurns(usage.userTurns);
+      setSavedAssistantReplies(usage.assistantReplies);
+      setSavedLatestActivityAt(usage.latestActivityAt);
+    } catch {
+      // Keep the last authoritative totals if the refresh is temporarily unavailable.
     }
   }, [preview]);
 
@@ -206,8 +255,27 @@ export default function ChatApp({
   }, [messages]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" });
+    if (panelInitializedRef.current) {
+      mainContentRef.current?.focus({ preventScroll: true });
+    } else {
+      panelInitializedRef.current = true;
+    }
+    window.scrollTo({ top: 0, behavior: "auto" });
   }, [panel]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(`workspace-notifications:${email.toLowerCase()}`);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setReadNotificationIds(parsed.filter((id): id is string => typeof id === "string"));
+        }
+      }
+    } catch {
+      // Private browsing or storage policies can disable localStorage.
+    }
+  }, [email]);
 
   async function handleLogout() {
     setLogoutStatus("working");
@@ -221,6 +289,21 @@ export default function ChatApp({
     }
   }
 
+  async function revokeOtherSessions() {
+    setSessionStatus("working");
+    if (preview) {
+      window.setTimeout(() => setSessionStatus("done"), 350);
+      return;
+    }
+    try {
+      const response = await fetch("/api/account/sessions", { method: "POST" });
+      if (!response.ok) throw new Error();
+      setSessionStatus("done");
+    } catch {
+      setSessionStatus("error");
+    }
+  }
+
   async function handleSend(event: React.FormEvent) {
     event.preventDefault();
     const trimmed = input.trim();
@@ -228,8 +311,9 @@ export default function ChatApp({
 
     hasLocalActivityRef.current = true;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    const createdAt = new Date().toISOString();
+    setMessages((prev) => [...prev, { role: "user", content: trimmed, createdAt }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: "", createdAt }]);
     setSessionUserTurns((count) => count + 1);
     setSending(true);
 
@@ -237,6 +321,9 @@ export default function ChatApp({
       window.setTimeout(() => {
         setLastAssistantMessage(setMessages, copy.demoChatResponse);
         setSessionAssistantReplies((count) => count + 1);
+        setSavedUserTurns((count) => count + 1);
+        setSavedAssistantReplies((count) => count + 1);
+        setSavedLatestActivityAt(createdAt);
         setSending(false);
       }, 450);
       return;
@@ -266,7 +353,7 @@ export default function ChatApp({
       let buffer = "";
       let streamErrored = false;
 
-      reading: while (true) {
+      while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -287,8 +374,11 @@ export default function ChatApp({
             // turn dies silently and the bubble hangs on the "…" typing dots.
             if (parsed?.error) {
               streamErrored = true;
-              break reading;
+              // Keep draining the response so the server's stream flush can
+              // finish its authoritative history write before usage refreshes.
+              continue;
             }
+            if (streamErrored) continue;
             const delta: string | undefined = parsed?.choices?.[0]?.delta?.content;
             if (delta) {
               gotContent = true;
@@ -306,8 +396,12 @@ export default function ChatApp({
         setLastAssistantMessage(setMessages, copy.chatError, true);
       } else if (streamErrored) {
         appendToLastAssistantMessage(setMessages, `\n\n${copy.interrupted}`);
+        await refreshSavedUsage();
       } else {
         setSessionAssistantReplies((count) => count + 1);
+        // Read back the server-owned history after its stream flush so usage
+        // never labels an optimistic or failed browser turn as persisted.
+        await refreshSavedUsage();
       }
     } catch (err) {
       // Only our own ChatDisplayError carries a message safe to show; any other
@@ -399,6 +493,9 @@ export default function ChatApp({
       setMessages([]);
       setSessionUserTurns(0);
       setSessionAssistantReplies(0);
+      setSavedUserTurns(0);
+      setSavedAssistantReplies(0);
+      setSavedLatestActivityAt(null);
       setConfirmClear(false);
       setClearStatus("done");
     } catch { setClearStatus("error"); }
@@ -432,6 +529,18 @@ export default function ChatApp({
   function openPrompt(prompt: string) {
     setInput(prompt);
     setPanel("assistant");
+  }
+
+  function markNotificationsRead(ids: string[]) {
+    setReadNotificationIds(ids);
+    try {
+      window.localStorage.setItem(
+        `workspace-notifications:${email.toLowerCase()}`,
+        JSON.stringify(ids)
+      );
+    } catch {
+      // The notification center still works for this page view without storage.
+    }
   }
 
   if (needsPayment) {
@@ -487,22 +596,61 @@ export default function ChatApp({
       : copy.planIncluded;
   const userTurns = sessionUserTurns;
   const assistantReplies = sessionAssistantReplies;
-  const savedTurns = messages.filter((message) => message.role === "user" && message.content).length;
+  const savedTurns = savedUserTurns;
+  const savedReplies = savedAssistantReplies;
+  const latestActivityAt = savedLatestActivityAt;
+  const billingStateLabel = billingMode === "subscription"
+    ? accountBillingStatus === "active" ? copy.billingStatusActive : copy.billingStatusInactive
+    : billingMode === "payment" ? copy.billingStatusOneTime : copy.billingStatusIncluded;
+  const notificationItems = [
+    {
+      id: `workspace:${workspaceLoadStatus}`,
+      icon: workspaceLoadStatus === "loading" ? "…" : workspaceLoadStatus === "error" ? "!" : "✓",
+      title: workspaceLoadStatus === "loading"
+        ? copy.notificationSyncLoadingTitle
+        : workspaceLoadStatus === "error"
+          ? copy.notificationSyncErrorTitle
+          : copy.notificationSyncReadyTitle,
+      body: workspaceLoadStatus === "loading"
+        ? copy.notificationSyncLoadingBody
+        : workspaceLoadStatus === "error"
+          ? copy.notificationSyncErrorBody
+          : copy.notificationSyncReadyBody,
+    },
+    {
+      id: `history:${savedTurns}:${savedReplies}`,
+      icon: "↻",
+      title: savedTurns > 0 ? copy.notificationHistoryTitle : copy.notificationEmptyHistoryTitle,
+      body: savedTurns > 0 ? copy.notificationHistoryBody(savedTurns, savedReplies) : copy.notificationEmptyHistoryBody,
+    },
+    {
+      id: `billing:${billingMode}:${accountBillingStatus}`,
+      icon: "$",
+      title: copy.notificationAccessTitle,
+      body: copy.notificationAccessBody(billingStateLabel),
+    },
+  ];
+  const unreadNotifications = notificationItems.filter(
+    (item) => !readNotificationIds.includes(item.id)
+  ).length;
   const primaryNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "overview", label: copy.controlOverview, icon: "⌂" },
     { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
     { panel: "prompts", label: copy.controlPrompts, icon: "⌘" },
     { panel: "history", label: copy.controlHistory, icon: "↻" },
     { panel: "usage", label: copy.controlUsage, icon: "◫" },
+    { panel: "notifications", label: copy.controlNotifications, icon: "◉" },
   ];
   const manageNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "billing", label: copy.controlBilling, icon: "$" },
     { panel: "settings", label: copy.controlSettings, icon: "⚙" },
+    { panel: "security", label: copy.controlSecurity, icon: "◇" },
     { panel: "account", label: copy.controlAccount, icon: "○" },
     { panel: "privacy", label: copy.controlPrivacy, icon: "⌁" },
     { panel: "support", label: copy.controlSupport, icon: "?" },
   ];
-  const currentPanelTitle = [...primaryNav, ...manageNav].find(
+  const allNav = [...primaryNav, ...manageNav];
+  const currentPanelTitle = allNav.find(
     (item) => item.panel === panel
   )?.label;
   const supportHref = supportEmail
@@ -511,6 +659,7 @@ export default function ChatApp({
 
   return (
     <div className="control-shell">
+      <a className="skip-link" href="#control-content">{copy.skipToContent}</a>
       <aside className="control-sidebar">
         <div className="control-brand">
           {brandLogoUrl ? (
@@ -531,6 +680,7 @@ export default function ChatApp({
             >
               <span aria-hidden="true">{item.icon}</span>{item.label}
               {item.panel === "history" && savedTurns > 0 && <b>{savedTurns}</b>}
+              {item.panel === "notifications" && unreadNotifications > 0 && <b aria-label={copy.unreadCount(unreadNotifications)}>{unreadNotifications}</b>}
             </button>
           ))}
           <span className="control-nav-label control-nav-manage">{copy.manageNavLabel}</span>
@@ -553,20 +703,37 @@ export default function ChatApp({
         </div>
       </aside>
 
-      <main className="control-main">
+      <main
+        className="control-main"
+        id="control-content"
+        ref={mainContentRef}
+        tabIndex={-1}
+        aria-busy={workspaceLoadStatus === "loading"}
+      >
         <header className="control-topbar">
           <div>
             <span>{copy.workspace}</span>
             <strong>{currentPanelTitle}</strong>
           </div>
           <div className="control-topbar-actions">
-            <span className="control-live" role="status">
+            <span className={`control-live ${workspaceLoadStatus === "error" ? "is-error" : ""}`} role="status">
               {workspaceLoadStatus === "loading" ? <span className="mini-spinner" aria-hidden="true" /> : <i />}
-              {workspaceLoadStatus === "loading" ? copy.syncingWorkspace : copy.onlineNow}
+              {workspaceLoadStatus === "loading" ? copy.syncingWorkspace : workspaceLoadStatus === "error" ? copy.syncFailed : copy.onlineNow}
             </span>
             <LanguageSwitcher locale={locale} locked={localeLocked} />
           </div>
         </header>
+
+        <label className="control-mobile-nav">
+          <span>{copy.mobileNavigationLabel}</span>
+          <select value={panel} onChange={(event) => setPanel(event.target.value as Panel)}>
+            {allNav.map((item) => (
+              <option key={item.panel} value={item.panel}>
+                {item.label}{item.panel === "notifications" && unreadNotifications > 0 ? ` (${unreadNotifications})` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
 
         {workspaceLoadStatus === "error" && (
           <div className="workspace-notice" role="alert">
@@ -685,7 +852,8 @@ export default function ChatApp({
                 ))}
               </div>
               <form className="chat-input-row" onSubmit={handleSend}>
-                <input type="text" placeholder={copy.messagePlaceholder} value={input} onChange={(event) => setInput(event.target.value)} disabled={sending} />
+                <label className="sr-only" htmlFor="assistant-message">{copy.messageLabel}</label>
+                <input id="assistant-message" type="text" placeholder={copy.messagePlaceholder} value={input} onChange={(event) => setInput(event.target.value)} disabled={sending} />
                 <button type="submit" className="btn btn-primary" disabled={sending || !input.trim()}>{copy.send}</button>
               </form>
             </div>
@@ -761,9 +929,9 @@ export default function ChatApp({
               <p>{copy.usageSubtitle}</p>
             </section>
             <section className="usage-grid">
-              <article className="usage-metric-card"><span>{copy.messagesThisSession}</span><strong>{userTurns}</strong><p>{copy.messagesThisSessionBody}</p></article>
-              <article className="usage-metric-card"><span>{copy.repliesThisSession}</span><strong>{assistantReplies}</strong><p>{copy.repliesThisSessionBody}</p></article>
-              <article className="usage-metric-card"><span>{copy.contextStatus}</span><strong>{copy.contextOn}</strong><p>{copy.memoryStatusBody}</p></article>
+              <article className="usage-metric-card"><span>{copy.savedMessages}</span><strong>{savedTurns}</strong><p>{copy.savedMessagesBody}</p></article>
+              <article className="usage-metric-card"><span>{copy.savedReplies}</span><strong>{savedReplies}</strong><p>{copy.savedRepliesBody}</p></article>
+              <article className="usage-metric-card"><span>{copy.latestActivity}</span><strong className="usage-date">{latestActivityAt ? formatDateTime(latestActivityAt, locale) : copy.noActivityYet}</strong><p>{copy.latestActivityBody}</p></article>
             </section>
             <section className="usage-detail-grid">
               <article className="usage-plan-card">
@@ -775,11 +943,43 @@ export default function ChatApp({
               <article className="usage-session-card">
                 <span>{copy.sessionBreakdown}</span><h2>{copy.sessionBreakdownTitle}</h2><p>{copy.sessionBreakdownBody}</p>
                 <div className="usage-bars">
-                  <div><span>{copy.yourMessages}</span><b style={{ width: `${Math.min(100, Math.max(8, userTurns * 18))}%` }} /></div>
-                  <div><span>{copy.assistantRepliesLabel}</span><b style={{ width: `${Math.min(100, Math.max(8, assistantReplies * 18))}%` }} /></div>
+                  <div><span>{copy.yourMessages}: {userTurns}</span><b style={{ width: `${Math.min(100, Math.max(userTurns > 0 ? 8 : 0, userTurns * 18))}%` }} /></div>
+                  <div><span>{copy.assistantRepliesLabel}: {assistantReplies}</span><b style={{ width: `${Math.min(100, Math.max(assistantReplies > 0 ? 8 : 0, assistantReplies * 18))}%` }} /></div>
                 </div>
                 <small>{copy.usageNoQuotaNote}</small>
               </article>
+            </section>
+          </div>
+        )}
+
+        {panel === "notifications" && (
+          <div className="control-content">
+            <section className="control-heading control-heading-row">
+              <div><span>{copy.notificationsEyebrow}</span><h1>{copy.notificationsTitle}</h1><p>{copy.notificationsSubtitle}</p></div>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                disabled={unreadNotifications === 0}
+                onClick={() => markNotificationsRead(notificationItems.map((item) => item.id))}
+              >
+                {unreadNotifications === 0 ? copy.allRead : copy.markAllRead}
+              </button>
+            </section>
+            <section className="notification-panel" aria-label={copy.notificationsTitle}>
+              <header><span>{copy.workspaceUpdates}</span><strong aria-live="polite">{copy.unreadCount(unreadNotifications)}</strong></header>
+              <div className="notification-list">
+                {notificationItems.map((item) => {
+                  const unread = !readNotificationIds.includes(item.id);
+                  return (
+                    <article key={item.id} className={unread ? "is-unread" : ""}>
+                      <i aria-hidden="true">{item.icon}</i>
+                      <div><strong>{item.title}</strong><p>{item.body}</p></div>
+                      <span>{unread ? copy.newNotification : copy.readNotification}</span>
+                    </article>
+                  );
+                })}
+              </div>
+              <p className="notification-note">{copy.notificationsScopeNote}</p>
             </section>
           </div>
         )}
@@ -790,7 +990,7 @@ export default function ChatApp({
             <section className="billing-grid">
               <article className="billing-plan-card">
                 <span>{copy.currentPlan}</span><h2>{planName}</h2><p>{billingMode === "subscription" ? copy.subscriptionBillingBody : billingMode === "payment" ? copy.oneTimeBillingBody : copy.includedBillingBody}</p>
-                <div><span>{copy.accessLabel}</span><strong><i className="status-dot" />{copy.activeAccess}</strong></div>
+                <div><span>{copy.billingStatusLabel}</span><strong><i className="status-dot" />{billingStateLabel}</strong></div>
                 {billingMode === "subscription" && !preview && <button className="btn btn-primary" onClick={openBillingPortal} disabled={billingStatus === "opening"}>{billingStatus === "opening" ? copy.openingBilling : copy.manageBilling}</button>}
                 {preview && <a className="btn btn-primary" href={templateUrl} target="_blank" rel="noopener noreferrer">{copy.getTemplate}</a>}
                 {billingStatus === "error" && <p className="panel-error" role="alert">{copy.billingError}</p>}
@@ -815,6 +1015,30 @@ export default function ChatApp({
           </div>
         )}
 
+        {panel === "security" && (
+          <div className="control-content">
+            <section className="control-heading"><span>{copy.securityEyebrow}</span><h1>{copy.securityTitle}</h1><p>{copy.securitySubtitle}</p></section>
+            <section className="security-grid">
+              <article className="session-card">
+                <span>{copy.currentBrowserSession}</span><h2>{copy.sessionActiveTitle}</h2><p>{copy.sessionActiveBody}</p>
+                <dl>
+                  <div><dt>{copy.signedInAt}</dt><dd>{formatDateTime(sessionStartedAt, locale)}</dd></div>
+                  <div><dt>{copy.sessionExpires}</dt><dd>{formatDateTime(sessionExpiresAt, locale)}</dd></div>
+                </dl>
+                {!preview && <button className="btn btn-secondary" type="button" onClick={handleLogout} disabled={logoutStatus === "working"}>{logoutStatus === "working" ? copy.loggingOut : copy.signOutThisDevice}</button>}
+                {logoutStatus === "error" && <p className="panel-error" role="alert">{copy.logoutError}</p>}
+              </article>
+              <article className="session-card">
+                <span>{copy.otherSessions}</span><h2>{copy.secureAccountTitle}</h2><p>{copy.secureAccountBody}</p>
+                <button className="btn btn-primary" type="button" onClick={revokeOtherSessions} disabled={sessionStatus === "working"}>{sessionStatus === "working" ? copy.revokingSessions : copy.signOutOtherSessions}</button>
+                {sessionStatus === "done" && <p className="panel-success" role="status">✓ {preview ? copy.previewSessionComplete : copy.sessionsRevoked}</p>}
+                {sessionStatus === "error" && <p className="panel-error" role="alert">{copy.sessionsRevokeError}</p>}
+              </article>
+            </section>
+            <p className="security-note">{copy.securityScopeNote}</p>
+          </div>
+        )}
+
         {panel === "account" && (
           <div className="control-content">
             <section className="control-heading"><span>{copy.accountEyebrow}</span><h1>{copy.accountTitle}</h1><p>{copy.accountSubtitle}</p></section>
@@ -822,6 +1046,7 @@ export default function ChatApp({
               <div><span>{copy.emailLabel}</span><strong>{email}</strong></div>
               <div><span>{copy.planLabel}</span><strong>{planName}</strong></div>
               <div><span>{copy.assistantAccessLabel}</span><strong><i className="status-dot" />{copy.activeAccess}</strong></div>
+              {accountCreatedAt && <div><span>{copy.accountCreated}</span><strong>{formatDate(accountCreatedAt, locale)}</strong></div>}
               {preview ? (
                 <a className="btn btn-primary" href={templateUrl} target="_blank" rel="noopener noreferrer">{copy.getTemplate}</a>
               ) : (
@@ -892,6 +1117,19 @@ function localizedChatError(
   }
   if (status === 413) return locale === "zh" ? "消息内容过长。" : "Your message is too long.";
   return copy.chatError;
+}
+
+function formatDateTime(value: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function formatDate(value: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en", {
+    dateStyle: "medium",
+  }).format(new Date(value));
 }
 
 function appendToLastAssistantMessage(

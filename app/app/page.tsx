@@ -46,6 +46,10 @@ export default async function AppPage({
       paid={paid}
       paymentsEnabled={paymentsEnabled}
       billingMode={paymentsEnabled ? stripe.mode : "none"}
+      billingStatus={user?.billingStatus ?? "none"}
+      accountCreatedAt={user?.createdAt ?? null}
+      sessionStartedAt={new Date(session.iat).toISOString()}
+      sessionExpiresAt={new Date(session.iat + 30 * 24 * 60 * 60 * 1000).toISOString()}
       locale={locale}
       localeLocked={locked}
       brandName={brand.name}

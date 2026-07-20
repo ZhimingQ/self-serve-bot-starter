@@ -18,6 +18,8 @@ export interface SessionPayload {
   userId: string;
   email: string;
   iat: number;
+  /** Missing on cookies issued before session revocation shipped; those are v0. */
+  sessionVersion?: number;
 }
 
 function base64url(input: Buffer): string {
@@ -33,13 +35,13 @@ function sign(value: string): string {
   return createHmac("sha256", sessionSecret).update(value).digest("base64url");
 }
 
-function encode(payload: SessionPayload): string {
+export function encodeSessionToken(payload: SessionPayload): string {
   const body = base64url(Buffer.from(JSON.stringify(payload), "utf8"));
   const signature = sign(body);
   return `${body}.${signature}`;
 }
 
-function decode(token: string): SessionPayload | null {
+export function decodeSessionToken(token: string): SessionPayload | null {
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   const [body, signature] = parts;
@@ -76,24 +78,37 @@ export async function getSession(): Promise<SessionPayload | null> {
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
 
-  const session = decode(token);
+  const session = decodeSessionToken(token);
   if (!session) return null;
 
   // A valid signature only proves that we issued the cookie. Re-check the
   // account on every authenticated request so deleting an account also
   // revokes copied or replayed cookies immediately.
-  const user = await getStore().getUserById(session.userId);
+  const store = getStore();
+  const [user, currentSessionVersion] = await Promise.all([
+    store.getUserById(session.userId),
+    store.getUserSessionVersion(session.userId),
+  ]);
   if (!user || user.email.trim().toLowerCase() !== session.email.trim().toLowerCase()) {
     return null;
   }
+  if (!isSessionVersionCurrent(session, currentSessionVersion)) return null;
 
   return session;
 }
 
 /** Set the signed session cookie. Call from a Route Handler or Server Action. */
-export async function setSession(payload: Omit<SessionPayload, "iat">): Promise<void> {
+export function isSessionVersionCurrent(session: SessionPayload, currentSessionVersion: number): boolean {
+  return (session.sessionVersion ?? 0) === currentSessionVersion;
+}
+
+export async function setSession(
+  payload: Omit<SessionPayload, "iat" | "sessionVersion">,
+  options: { sessionVersion?: number; iat?: number } = {}
+): Promise<void> {
   const store = await cookies();
-  const token = encode({ ...payload, iat: Date.now() });
+  const sessionVersion = options.sessionVersion ?? await getStore().getUserSessionVersion(payload.userId);
+  const token = encodeSessionToken({ ...payload, iat: options.iat ?? Date.now(), sessionVersion });
   store.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

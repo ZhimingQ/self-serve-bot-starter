@@ -13,6 +13,7 @@ export default async function DemoControlPanel({
   const localeState = await getLocaleState();
   const requestedLocale = (await searchParams).locale;
   const locale = requestedLocale === "zh" ? "zh" : localeState.locale;
+  const sessionStartedAt = Date.now();
   // A query override is intentionally fixed for this shareable preview URL.
   // ChatApp also updates the document lang after hydration so assistive tech and
   // the Chinese typography rules match the visible language.
@@ -24,6 +25,10 @@ export default async function DemoControlPanel({
       paid
       paymentsEnabled={false}
       billingMode="none"
+      billingStatus="active"
+      accountCreatedAt="2026-06-01T12:00:00.000Z"
+      sessionStartedAt={new Date(sessionStartedAt).toISOString()}
+      sessionExpiresAt={new Date(sessionStartedAt + 30 * 24 * 60 * 60 * 1000).toISOString()}
       locale={locale}
       localeLocked={localeLocked}
       brandName={brand.name}
