@@ -726,7 +726,7 @@ export default function ChatApp({
 
         <label className="control-mobile-nav">
           <span>{copy.mobileNavigationLabel}</span>
-          <select value={panel} onChange={(event) => setPanel(event.target.value as Panel)}>
+          <select id="control-mobile-section" name="control-section" value={panel} onChange={(event) => setPanel(event.target.value as Panel)}>
             {allNav.map((item) => (
               <option key={item.panel} value={item.panel}>
                 {item.label}{item.panel === "notifications" && unreadNotifications > 0 ? ` (${unreadNotifications})` : ""}
