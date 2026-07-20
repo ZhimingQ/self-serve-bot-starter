@@ -1233,7 +1233,7 @@ a {
 }
 
 .control-sidebar-account span {
-  color: #86827a;
+  color: #918d84;
   font-size: 10px;
   font-weight: 750;
   letter-spacing: 0.12em;
@@ -1376,6 +1376,8 @@ a {
 
 .control-demo-banner strong { margin-top: 3px; font-family: var(--font-serif); font-size: 19px; }
 .control-demo-banner p { margin: 3px 0 0; color: var(--text-muted); font-size: 13px; }
+.control-demo-banner > div > span,
+.control-demo-banner p { color: #625e56; }
 
 .control-demo-banner > a {
   flex: 0 0 auto;
