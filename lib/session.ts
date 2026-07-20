@@ -9,6 +9,7 @@
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { sessionSecret } from "./config";
+import { getStore } from "./store";
 
 const COOKIE_NAME = "session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
@@ -71,10 +72,22 @@ function decode(token: string): SessionPayload | null {
 
 /** Read + verify the current request's session cookie (Server Components, Route Handlers). */
 export async function getSession(): Promise<SessionPayload | null> {
-  const store = await cookies();
-  const token = store.get(COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
-  return decode(token);
+
+  const session = decode(token);
+  if (!session) return null;
+
+  // A valid signature only proves that we issued the cookie. Re-check the
+  // account on every authenticated request so deleting an account also
+  // revokes copied or replayed cookies immediately.
+  const user = await getStore().getUserById(session.userId);
+  if (!user || user.email.trim().toLowerCase() !== session.email.trim().toLowerCase()) {
+    return null;
+  }
+
+  return session;
 }
 
 /** Set the signed session cookie. Call from a Route Handler or Server Action. */
