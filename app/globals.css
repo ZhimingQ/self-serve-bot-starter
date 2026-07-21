@@ -1,6 +1,7 @@
 :root {
   --accent: #777e69;
   --accent-hover: color-mix(in srgb, var(--accent) 82%, black);
+  --accent-on: #ffffff;
   --accent-soft: color-mix(in srgb, var(--accent) 13%, #faf9f5);
   --paper: #faf9f5;
   --cream: #f3f0e8;
@@ -1150,7 +1151,11 @@ a {
   font-family: var(--font-serif);
   font-size: 20px;
   letter-spacing: -0.02em;
+  color: inherit;
+  text-decoration: none;
 }
+
+a.control-brand:hover strong { text-decoration: underline; text-underline-offset: 4px; }
 
 .control-brand img { width: 30px; height: 30px; object-fit: contain; }
 
@@ -1843,7 +1848,7 @@ a {
 .notification-list article + article { border-top: 1px solid var(--border); }
 .notification-list article.is-unread { background: color-mix(in srgb, var(--accent) 7%, #fff); }
 .notification-list article > i { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 999px; background: #ece8de; color: var(--accent-hover); font-style: normal; font-weight: 800; }
-.notification-list article.is-unread > i { background: var(--accent); color: #fff; }
+.notification-list article.is-unread > i { background: var(--accent); color: var(--accent-on); }
 .notification-list article > div { display: grid; gap: 5px; }
 .notification-list article > div > strong { font-family: var(--font-serif); font-size: 19px; font-weight: 600; }
 .notification-list article p { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.55; }

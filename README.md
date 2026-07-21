@@ -68,6 +68,7 @@ Everything user-facing is driven by env vars, read in `lib/config.ts`:
 
 ```
 BRAND_NAME=YourBrand       # shown in nav, hero, page titles
+BUSINESS_WEBSITE_URL=      # optional public HTTPS homepage for your business
 BRAND_ACCENT=#777e69       # single accent color used across the whole UI
 BRAND_LOGO_URL=             # optional public URL for your logo
 PUBLIC_PRICE_LABEL=        # e.g. "$29 / month"
@@ -144,7 +145,7 @@ uses a local canned response and never provisions a bot or spends model credits.
 One click clones this repo into your own Vercel account and prompts you for the
 env vars you need:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FZhimingQ%2Fself-serve-bot-starter&env=BUILD_RESELL_API_KEY,SESSION_SECRET,BRAND_NAME,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN&envDescription=Your%20Build%20%26%20Resell%20API%20key%2C%20a%20random%20SESSION_SECRET%2C%20your%20brand%20name%2C%20and%20a%20free%20Upstash%20Redis%20database%20for%20persistence.&envLink=https%3A%2F%2Fopenclawlaunch.com%2Fdeveloper-api%2Ftemplates)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FZhimingQ%2Fself-serve-bot-starter&env=BUILD_RESELL_API_KEY,SESSION_SECRET,BRAND_NAME,BUSINESS_WEBSITE_URL,BRAND_ACCENT,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN&envDescription=Your%20Build%20%26%20Resell%20API%20key%2C%20a%20random%20SESSION_SECRET%2C%20brand%20name%2C%20website%2C%20brand%20color%2C%20and%20a%20free%20Upstash%20Redis%20database.&envLink=https%3A%2F%2Fopenclawlaunch.com%2Fdeveloper-api%2Ftemplates)
 
 Vercel is serverless, so the `STORE_DIR` JSON-file store does **not** persist
 there — you must attach a Redis. Create a free
@@ -163,6 +164,7 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | Variable | Required | Notes |
 |---|---|---|
 | `BRAND_NAME` | no (defaults to `YourBrand`) | Shown throughout the UI |
+| `BUSINESS_WEBSITE_URL` | no | Public HTTPS homepage linked from the customer workspace and footer. |
 | `BRAND_ACCENT` | no (defaults to `#777e69`) | Single accent color, hex |
 | `BRAND_LOGO_URL` | no | Public logo URL shown in the header and footer. |
 | `PUBLIC_PRICE_LABEL` | no | Customer-facing price shown on the landing page. Defaults to a generic free/subscription label. |
@@ -177,6 +179,7 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | `UPSTASH_REDIS_REST_URL` | prod (or `STORE_DIR`) | Persistent store + shared rate-limit counter. Falls back to in-memory if unset. |
 | `UPSTASH_REDIS_REST_TOKEN` | prod (or `STORE_DIR`) | Pairs with the URL above. |
 | `STORE_DIR` | alt to Upstash | Writable dir for the JSON-file store, for a persistent-disk host with no Redis. One process per dir. |
+| `TRUST_PROXY_HEADERS` | no | Set to `1` only when your proxy overwrites forwarded IP headers. Vercel is detected automatically. |
 | `STRIPE_SECRET_KEY` | for payments | Your Stripe secret (`sk_live_…`/`sk_test_…`). Unset + `STRIPE_PRICE_ID` unset ⇒ NO-PAYMENT demo mode. |
 | `STRIPE_PRICE_ID` | for payments | The Stripe Price your customers buy (`price_…`). |
 | `STRIPE_MODE` | no (defaults to `subscription`) | `subscription` (recurring) or `payment` (one-time). Must match the Price. |
@@ -209,7 +212,7 @@ app/
   api/checkout/route.ts      Start a Stripe Checkout session
   api/stripe/webhook/route.ts  Stripe webhook → keeps billingStatus in sync
 lib/
-  config.ts                 Brand + API wiring + startup env validation, all from env
+  config.ts                 Brand + API wiring + startup validation, with managed-file/env fallback
   i18n.ts                   English + Simplified Chinese UI copy
   locale.ts                 Server-side fixed/host/cookie locale resolver
   localeConfig.ts           Locale/hostname normalization + production validation

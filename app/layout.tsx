@@ -17,6 +17,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await getLocale();
   const rootStyle = {
     "--accent": brand.accent,
+    "--accent-hover": brand.readableAccent,
+    "--accent-on": brand.onAccent,
   } as CSSProperties;
 
   return (

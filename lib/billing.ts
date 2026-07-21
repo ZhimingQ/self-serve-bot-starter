@@ -2,6 +2,7 @@ import "server-only";
 import Stripe from "stripe";
 import { getStore } from "./store";
 import { stripe as stripeConfig } from "./config";
+import { isFundedStorefrontCheckout, stripeReferenceId } from "./payment";
 
 /**
  * Verify a completed Stripe Checkout session on the success redirect and activate
@@ -19,24 +20,26 @@ export async function confirmCheckoutSession(userId: string, sessionId: string):
   if (!stripeConfig.secretKey || !sessionId) return false;
   try {
     const stripe = new Stripe(stripeConfig.secretKey);
-    const s = await stripe.checkout.sessions.retrieve(sessionId);
+    const s = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["line_items"] });
     const owner = s.client_reference_id || s.metadata?.appUserId;
     if (owner !== userId) return false; // not this user's session
-    // Fulfillment MUST key on payment_status, not `status: complete` — an async
-    // method (bank debit, some wallets) can be `complete` while `unpaid`. Only
-    // `paid` (funds collected) or `no_payment_required` ($0 / trial) entitle.
-    const funded = s.payment_status === "paid" || s.payment_status === "no_payment_required";
-    if (!funded) return false;
+    const store = getStore();
+    const user = await store.getUserById(userId);
+    if (!user || user.stripeCheckoutSessionId !== sessionId) return false;
+    if (!isFundedStorefrontCheckout(s, stripeConfig.priceId, stripeConfig.mode)) return false;
     // Ordering guard: an OLD paid session must not resurrect a subscription that a
     // NEWER cancel/payment-failed webhook already revoked. Reject any session
     // created before the last billing event we applied for this user.
-    const store = getStore();
-    const user = await store.getUserById(userId);
     if (user?.lastBillingEventAt && s.created < user.lastBillingEventAt) return false;
     const customerId = typeof s.customer === "string" ? s.customer : s.customer?.id;
     await store.setUserBilling(userId, {
       billingStatus: "active",
       lastBillingEventAt: s.created,
+      stripeCheckoutSessionId: s.id,
+      stripePriceId: stripeConfig.priceId,
+      stripeBillingMode: stripeConfig.mode,
+      ...(stripeReferenceId(s.subscription) ? { stripeSubscriptionId: stripeReferenceId(s.subscription) } : {}),
+      ...(stripeReferenceId(s.payment_intent) ? { stripePaymentIntentId: stripeReferenceId(s.payment_intent) } : {}),
       ...(customerId ? { stripeCustomerId: customerId } : {}),
     });
     return true;

@@ -224,6 +224,7 @@ export default async function LandingPage() {
         </Link>
         <div className="footer-meta">
           <nav className="footer-links" aria-label={copy.footerLabel}>
+            {brand.websiteUrl && <a href={brand.websiteUrl} target="_blank" rel="noopener noreferrer">{copy.website}</a>}
             {brand.supportEmail && <a href={`mailto:${brand.supportEmail}`}>{copy.support}</a>}
             {brand.privacyUrl && <a href={brand.privacyUrl}>{copy.privacy}</a>}
             {brand.termsUrl && <a href={brand.termsUrl}>{copy.terms}</a>}

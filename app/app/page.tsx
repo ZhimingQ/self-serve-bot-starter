@@ -54,6 +54,7 @@ export default async function AppPage({
       localeLocked={locked}
       brandName={brand.name}
       brandLogoUrl={brand.logoUrl}
+      brandWebsiteUrl={brand.websiteUrl}
       templateUrl={demoSignupUrl}
       supportEmail={brand.supportEmail}
       privacyUrl={brand.privacyUrl}

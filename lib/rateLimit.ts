@@ -15,7 +15,8 @@
  * stop abuse for a starter, and has no extra moving parts to get wrong.
  */
 
-import { upstash } from "./config";
+import { createHash } from "node:crypto";
+import { trustProxyHeaders, upstash } from "./config";
 
 export interface RateLimitResult {
   ok: boolean;
@@ -96,9 +97,24 @@ export async function rateLimit(
   };
 }
 
-/** Best-effort client IP from proxy headers (Vercel/Caddy set x-forwarded-for). */
-export function clientIp(request: Request): string {
+/**
+ * Best-effort client IP from the trusted edge proxy.
+ *
+ * OpenClaw Launch's Caddy snippets overwrite X-Real-IP with `{remote_host}`.
+ * Prefer that value so a client-supplied X-Forwarded-For prefix cannot rotate
+ * rate-limit identities. The right-most XFF hop is the safest fallback for
+ * proxies that append their observed client address.
+ */
+export function clientIp(request: Request, trustForwardedHeaders = trustProxyHeaders): string {
+  if (!trustForwardedHeaders) return "unknown";
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp.slice(0, 128);
   const xff = request.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
-  return request.headers.get("x-real-ip") || "unknown";
+  if (xff) return (xff.split(",").at(-1)?.trim() || "unknown").slice(0, 128);
+  return "unknown";
+}
+
+/** Hash user identifiers before using them in shared rate-limit keys. */
+export function rateLimitIdentity(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }

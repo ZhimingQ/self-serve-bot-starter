@@ -36,6 +36,13 @@ export interface StoredUser {
   createdAt: string;
   /** Stripe customer id, set the first time the user starts checkout. */
   stripeCustomerId?: string;
+  /** Checkout/product identifiers bind webhook events to this storefront's
+   * configured offer instead of any other product on the Stripe account. */
+  stripeCheckoutSessionId?: string;
+  stripeSubscriptionId?: string;
+  stripePaymentIntentId?: string;
+  stripePriceId?: string;
+  stripeBillingMode?: "subscription" | "payment";
   /** Billing state gating provisioning. 'active' = paid & entitled; 'canceled'
    *  = was paid, subscription lapsed (access revoked); 'none'/undefined = never
    *  paid. In NO-PAYMENT mode (Stripe unconfigured) this is ignored. */
@@ -45,6 +52,12 @@ export interface StoredUser {
    *  activate can't override a newer revoke. */
   lastBillingEventAt?: number;
 }
+
+export type BillingPatch = Partial<Pick<StoredUser,
+  "stripeCustomerId" | "stripeCheckoutSessionId" | "stripeSubscriptionId" |
+  "stripePaymentIntentId" | "stripePriceId" | "stripeBillingMode" |
+  "billingStatus" | "lastBillingEventAt"
+>>;
 
 export interface ChatWriteFence {
   generation: number;
@@ -61,7 +74,7 @@ export interface Store {
   /** Set the user's Stripe customer id and/or billing status (payment webhook). */
   setUserBilling(
     userId: string,
-    patch: Partial<Pick<StoredUser, "stripeCustomerId" | "billingStatus" | "lastBillingEventAt">>
+    patch: BillingPatch
   ): Promise<void>;
   /** Reverse-lookup a user by Stripe customer id (for subscription lifecycle
    *  events, which reference the customer, not our user id). */
@@ -156,7 +169,7 @@ class UpstashStore implements Store {
 
   async setUserBilling(
     userId: string,
-    patch: Partial<Pick<StoredUser, "stripeCustomerId" | "billingStatus" | "lastBillingEventAt">>
+    patch: BillingPatch
   ): Promise<void> {
     const user = await this.getUserById(userId);
     if (!user) return;
@@ -325,7 +338,7 @@ export class MemoryStore implements Store {
 
   async setUserBilling(
     userId: string,
-    patch: Partial<Pick<StoredUser, "stripeCustomerId" | "billingStatus" | "lastBillingEventAt">>
+    patch: BillingPatch
   ): Promise<void> {
     const user = this.usersById.get(userId);
     if (!user) return;
@@ -524,7 +537,7 @@ export class FileStore implements Store {
 
   async setUserBilling(
     userId: string,
-    patch: Partial<Pick<StoredUser, "stripeCustomerId" | "billingStatus" | "lastBillingEventAt">>
+    patch: BillingPatch
   ): Promise<void> {
     const snap = await this.load();
     const user = snap.usersById[userId];

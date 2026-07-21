@@ -33,6 +33,7 @@ export default async function DemoControlPanel({
       localeLocked={localeLocked}
       brandName={brand.name}
       brandLogoUrl={brand.logoUrl}
+      brandWebsiteUrl={brand.websiteUrl}
       templateUrl={demoSignupUrl}
       supportEmail={brand.supportEmail}
       privacyUrl={brand.privacyUrl}

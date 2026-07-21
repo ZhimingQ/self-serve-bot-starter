@@ -64,7 +64,11 @@ export async function POST() {
       // client_reference_id + metadata both carry our user id so the webhook can
       // resolve the payer regardless of which field it reads.
       client_reference_id: user.id,
-      metadata: { appUserId: user.id },
+      metadata: {
+        appUserId: user.id,
+        storefrontPriceId: stripeConfig.priceId,
+        storefrontBillingMode: stripeConfig.mode,
+      },
       // {CHECKOUT_SESSION_ID} is substituted by Stripe — /app verifies it server-
       // side and activates immediately (no dependency on webhook timing).
       success_url: `${appUrl}/app?session_id={CHECKOUT_SESSION_ID}`,
@@ -74,6 +78,13 @@ export async function POST() {
     if (!checkout.url) {
       return NextResponse.json({ error: "Could not start checkout." }, { status: 502 });
     }
+    await store.setUserBilling(user.id, {
+      stripeCheckoutSessionId: checkout.id,
+      stripePriceId: stripeConfig.priceId,
+      stripeBillingMode: stripeConfig.mode,
+      ...(typeof checkout.subscription === "string" ? { stripeSubscriptionId: checkout.subscription } : {}),
+      ...(typeof checkout.payment_intent === "string" ? { stripePaymentIntentId: checkout.payment_intent } : {}),
+    });
     return NextResponse.json({ url: checkout.url });
   } catch (err) {
     // Log the real Stripe error server-side; return a generic message so raw

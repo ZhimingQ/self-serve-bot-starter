@@ -60,6 +60,7 @@ export default function ChatApp({
   localeLocked,
   brandName,
   brandLogoUrl,
+  brandWebsiteUrl,
   templateUrl,
   supportEmail,
   privacyUrl,
@@ -78,6 +79,7 @@ export default function ChatApp({
   localeLocked: boolean;
   brandName: string;
   brandLogoUrl: string;
+  brandWebsiteUrl: string;
   templateUrl: string;
   supportEmail: string;
   privacyUrl: string;
@@ -661,13 +663,19 @@ export default function ChatApp({
     <div className="control-shell">
       <a className="skip-link" href="#control-content">{copy.skipToContent}</a>
       <aside className="control-sidebar">
-        <div className="control-brand">
+        {brandWebsiteUrl ? <a className="control-brand" href={brandWebsiteUrl} target="_blank" rel="noopener noreferrer">
           {brandLogoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={brandLogoUrl} alt="" />
           ) : <span aria-hidden="true" />}
           <strong>{brandName}</strong>
-        </div>
+        </a> : <div className="control-brand">
+          {brandLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brandLogoUrl} alt="" />
+          ) : <span aria-hidden="true" />}
+          <strong>{brandName}</strong>
+        </div>}
 
         <nav className="control-nav" aria-label={copy.navigationLabel}>
           <span className="control-nav-label">{copy.workspaceNavLabel}</span>
