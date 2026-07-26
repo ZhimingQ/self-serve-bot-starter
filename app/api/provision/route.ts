@@ -11,10 +11,10 @@ import { rateLimit } from "../../../lib/rateLimit";
  * while the freshly-created bot is spinning up, which takes ~30-90s).
  *
  * Concurrent calls for the same user (e.g. a double-clicked signup) are
- * de-duped through `inflight`, which covers a single Node host (one process).
- * Across processes — serverless, or several replicas — the guarantee comes from
- * the `client_ref` idempotency key sent to the API below: duplicates collide on
- * the platform side, so only one bot is ever created and charged.
+ * de-duped through `inflight` so they can't each create a separate bot. This
+ * covers a single Node host (one process). On serverless with multiple
+ * concurrent instances, add an idempotency key to createInstance() to be
+ * fully race-proof.
  */
 const inflight = new Map<string, Promise<{ status: string; instanceId: string }>>();
 
@@ -28,10 +28,7 @@ async function provision(userId: string): Promise<{ status: string; instanceId: 
 
   let instance;
   try {
-    // The customer id is a stable idempotency key: if this request times out and
-    // the customer retries, the API replays the instance the first attempt
-    // created rather than creating (and billing) a second bot.
-    instance = await createInstance(`customer:${userId}`);
+    instance = await createInstance();
   } catch (err) {
     // A TIMEOUT here is the dangerous case, not a plain failure: the request was
     // aborted client-side, so the bot may well have been created anyway — and we
