@@ -75,12 +75,22 @@ const CONTROL_TIMEOUT_MS = 20_000;
 // customer sees our error rather than a raw gateway timeout.
 const CREATE_TIMEOUT_MS = 90_000;
 
-/** Create a brand-new bot instance for a user. Takes ~30-90s to become reachable. */
-export async function createInstance(): Promise<BuildResellInstance> {
+/**
+ * Create a brand-new bot instance for a user. Takes ~30-90s to become reachable.
+ *
+ * `clientRef` makes the call idempotent: pass the same value on a retry and the
+ * API returns the instance the first attempt created instead of creating — and
+ * charging for — a second one. That matters because this request can outlive an
+ * edge-proxy timeout, so "did it work?" is genuinely ambiguous to the caller.
+ */
+export async function createInstance(clientRef?: string): Promise<BuildResellInstance> {
   const res = await fetch(`${brand.apiBase}/instances`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ framework: brand.framework }),
+    body: JSON.stringify({
+      framework: brand.framework,
+      ...(clientRef ? { client_ref: clientRef } : {}),
+    }),
     cache: "no-store",
     signal: AbortSignal.timeout(CREATE_TIMEOUT_MS),
   });
