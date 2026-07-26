@@ -61,10 +61,19 @@ function authHeaders(extra?: Record<string, string>): Record<string, string> {
   };
 }
 
-// Timeout for the non-streaming control calls (create / list). The streaming
-// chat call is deliberately NOT timed this way — an AbortSignal would truncate a
-// long reply mid-stream — so only the request-boot calls get a hard ceiling.
+// Timeout for the quick control calls (list / get / delete). The streaming chat
+// call is deliberately NOT timed this way — an AbortSignal would truncate a long
+// reply mid-stream — so only the request-boot calls get a hard ceiling.
 const CONTROL_TIMEOUT_MS = 20_000;
+
+// Creating an instance is the slow one and needs its own budget. An OpenClaw bot
+// is claimed from the warm pool in seconds, but a Hermes bot takes appreciably
+// longer to create, which blew straight through the 20s control ceiling: the
+// customer got an error while the bot was created anyway, leaving an orphan the
+// storefront never recorded (see the comment in api/provision). 90s clears Hermes
+// with room to spare and still lands inside the ~100s edge-proxy limit, so the
+// customer sees our error rather than a raw gateway timeout.
+const CREATE_TIMEOUT_MS = 90_000;
 
 /** Create a brand-new bot instance for a user. Takes ~30-90s to become reachable. */
 export async function createInstance(): Promise<BuildResellInstance> {
@@ -73,7 +82,7 @@ export async function createInstance(): Promise<BuildResellInstance> {
     headers: authHeaders(),
     body: JSON.stringify({ framework: brand.framework }),
     cache: "no-store",
-    signal: AbortSignal.timeout(CONTROL_TIMEOUT_MS),
+    signal: AbortSignal.timeout(CREATE_TIMEOUT_MS),
   });
 
   if (!res.ok) {

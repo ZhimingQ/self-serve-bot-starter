@@ -26,7 +26,25 @@ async function provision(userId: string): Promise<{ status: string; instanceId: 
     return { status: instance?.status ?? "unknown", instanceId: existing };
   }
 
-  const instance = await createInstance();
+  let instance;
+  try {
+    instance = await createInstance();
+  } catch (err) {
+    // A TIMEOUT here is the dangerous case, not a plain failure: the request was
+    // aborted client-side, so the bot may well have been created anyway — and we
+    // never learned its id, so nothing maps it to this customer and a retry
+    // creates a SECOND one the reseller also pays for. The create timeout is
+    // sized to make this rare (see CREATE_TIMEOUT_MS), but it cannot be ruled
+    // out, so make it obvious in the logs rather than silent.
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      console.error(
+        `[provision] TIMED OUT creating an instance for ${userId} — a bot may exist with no owner mapping; ` +
+          `check the Build & Resell dashboard for an unassigned instance before retrying:`,
+        err
+      );
+    }
+    throw err;
+  }
   try {
     await store.setUserInstance(userId, instance.id);
   } catch (err) {
