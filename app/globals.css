@@ -104,6 +104,10 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* A brand name may be up to 60 characters (the installer's limit). Without a
+     gap, space-between lets the name run flush into the call-to-action the
+     moment the two fill the row, which on a phone is every multi-word brand. */
+  gap: 20px;
   width: min(1160px, calc(100% - 48px));
   margin: 0 auto;
   padding: 26px 0;
@@ -141,6 +145,33 @@ a {
   display: flex;
   align-items: center;
   gap: 18px;
+  /* The actions keep their natural width and the brand gives way instead. A
+     wrapped call-to-action reads as broken; a shortened brand does not. */
+  flex: 0 0 auto;
+}
+
+.nav-actions .btn {
+  white-space: nowrap;
+}
+
+/* The nav brand takes one line and truncates. Left to wrap it pushes the whole
+   header taller and collides with the button beside it. */
+.nav .brand {
+  min-width: 0;
+}
+
+/* Scoped to .nav on purpose. This is a starter that resellers edit, and an
+   unscoped .brand-name would silently truncate any element they gave that
+   class elsewhere. */
+.nav .brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Two labels, one visible: see PrimaryAction in app/page.tsx. */
+.nav .cta-label-compact {
+  display: none;
 }
 
 .language-switcher {
@@ -1159,6 +1190,17 @@ a.control-brand:hover strong { text-decoration: underline; text-underline-offset
 
 .control-brand img { width: 30px; height: 30px; object-fit: contain; }
 
+/* Same 60-character brand name, this time in a fixed-width sidebar: let it
+   shrink and truncate rather than push the sidebar out of shape. */
+.control-brand { min-width: 0; }
+
+.control-brand strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .control-brand > span {
   width: 9px;
   height: 9px;
@@ -2095,6 +2137,17 @@ a.control-brand:hover strong { text-decoration: underline; text-underline-offset
 
   .nav-actions .btn-secondary {
     display: none;
+  }
+
+  /* "Create your account" is too wide to sit beside a brand name on a phone —
+     it wrapped to three lines even for a nine-character brand. Swap to the
+     short label so the button stays one line and the brand keeps its room. */
+  .nav .cta-label-full {
+    display: none;
+  }
+
+  .nav .cta-label-compact {
+    display: inline;
   }
 
   .hero {

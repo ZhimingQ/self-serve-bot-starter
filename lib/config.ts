@@ -8,7 +8,6 @@
 export type BotFramework = "openclaw" | "hermes";
 
 import { readFileSync } from "node:fs";
-import { validateLocaleConfig } from "./localeConfig";
 
 export interface BrandConfig {
   revision: number;
@@ -184,53 +183,8 @@ export const demoSignupUrl =
   process.env.DEMO_SIGNUP_URL || "https://openclawlaunch.com/developer-api/templates";
 
 // ── Startup validation ────────────────────────────────────────────────────
-// Fail fast in production on a misconfigured deploy instead of limping along
-// (unsigned sessions, no persistence, broken Stripe redirects). Called once from
-// instrumentation.ts at server boot. A no-op in dev so `npm run dev` stays easy.
-export function validateEnv(): void {
-  if (process.env.NODE_ENV !== "production") return;
-
-  const problems: string[] = [];
-  problems.push(...validateLocaleConfig(process.env));
-
-  if (!buildResellApiKey) {
-    problems.push("BUILD_RESELL_API_KEY is required (your sk_live_… Build & Resell key).");
-  }
-  if (!sessionSecret || sessionSecret.length < 16 || sessionSecret === "replace_with_a_long_random_string") {
-    problems.push(
-      "SESSION_SECRET must be a long random string — generate with " +
-        `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))".`
-    );
-  }
-  const hasUpstash = Boolean(upstash.url && upstash.token);
-  if (Boolean(upstash.url) !== Boolean(upstash.token)) {
-    // Only one half set — getStore() would silently ignore it and fall back to
-    // STORE_DIR/memory. Make the misconfig explicit rather than losing data quietly.
-    problems.push(
-      "Partial Upstash config — set BOTH UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or neither)."
-    );
-  }
-  if (!hasUpstash && !storeDir) {
-    problems.push(
-      "No persistent store configured — set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN " +
-        "(or STORE_DIR on a persistent disk). The in-memory store loses every user on restart."
-    );
-  }
-  if (paymentsEnabled) {
-    if (!process.env.APP_URL) {
-      problems.push("APP_URL must be set to this storefront's public URL, or Stripe Checkout redirects go to localhost.");
-    }
-    if (stripe.mode === "subscription" && !stripe.webhookSecret) {
-      problems.push(
-        "STRIPE_WEBHOOK_SECRET is required in subscription mode — renewals and cancellations " +
-          "arrive only via the webhook, so without it a lapsed sub is never revoked."
-      );
-    }
-  }
-
-  if (problems.length) {
-    throw new Error(
-      "[config] Invalid production configuration:\n  - " + problems.join("\n  - ")
-    );
-  }
-}
+// Lives in ./validateEnv so that instrumentation.ts can import it WITHOUT
+// pulling this module's node:fs branding-file read into the Edge compile — see
+// the note at the top of that file. Re-exported here so the old import path
+// keeps working.
+export { validateEnv } from "./validateEnv";

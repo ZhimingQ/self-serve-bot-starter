@@ -8,6 +8,6 @@ export async function register() {
   // Only the Node.js runtime — skip the Edge runtime pass (validateEnv is a no-op
   // outside production anyway).
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  const { validateEnv } = await import("./lib/config");
+  const { validateEnv } = await import("./lib/validateEnv");
   validateEnv();
 }

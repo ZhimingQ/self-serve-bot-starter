@@ -27,8 +27,20 @@ export default async function LandingPage() {
   const priceLabel = brand.priceLabel || defaultPricing[0];
   const priceNote = brand.priceNote || defaultPricing[1];
 
-  function PrimaryAction({ className }: { className: string }) {
-    const content = <>{primaryLabel} <span aria-hidden="true">→</span></>;
+  // `compact` is for the nav, which has to sit a brand name of up to 60
+  // characters next to this button on a 390px screen. Both labels are rendered
+  // and CSS hides one, so the swap needs no JavaScript and survives static
+  // rendering; only the visible one is in the accessibility tree.
+  function PrimaryAction({ className, compact = false }: { className: string; compact?: boolean }) {
+    const content = compact ? (
+      <>
+        <span className="cta-label-full">{primaryLabel}</span>
+        <span className="cta-label-compact">{copy.getStarted}</span>
+        {" "}<span aria-hidden="true">→</span>
+      </>
+    ) : (
+      <>{primaryLabel} <span aria-hidden="true">→</span></>
+    );
     return <Link href={primaryHref} className={className}>{content}</Link>;
   }
 
@@ -53,14 +65,14 @@ export default async function LandingPage() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={brand.logoUrl} alt="" className="brand-logo" />
           ) : <span className="brand-dot" />}
-          {brand.name}
+          <span className="brand-name">{brand.name}</span>
         </Link>
         <div className="nav-actions">
           <LanguageSwitcher locale={locale} locked={locked} />
           <Link href="/login" className="btn btn-secondary">
             {copy.login}
           </Link>
-          <PrimaryAction className="btn btn-primary" />
+          <PrimaryAction className="btn btn-primary" compact />
         </div>
       </nav>
 
