@@ -32,7 +32,17 @@ type AsyncStatus = "idle" | "working" | "done" | "error";
 type WorkspaceLoadStatus = "loading" | "ready" | "error";
 
 const POLL_INTERVAL_MS = 3000;
-const MAX_POLL_ATTEMPTS = 40; // ~2 minutes, covers the 30-90s cold-start window
+// Past this the bot is slower than usual, so back off and reassure — do NOT
+// declare failure. A cold start that misses the 2-minute mark is still a
+// perfectly healthy bot, and the customer's very first impression of the
+// product should not be an error screen for something that is about to work.
+// (Observed: a signup where the assistant came up fine while the storefront
+// had already told the customer it went wrong.)
+const SLOW_AFTER_ATTEMPTS = 40; // ~2 minutes at the fast interval
+const SLOW_POLL_INTERVAL_MS = 10000;
+// The real giving-up point: ~2 min fast + ~10 min slow. Past this something is
+// genuinely wrong and a retry button is the honest answer.
+const MAX_POLL_ATTEMPTS = 100;
 
 function summarizeSavedHistory(messages: StoredChatMessage[]) {
   return {
@@ -91,6 +101,9 @@ export default function ChatApp({
   const needsPayment = paymentsEnabled && !paid;
   const [provisionState, setProvisionState] = useState<ProvisionState>(preview ? "ready" : "checking");
   const [provisionError, setProvisionError] = useState<string | null>(null);
+  // A FLAG, not the localized string: provisioning can outlast a language
+  // switch, and storing the text would leave the note in the old language.
+  const [provisionSlow, setProvisionSlow] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -120,10 +133,26 @@ export default function ChatApp({
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const mainContentRef = useRef<HTMLElement>(null);
   const panelInitializedRef = useRef(false);
+  // The provisioning poll re-arms itself for up to ~12 minutes. Without a
+  // handle, unmounting (or a Strict Mode double-invoke) leaves a second chain
+  // running that can overwrite a settled "ready" back to "provisioning".
+  const provisionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Generation counter for the poll. Cancelling the pending TIMER is not
+  // enough: a poll already awaiting its fetch resumes afterwards and would
+  // happily schedule a fresh chain or overwrite a settled state. Each run
+  // captures its generation and abandons itself once it is no longer current.
+  const provisionRunRef = useRef(0);
 
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
   }, [locale]);
+
+  // Cancel a pending poll on unmount so a re-armed chain cannot outlive the
+  // component and resurrect a stale provisioning state.
+  useEffect(() => () => {
+    provisionRunRef.current += 1;
+    if (provisionTimerRef.current) clearTimeout(provisionTimerRef.current);
+  }, []);
 
   const loadWorkspace = useCallback(async (signal?: AbortSignal) => {
     if (preview) return;
@@ -201,13 +230,21 @@ export default function ChatApp({
   }, [subscribing, router, copy.checkoutError]);
 
   const provision = useCallback(async () => {
+    // A retry must replace the running chain, not race it.
+    if (provisionTimerRef.current) clearTimeout(provisionTimerRef.current);
+    const run = ++provisionRunRef.current;
+    const stale = () => run !== provisionRunRef.current;
     let attempts = 0;
+    setProvisionSlow(false);
 
     const poll = async (): Promise<void> => {
+      if (stale()) return;
       attempts += 1;
       try {
         const res = await fetch("/api/provision", { method: "POST" });
         const data = await res.json();
+        // Superseded while the request was in flight.
+        if (stale()) return;
 
         if (!res.ok) {
           setProvisionError(
@@ -220,6 +257,7 @@ export default function ChatApp({
         }
 
         if (data.status === "running") {
+          setProvisionSlow(false);
           setProvisionState("ready");
           return;
         }
@@ -233,8 +271,13 @@ export default function ChatApp({
         }
 
         setProvisionState("provisioning");
-        setTimeout(poll, POLL_INTERVAL_MS);
+        // Still starting, just slower than usual: say so and keep waiting
+        // rather than flipping to an error the customer has to recover from.
+        const slow = attempts >= SLOW_AFTER_ATTEMPTS;
+        setProvisionSlow(slow);
+        provisionTimerRef.current = setTimeout(poll, slow ? SLOW_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
       } catch {
+        if (stale()) return;
         setProvisionError(copy.serverUnavailable);
         setProvisionState("error");
       }
@@ -573,6 +616,7 @@ export default function ChatApp({
         <LanguageSwitcher locale={locale} locked={localeLocked} />
         <h2>{copy.provisioningTitle}</h2>
         <p>{copy.provisioningBody(email.split("@")[0])}</p>
+        {provisionSlow && <p className="muted">{copy.provisionStillWorking}</p>}
       </div>
     );
   }
