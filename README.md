@@ -145,7 +145,7 @@ uses a local canned response and never provisions a bot or spends model credits.
 One click clones this repo into your own Vercel account and prompts you for the
 env vars you need:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FZhimingQ%2Fself-serve-bot-starter&env=BUILD_RESELL_API_KEY,SESSION_SECRET,BRAND_NAME,BUSINESS_WEBSITE_URL,BRAND_ACCENT,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN&envDescription=Your%20Build%20%26%20Resell%20API%20key%2C%20a%20random%20SESSION_SECRET%2C%20brand%20name%2C%20website%2C%20brand%20color%2C%20and%20a%20free%20Upstash%20Redis%20database.&envLink=https%3A%2F%2Fopenclawlaunch.com%2Fdeveloper-api%2Ftemplates)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FZhimingQ%2Fself-serve-bot-starter&env=BUILD_RESELL_API_KEY,SESSION_SECRET,BRAND_NAME,BUSINESS_WEBSITE_URL,BRAND_ACCENT,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN&envDescription=Your%20Build%20%26%20Resell%20API%20key%2C%20a%20random%20SESSION_SECRET%2C%20brand%20name%2C%20website%2C%20brand%20color%2C%20and%20a%20free%20Upstash%20Redis%20database.&envLink=https%3A%2F%2Fopenclawlaunch.com%2Fresell%2Ftemplates)
 
 Vercel is serverless, so the `STORE_DIR` JSON-file store does **not** persist
 there — you must attach a Redis. Create a free

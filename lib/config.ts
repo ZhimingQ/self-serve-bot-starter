@@ -180,7 +180,7 @@ export const appUrl = process.env.APP_URL || "http://localhost:3000";
 // DEMO_SIGNUP_URL; login stays in-app. Leave DEMO_MODE unset for a normal storefront.
 export const demoMode = process.env.DEMO_MODE === "1";
 export const demoSignupUrl =
-  process.env.DEMO_SIGNUP_URL || "https://openclawlaunch.com/developer-api/templates";
+  process.env.DEMO_SIGNUP_URL || "https://openclawlaunch.com/resell/templates";
 
 // ── Startup validation ────────────────────────────────────────────────────
 // Lives in ./validateEnv so that instrumentation.ts can import it WITHOUT
