@@ -182,6 +182,64 @@ export const demoMode = process.env.DEMO_MODE === "1";
 export const demoSignupUrl =
   process.env.DEMO_SIGNUP_URL || "https://openclawlaunch.com/resell/templates";
 
+// ── Customer self-service: model key + channels ───────────────────────────
+// Two things your customer can set up themselves from inside their workspace.
+// Both are YOUR call, because both change who pays and who can reach the bot.
+//
+//  ALLOW_END_USER_BYOK=1  shows the "Model key" panel, where a customer supplies
+//    their OWN provider key (OpenRouter, DeepSeek, Qwen, Z.AI, MiniMax, Anthropic,
+//    OpenAI, Groq) and the bot stops spending your model credits. OFF by default:
+//    if you resell credits at a markup, this panel gives that margin away. Turn it
+//    on when you charge for the product rather than for the tokens, or when a
+//    customer would rather pay their provider directly.
+//    OpenClaw only — the platform refuses end-user BYOK on Hermes bots, so the
+//    panel stays hidden on a Hermes storefront whatever this is set to.
+//
+//  ALLOW_CHANNEL_CONNECT=0  hides the "Channels" panel, where a customer connects
+//    the bot to WeChat, Telegram, WhatsApp, Discord, Lark or Slack. ON by default:
+//    for most customers, reaching the assistant from the app they already live in
+//    is the product. Turn it off if you connect channels for them as a service.
+//
+//  CHANNELS=wechat,telegram  restricts the panel to a subset (comma-separated).
+//    Unset means every channel the bot's framework supports. Names not recognised
+//    are ignored rather than rendered as a tile that could only ever fail.
+export const knownChannels = ["wechat", "telegram", "whatsapp", "discord", "feishu", "slack"] as const;
+export type ChannelId = (typeof knownChannels)[number];
+
+function envFlag(value: string | undefined, fallback: boolean): boolean {
+  const v = value?.trim().toLowerCase();
+  if (v === undefined || v === "") return fallback;
+  return v === "1" || v === "true" || v === "yes";
+}
+
+export const allowEndUserByok =
+  envFlag(process.env.ALLOW_END_USER_BYOK, false) &&
+  // Hermes has no end-user BYOK path on the platform side; showing the panel
+  // would only produce a 400 the customer cannot act on.
+  (isBotFramework(rawFramework) ? rawFramework : "openclaw") === "openclaw";
+
+export const allowChannelConnect = envFlag(process.env.ALLOW_CHANNEL_CONNECT, true);
+
+/** The channels this storefront offers, in display order. An empty CHANNELS var
+ *  (the default) means "all of them" — the panel then filters again against what
+ *  the bot's own framework reports as connectable.
+ *
+ *  A non-empty CHANNELS that names nothing recognisable resolves to NO channels,
+ *  not to all of them. `CHANNELS=telegran` is a typo, and the safe reading of a
+ *  typo in an allowlist is "allow nothing" — falling back to the full set would
+ *  turn a misspelling into an authorization to connect every channel, on the
+ *  server side too, since this same list is what the route enforces. An empty
+ *  panel is a visible mistake; a silently widened one is not.
+ *  validateEnv rejects it outright in production. */
+export const offeredChannels: ChannelId[] = (() => {
+  const raw = process.env.CHANNELS?.trim();
+  if (!raw) return [...knownChannels];
+  return raw
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter((s): s is ChannelId => (knownChannels as readonly string[]).includes(s));
+})();
+
 // ── Startup validation ────────────────────────────────────────────────────
 // Lives in ./validateEnv so that instrumentation.ts can import it WITHOUT
 // pulling this module's node:fs branding-file read into the Edge compile — see

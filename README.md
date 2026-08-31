@@ -81,6 +81,50 @@ BOT_FRAMEWORK=openclaw     # or "hermes" — which framework new bots use
 
 No code changes needed to reskin the app for a new reseller.
 
+## What your customers can set up themselves
+
+Two panels in the customer workspace let a customer finish their own setup, so
+you are not the middleman for either.
+
+### Model key — the customer brings their own API key
+
+`ALLOW_END_USER_BYOK=1` adds a "Model key" panel under Manage. The customer picks
+a provider (OpenRouter, DeepSeek, Qwen, Z.AI, MiniMax, Anthropic, OpenAI, Groq),
+pastes their key, and from the next message their assistant runs on their own
+account — the provider bills them, not you.
+
+The key is validated against the provider BEFORE the switch, so a wrong key is
+refused instead of silencing a working assistant. It is stored encrypted, shown
+back only masked, and can be rotated any time. There is no "remove": an assistant
+whose funding is pulled stays alive and stops answering, so stopping the bill
+means cancelling the plan.
+
+Off by default, and that default is deliberate. If your price is really a markup
+on model usage, this panel gives that margin away. Turn it on when you charge for
+the product, or when a customer would rather pay their provider directly — which
+is common for customers who already hold a key, and for customers who cannot get
+one of the international providers at all.
+
+Requires an OpenClaw storefront (`BOT_FRAMEWORK=openclaw`); the platform does not
+offer end-user BYOK on Hermes, so the panel stays hidden there.
+
+### Channels — the customer connects their own apps
+
+The "Channels" panel (on by default, `ALLOW_CHANNEL_CONNECT=0` to hide) lets a
+customer link the assistant to WeChat, Telegram, WhatsApp, Discord, Lark or
+Slack. `CHANNELS=wechat,telegram` narrows the offer; the limit is enforced
+server-side, not just hidden in the UI.
+
+WeChat and WhatsApp are QR flows: the customer scans from the phone that will
+host the bot and that phone stays signed in. The others take a bot token and then
+a pairing code the assistant DMs back — that pairing step is what keeps the bot's
+DM policy closed, so nobody who stumbles on the bot can talk to somebody else's
+assistant.
+
+Connecting a channel restarts the customer's bot (about a minute; a first WeChat
+connect installs a plugin and takes 2 to 4), which the panel says out loud rather
+than leaving them watching a spinner.
+
 ## Charging your customers (optional payment gate)
 
 By default the app runs in NO-PAYMENT mode: a new signup provisions a bot
@@ -188,6 +232,9 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | `SITE_LOCALE` | no | `en` or `zh` locks the entire deployment to one language and hides the switcher. |
 | `LOCALE_HOST_EN` | no | Comma-separated hostnames that always render English and hide the switcher. |
 | `LOCALE_HOST_ZH` | no | Comma-separated hostnames that always render Simplified Chinese and hide the switcher. |
+| `ALLOW_END_USER_BYOK` | no (defaults off) | Shows the Model key panel, where a customer funds the assistant with their own provider key. See below. |
+| `ALLOW_CHANNEL_CONNECT` | no (defaults **on**) | Set `0` to hide the Channels panel and connect apps for your customers yourself. |
+| `CHANNELS` | no (defaults to all) | Restrict the Channels panel, e.g. `wechat,telegram`. |
 
 In production the app validates these at startup (`lib/config.ts` → `instrumentation.ts`) and refuses to boot with a clear error if a required one is missing.
 

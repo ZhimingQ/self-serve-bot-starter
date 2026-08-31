@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { messages as translations, type Locale } from "../../lib/i18n";
 import LanguageSwitcher from "../LanguageSwitcher";
+import ChannelsPanel from "./ChannelsPanel";
+import ModelKeyPanel from "./ModelKeyPanel";
 import {
   defaultAssistantPreferences,
   MAX_CUSTOM_INSTRUCTIONS_CHARS,
@@ -27,7 +29,7 @@ interface ChatMessage {
 class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "prompts" | "history" | "usage" | "notifications" | "billing" | "settings" | "security" | "account" | "privacy" | "support";
+type Panel = "overview" | "assistant" | "channels" | "prompts" | "history" | "usage" | "notifications" | "billing" | "modelKey" | "settings" | "security" | "account" | "privacy" | "support";
 type AsyncStatus = "idle" | "working" | "done" | "error";
 type WorkspaceLoadStatus = "loading" | "ready" | "error";
 
@@ -75,6 +77,8 @@ export default function ChatApp({
   supportEmail,
   privacyUrl,
   termsUrl,
+  byokEnabled = false,
+  channelsEnabled = true,
   preview = false,
 }: {
   email: string;
@@ -94,6 +98,12 @@ export default function ChatApp({
   supportEmail: string;
   privacyUrl: string;
   termsUrl: string;
+  /** ALLOW_END_USER_BYOK — the customer may fund the assistant with their own
+   *  provider key. Off unless the reseller turns it on: it hands away the margin
+   *  of anyone who resells model credits. */
+  byokEnabled?: boolean;
+  /** ALLOW_CHANNEL_CONNECT — the customer may connect messaging apps themselves. */
+  channelsEnabled?: boolean;
   preview?: boolean;
 }) {
   const copy = translations[locale];
@@ -679,9 +689,14 @@ export default function ChatApp({
   const unreadNotifications = notificationItems.filter(
     (item) => !readNotificationIds.includes(item.id)
   ).length;
+  // Channels sits in WORKSPACE because it is something the customer uses; the
+  // model key sits in MANAGE because it is account plumbing. Both are omitted
+  // entirely when the reseller has not enabled them — an item that 404s on click
+  // is worse than no item.
   const primaryNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "overview", label: copy.controlOverview, icon: "⌂" },
     { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
+    ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
     { panel: "prompts", label: copy.controlPrompts, icon: "⌘" },
     { panel: "history", label: copy.controlHistory, icon: "↻" },
     { panel: "usage", label: copy.controlUsage, icon: "◫" },
@@ -689,6 +704,7 @@ export default function ChatApp({
   ];
   const manageNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "billing", label: copy.controlBilling, icon: "$" },
+    ...(byokEnabled ? [{ panel: "modelKey" as Panel, label: copy.controlModelKey, icon: "⚿" }] : []),
     { panel: "settings", label: copy.controlSettings, icon: "⚙" },
     { panel: "security", label: copy.controlSecurity, icon: "◇" },
     { panel: "account", label: copy.controlAccount, icon: "○" },
@@ -1050,6 +1066,14 @@ export default function ChatApp({
               <article className="billing-info-card"><span>{copy.billingHelp}</span><h2>{copy.billingHelpTitle}</h2><p>{copy.billingHelpBody}</p>{supportEmail ? <a href={supportHref}>{copy.emailSupport} <b aria-hidden="true">→</b></a> : <p>{copy.contactOwner}</p>}</article>
             </section>
           </div>
+        )}
+
+        {panel === "channels" && channelsEnabled && (
+          <ChannelsPanel copy={copy} preview={preview} />
+        )}
+
+        {panel === "modelKey" && byokEnabled && (
+          <ModelKeyPanel copy={copy} brandName={brandName} preview={preview} />
         )}
 
         {panel === "settings" && (

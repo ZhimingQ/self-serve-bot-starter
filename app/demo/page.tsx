@@ -37,6 +37,10 @@ export default async function DemoControlPanel({
       templateUrl={demoSignupUrl}
       supportEmail={brand.supportEmail}
       privacyUrl={brand.privacyUrl}
+      // The showcase always renders both self-service panels, whatever this
+      // deployment sells, so a prospective reseller can see what they get.
+      byokEnabled
+      channelsEnabled
       termsUrl={brand.termsUrl}
       preview
     />

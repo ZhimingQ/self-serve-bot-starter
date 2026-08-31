@@ -75,6 +75,28 @@ export function validateEnv(): void {
     }
   }
 
+  // CHANNELS is an allowlist, and a misspelt allowlist is the dangerous kind of
+  // typo: it is enforced server-side, so getting it wrong decides what customers
+  // may connect. config.ts resolves an unrecognisable list to NOTHING rather than
+  // to everything; this turns that quiet empty panel into a boot failure that
+  // names the offending value.
+  const rawChannels = process.env.CHANNELS?.trim();
+  if (rawChannels) {
+    const known = ["wechat", "telegram", "whatsapp", "discord", "feishu", "slack"];
+    const named = rawChannels.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const unknown = named.filter((s) => !known.includes(s));
+    if (named.length === 0 || unknown.length === named.length) {
+      problems.push(
+        `CHANNELS names no known channel (${rawChannels}). Valid values: ${known.join(", ")}. ` +
+          "Leave it unset to offer every channel the bot supports."
+      );
+    } else if (unknown.length) {
+      problems.push(
+        `CHANNELS contains unknown channel(s): ${unknown.join(", ")}. Valid values: ${known.join(", ")}.`
+      );
+    }
+  }
+
   if (problems.length) {
     throw new Error(
       "[config] Invalid production configuration:\n  - " + problems.join("\n  - ")

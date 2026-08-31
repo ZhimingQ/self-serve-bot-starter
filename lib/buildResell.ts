@@ -130,6 +130,61 @@ export async function deleteInstance(instanceId: string): Promise<void> {
   }
 }
 
+// ── Customer self-service: model key + channels ──────────────────────────────
+// Both of these act on ONE customer's bot with YOUR api key, so every caller must
+// have resolved the instance id from the signed-in session first — never from
+// anything the browser sent. The two helpers below deliberately return the
+// upstream status and body instead of throwing: these endpoints answer with
+// meaningful, already-sanitized errors ("that key was rejected", "code expired")
+// that the customer needs to read, and collapsing them into a generic failure
+// would leave someone staring at a form with no idea what to fix.
+
+export interface UpstreamResult<T = Record<string, unknown>> {
+  ok: boolean;
+  status: number;
+  body: T;
+}
+
+async function callApi<T = Record<string, unknown>>(
+  path: string,
+  init: { method: "GET" | "POST" | "PUT"; body?: unknown },
+): Promise<UpstreamResult<T>> {
+  const res = await fetch(`${brand.apiBase}${path}`, {
+    method: init.method,
+    headers: authHeaders(),
+    ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(CONTROL_TIMEOUT_MS),
+  });
+  const body = (await res.json().catch(() => ({}))) as T;
+  return { ok: res.ok, status: res.status, body };
+}
+
+/** Is a customer key on file for this bot, and for which provider? Never the key. */
+export function getModelKey(instanceId: string) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/model-key`, { method: "GET" });
+}
+
+/** Point the bot at the customer's own provider key, or rotate the one on file.
+ *  The platform validates the key against the provider BEFORE switching, so a
+ *  bad key is refused rather than silently muting a working assistant. */
+export function setModelKey(instanceId: string, modelKey: string, provider?: string) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/model-key`, {
+    method: "PUT",
+    body: { model_key: modelKey, ...(provider ? { model_key_provider: provider } : {}) },
+  });
+}
+
+/** Which channels are connected, and which ones this bot's framework supports. */
+export function getChannels(instanceId: string) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/channels`, { method: "GET" });
+}
+
+/** connect | qr | pairing_approve | disconnect. See the channels endpoint docs. */
+export function channelAction(instanceId: string, body: Record<string, unknown>) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/channels`, { method: "POST", body });
+}
+
 export interface StreamResponseParams {
   instanceId: string;
   input: string;

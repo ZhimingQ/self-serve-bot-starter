@@ -2038,6 +2038,242 @@ a.control-brand:hover strong { text-decoration: underline; text-underline-offset
   outline-offset: 2px;
 }
 
+/* ── Model key panel (customer BYOK) ─────────────────────────────────────── */
+
+.byok-card {
+  margin-top: 26px;
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  background: var(--paper);
+}
+
+.byok-card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.byok-card h2 { margin: 0; font-family: var(--font-serif); font-size: 21px; font-weight: 600; }
+.byok-card > header p { margin: 6px 0 0; max-width: 460px; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+
+.byok-badge {
+  flex: none;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  background: var(--cream);
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.byok-badge.is-own {
+  border-color: #b7c7b3;
+  background: #eaf0e7;
+  color: #416648;
+}
+
+.byok-providers {
+  display: grid;
+  margin-top: 20px;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.byok-providers label {
+  display: grid;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+}
+
+.byok-providers label.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.byok-providers input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.byok-providers strong { font-size: 13px; font-weight: 650; }
+.byok-providers span { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
+.byok-providers label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.byok-field { margin-top: 20px; }
+.byok-field label { display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 12px; }
+
+.byok-field input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.byok-field input:focus { border-color: var(--accent); outline: none; }
+.byok-field small { display: block; margin-top: 7px; color: var(--text-muted); font-size: 12px; line-height: 1.55; }
+.byok-field small a { color: var(--accent-hover); }
+
+.byok-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.byok-effect { color: var(--text-muted); font-size: 12px; }
+.byok-onfile {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  background: var(--cream);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+}
+.byok-note { margin: 16px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+
+/* ── Channels panel ───────────────────────────────────────────────────────── */
+
+.channel-grid {
+  display: grid;
+  margin-top: 26px;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.channel-card {
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+  border: 1px solid var(--border);
+  background: var(--paper);
+}
+
+.channel-card.is-connected { border-color: #b7c7b3; background: #f4f7f2; }
+.channel-card > header { display: flex; align-items: center; gap: 10px; }
+.channel-card strong { font-size: 14px; }
+.channel-card p { margin: 10px 0 14px; min-height: 34px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.channel-card .btn { width: 100%; justify-content: center; margin-top: auto; }
+/* A channel awaiting pairing offers two actions — finish it, or undo it. */
+.channel-card-actions { display: grid; gap: 8px; margin-top: auto; }
+.channel-card-actions .btn { margin-top: 0; }
+
+.channel-state {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid #b7c7b3;
+  background: #eaf0e7;
+  color: #416648;
+  font-size: 10px;
+}
+
+/* Configured but not yet paired — connected enough to look done, not enough to
+   answer the customer. Amber rather than green so the tile does not read as
+   finished at a glance. */
+.channel-state.is-pending {
+  border-color: #ddc9a4;
+  background: #f7efdd;
+  color: #8a6a22;
+}
+
+.channel-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  place-items: center;
+  color: #fff;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* Each channel keeps its own brand colour so the tile is recognisable at a
+   glance — the icon glyph is a neutral mark, never a Han character, so the
+   English UI stays free of Chinese. */
+.channel-wechat { background: #07c160; }
+.channel-telegram { background: #2aabee; }
+.channel-whatsapp { background: #25d366; }
+.channel-discord { background: #5865f2; }
+.channel-feishu { background: #00a4a6; }
+.channel-slack { background: #4a154b; }
+
+.channel-modal-backdrop {
+  position: fixed;
+  z-index: 50;
+  display: grid;
+  padding: 24px;
+  inset: 0;
+  place-items: center;
+  background: rgb(29 28 25 / 46%);
+}
+
+.channel-modal {
+  width: min(440px, 100%);
+  max-height: 90dvh;
+  overflow-y: auto;
+  border: 1px solid #c9c3b6;
+  background: var(--paper);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 18%);
+}
+
+.channel-modal > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.channel-modal > header strong { font-family: var(--font-serif); font-size: 18px; }
+.channel-modal > header .channel-icon { width: 28px; height: 28px; font-size: 13px; }
+
+.channel-modal-close {
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.channel-modal-body { padding: 20px; }
+.channel-modal-body > p { margin: 0 0 12px; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+.channel-pairing-intro { color: var(--text) !important; }
+
+.channel-applying { display: grid; justify-items: center; padding: 18px 0; text-align: center; }
+.channel-applying p { margin: 14px 0 0; max-width: 320px; color: var(--text-muted); font-size: 12.5px; line-height: 1.55; }
+
+.channel-applying .spinner {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.channel-qr {
+  display: block;
+  width: 190px;
+  height: 190px;
+  margin: 4px auto 0;
+  border: 6px solid #fff;
+  outline: 1px solid var(--border);
+}
+
+.channel-steps { margin: 16px 0 0; padding-left: 18px; color: var(--text-muted); font-size: 12.5px; }
+.channel-steps li { margin: 5px 0; line-height: 1.5; }
+
+@media (max-width: 900px) {
+  .byok-providers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .channel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .byok-card { padding: 20px; }
+  .byok-card > header { flex-direction: column; gap: 10px; }
+  .byok-providers,
+  .channel-grid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 900px) {
   .hero {
     grid-template-columns: 1fr;
