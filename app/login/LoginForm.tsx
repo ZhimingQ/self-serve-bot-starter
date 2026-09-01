@@ -74,6 +74,7 @@ export default function LoginForm({
               {loading ? copy.loggingIn : copy.login}
             </button>
           </form>
+          <p className="auth-switch"><Link href="/forgot-password">{copy.forgotPassword}</Link></p>
           <p className="auth-switch">{copy.noAccount} <Link href={signupHref}>{copy.signUp}</Link></p>
         </div>
       </div>

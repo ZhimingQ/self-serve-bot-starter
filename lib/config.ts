@@ -182,6 +182,22 @@ export const demoMode = process.env.DEMO_MODE === "1";
 export const demoSignupUrl =
   process.env.DEMO_SIGNUP_URL || "https://openclawlaunch.com/resell/templates";
 
+// ── Password reset email ──────────────────────────────────────────────────
+// "Forgot password" needs a way to reach the customer's inbox. Set a Resend API
+// key (resend.com — free tier is plenty for reset emails) and a verified from
+// address, and the button on the login page becomes a working self-serve reset.
+//
+// Left unset, the flow degrades honestly: the page tells the customer to contact
+// your SUPPORT_EMAIL and no token is minted, rather than sending them to wait for
+// an email that can never arrive. You can always reset a password yourself with
+// `npm run reset-password -- customer@example.com`, which needs no configuration.
+//
+// Delivery is a plain HTTPS call, so there is no mail dependency to install.
+export const resetEmail = {
+  apiKey: process.env.RESEND_API_KEY || "",
+  from: process.env.RESET_EMAIL_FROM || "",
+};
+
 // ── Customer self-service: model key + channels ───────────────────────────
 // Two things your customer can set up themselves from inside their workspace.
 // Both are YOUR call, because both change who pays and who can reach the bot.

@@ -128,6 +128,64 @@ Connecting a channel restarts the customer's bot (about a minute; a first WeChat
 connect installs a plugin and takes 2 to 4), which the panel says out loud rather
 than leaving them watching a spinner.
 
+## When a customer forgets their password
+
+The sign-in page carries a "Forgot your password?" link. There are two ways it
+can end, and which one a customer gets depends on whether you have set up email.
+
+### With email (`RESEND_API_KEY` + `RESET_EMAIL_FROM`)
+
+The customer gets a link that works once and expires in an hour. Setting a new
+password signs out every device that was signed in on that account, which is the
+point — whoever prompted the reset is signed out too.
+
+Two things to get right: `RESET_EMAIL_FROM` must be on a domain you have verified
+in Resend, or every send is rejected; and `APP_URL` is what the emailed link
+points at, so it has to be your real public URL rather than `localhost`.
+
+The page answers the same way whether or not the address has an account. That is
+deliberate — a "no such user" reply would turn the form into a list of your
+customers for anyone willing to type addresses into it.
+
+### Without email — the owner-side reset
+
+Leave the two variables unset and the link still works: the page tells the
+customer to contact you rather than promising an email that cannot arrive. You
+then reset it yourself, from the storefront's app directory:
+
+```bash
+npm run reset-password -- customer@example.com
+#   New password: 3Qk7pR2xV9nT4wLb
+
+npm run reset-password -- customer@example.com 'a password you choose'
+```
+
+Prefer the first form. It generates a password and prints it, and — unlike the
+second — never puts the password in the command line, where it is visible to
+anything else on the machine via `ps` and saved to your shell history. Send it
+over a channel you trust and have them change it after signing in.
+
+Either way every existing sign-in for that account is signed out, any reset link
+already in their inbox is dead, and the running storefront picks the change up
+immediately — no restart.
+
+The command refuses rather than guesses: if the storefront writes to its store
+while the reset is in flight, it stops without changing anything and tells you to
+run it again, instead of overwriting whatever the app just saved.
+
+This needs no configuration — it reads the storefront's own `.env`, works against
+both the Upstash and the JSON-file store, and depends on nothing but `node`. On a
+storefront deployed through "Deploy via your bot", run it inside the container:
+
+```bash
+docker exec -u node -w /home/node/.openclaw/storefronts/<slug> <container> \
+  node scripts/reset-password.mjs customer@example.com
+```
+
+Keep the `-u node`. The storefront runs as `node`, and a reset done as root
+rewrites `data/store.json` root-owned — after which the app itself can no longer
+write to its own store.
+
 ## Charging your customers (optional payment gate)
 
 By default the app runs in NO-PAYMENT mode: a new signup provisions a bot
@@ -240,6 +298,8 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | `ALLOW_END_USER_BYOK` | no (defaults off) | Shows the Model key panel, where a customer funds the assistant with their own provider key. See below. |
 | `ALLOW_CHANNEL_CONNECT` | no (defaults **on**) | Set `0` to hide the Channels panel and connect apps for your customers yourself. |
 | `CHANNELS` | no (defaults to all) | Restrict the Channels panel, e.g. `wechat,telegram`. |
+| `RESEND_API_KEY` | no | Enables emailed password resets. Unset ⇒ the Forgot-password page points customers at support and you use `npm run reset-password`. |
+| `RESET_EMAIL_FROM` | with `RESEND_API_KEY` | Sender address, on a domain verified in Resend. |
 
 In production the app validates these at startup (`lib/config.ts` → `instrumentation.ts`) and refuses to boot with a clear error if a required one is missing.
 
