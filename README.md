@@ -111,9 +111,12 @@ offer end-user BYOK on Hermes, so the panel stays hidden there.
 ### Channels — the customer connects their own apps
 
 The "Channels" panel (on by default, `ALLOW_CHANNEL_CONNECT=0` to hide) lets a
-customer link the assistant to WeChat, Telegram, WhatsApp, Discord, Lark or
-Slack. `CHANNELS=wechat,telegram` narrows the offer; the limit is enforced
-server-side, not just hidden in the UI.
+customer link the assistant to WeChat, Telegram, WhatsApp, Discord or Lark.
+Slack needs `BOT_FRAMEWORK=hermes` — OpenClaw has no Slack adapter, and the panel
+only ever renders the channels the bot's own framework reports as connectable, so
+an OpenClaw storefront simply shows no Slack tile. `CHANNELS=wechat,telegram`
+narrows the offer further; the limit is enforced server-side, not just hidden in
+the UI.
 
 WeChat and WhatsApp are QR flows: the customer scans from the phone that will
 host the bot and that phone stays signed in. The others take a bot token and then
@@ -170,9 +173,11 @@ npm run dev
 
 Open http://localhost:3000.
 
-The authenticated `/app` includes a ten-section customer workspace: overview,
-assistant, prompt library, persistent conversation history, usage and access,
-billing, assistant settings, account, privacy and data, and help and support.
+The authenticated `/app` includes a full customer workspace: overview,
+assistant, channels, prompt library, persistent conversation history, usage and
+access, billing, model key, assistant settings, account, privacy and data, and
+help and support. Channels and model key are the two panels a reseller can switch
+off — see "What your customers can set up themselves" above.
 Customers can carry saved conversation history and response preferences across
 devices, open Stripe's customer portal for recurring subscriptions, download a
 storefront-only data export, clear the history displayed by the storefront, and
