@@ -509,6 +509,8 @@ export const messages = {
       anthropic: "Claude direct",
       openai: "GPT direct",
       groq: "Fast inference",
+      nousportal: "Nous Research",
+      "opencode-go": "OpenCode plan",
     },
 
     // ── Channels ────────────────────────────────────────────────────────────
@@ -1089,6 +1091,8 @@ export const messages = {
       anthropic: "Claude 直连",
       openai: "GPT 直连",
       groq: "高速推理",
+      nousportal: "Nous Research",
+      "opencode-go": "OpenCode 订阅",
     },
 
     // ── 渠道连接 ───────────────────────────────────────────────────────────
