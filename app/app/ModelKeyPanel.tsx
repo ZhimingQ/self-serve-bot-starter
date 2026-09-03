@@ -30,6 +30,8 @@ const PROVIDERS = [
   { id: "moonshot", label: "Moonshot", keysUrl: "https://platform.moonshot.ai/console/api-keys" },
   { id: "xai", label: "xAI", keysUrl: "https://console.x.ai" },
   { id: "google", label: "Google Gemini", keysUrl: "https://aistudio.google.com/apikey" },
+  { id: "nousportal", label: "Nous Portal", keysUrl: "https://portal.nousresearch.com/" },
+  { id: "opencode-go", label: "OpenCode Go", keysUrl: "https://opencode.ai/go" },
 ] as const;
 
 type ProviderId = (typeof PROVIDERS)[number]["id"];
