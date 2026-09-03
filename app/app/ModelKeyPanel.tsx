@@ -28,8 +28,6 @@ const PROVIDERS = [
   { id: "zai", label: "Z.AI", keysUrl: "https://z.ai/manage-apikey/apikey-list" },
   { id: "minimax", label: "MiniMax", keysUrl: "https://platform.minimax.io/user-center/basic-information/interface-key" },
   { id: "moonshot", label: "Moonshot", keysUrl: "https://platform.moonshot.ai/console/api-keys" },
-  { id: "xai", label: "xAI", keysUrl: "https://console.x.ai" },
-  { id: "google", label: "Google Gemini", keysUrl: "https://aistudio.google.com/apikey" },
 ] as const;
 
 type ProviderId = (typeof PROVIDERS)[number]["id"];
