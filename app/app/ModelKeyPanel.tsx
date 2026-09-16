@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Messages } from "../../lib/i18n";
+import { PROVIDERS, type ProviderId } from "../../lib/providers";
 
 /**
  * "Model key" panel — the customer points their assistant at their OWN provider
@@ -18,23 +19,8 @@ import type { Messages } from "../../lib/i18n";
  * a worse outcome than any it would solve.
  */
 
-const PROVIDERS = [
-  { id: "openrouter", label: "OpenRouter", keysUrl: "https://openrouter.ai/keys" },
-  { id: "anthropic", label: "Anthropic", keysUrl: "https://console.anthropic.com/settings/keys" },
-  { id: "openai", label: "OpenAI", keysUrl: "https://platform.openai.com/api-keys" },
-  { id: "groq", label: "Groq", keysUrl: "https://console.groq.com/keys" },
-  { id: "deepseek", label: "DeepSeek", keysUrl: "https://platform.deepseek.com/api_keys" },
-  { id: "qwen", label: "Qwen", keysUrl: "https://bailian.console.aliyun.com/" },
-  { id: "zai", label: "Z.AI", keysUrl: "https://z.ai/manage-apikey/apikey-list" },
-  { id: "minimax", label: "MiniMax", keysUrl: "https://platform.minimax.io/user-center/basic-information/interface-key" },
-  { id: "moonshot", label: "Moonshot", keysUrl: "https://platform.moonshot.ai/console/api-keys" },
-  { id: "xai", label: "xAI", keysUrl: "https://console.x.ai" },
-  { id: "google", label: "Google Gemini", keysUrl: "https://aistudio.google.com/apikey" },
-  { id: "nousportal", label: "Nous Portal", keysUrl: "https://portal.nousresearch.com/" },
-  { id: "opencode-go", label: "OpenCode Go", keysUrl: "https://opencode.ai/go" },
-] as const;
-
-type ProviderId = (typeof PROVIDERS)[number]["id"];
+// PROVIDERS and ProviderId live in lib/providers.ts so the locale test can
+// import the real array rather than regex-parse this file. See that module.
 
 interface KeyStatus {
   hasKey: boolean;

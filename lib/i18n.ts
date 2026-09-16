@@ -509,6 +509,12 @@ export const messages = {
       anthropic: "Claude direct",
       openai: "GPT direct",
       groq: "Fast inference",
+      // Both were added to PROVIDERS on 2026-09-03 without a note here, which
+      // broke the standalone build: Messages is a union of the two locale
+      // objects, so copy.providerNote[option.id] only typechecks when a key is
+      // present in BOTH. Keep every ProviderId represented in both blocks.
+      nousportal: "Hermes-native",
+      "opencode-go": "Your Zen plan",
     },
 
     // ── Channels ────────────────────────────────────────────────────────────
@@ -1089,6 +1095,8 @@ export const messages = {
       anthropic: "Claude 直连",
       openai: "GPT 直连",
       groq: "高速推理",
+      nousportal: "Hermes 原生",
+      "opencode-go": "Zen 计划",
     },
 
     // ── 渠道连接 ───────────────────────────────────────────────────────────
