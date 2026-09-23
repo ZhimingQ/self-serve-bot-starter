@@ -180,7 +180,7 @@ export const appUrl = process.env.APP_URL || "http://localhost:3000";
 // DEMO_SIGNUP_URL; login stays in-app. Leave DEMO_MODE unset for a normal storefront.
 export const demoMode = process.env.DEMO_MODE === "1";
 export const demoSignupUrl =
-  process.env.DEMO_SIGNUP_URL || "https://openclawlaunch.com/resell/templates";
+  process.env.DEMO_SIGNUP_URL || "https://openclawlaunch.com/resell";
 
 // ── Password reset email ──────────────────────────────────────────────────
 // "Forgot password" needs a way to reach the customer's inbox. Set a Resend API
