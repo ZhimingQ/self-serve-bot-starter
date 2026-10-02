@@ -966,19 +966,22 @@ a {
   font-size: 12px;
 }
 
+/* The spinner replaces the decorative ring rather than being stacked on it:
+   it used to sit below the ring with a negative margin that pulled the
+   heading up underneath it, so the page showed an empty circle and a second
+   spinner drawn across the title. */
 .provisioning .spinner {
-  position: relative;
   width: 54px;
   height: 54px;
-  margin: 0 0 -80px;
-  border: 1px solid var(--border);
+  margin: 0 0 26px;
+  border: 2px solid var(--border);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
 
 .provisioning:has(.spinner)::before {
-  color: transparent;
+  display: none;
 }
 
 @keyframes spin {
