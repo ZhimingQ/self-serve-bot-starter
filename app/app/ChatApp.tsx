@@ -6,6 +6,8 @@ import { messages as translations, type Locale } from "../../lib/i18n";
 import LanguageSwitcher from "../LanguageSwitcher";
 import ChannelsPanel from "./ChannelsPanel";
 import ModelKeyPanel from "./ModelKeyPanel";
+import BotToolsPanel from "./BotToolsPanel";
+import type { BotToolId } from "../../lib/botTools";
 import {
   defaultAssistantPreferences,
   MAX_CUSTOM_INSTRUCTIONS_CHARS,
@@ -29,7 +31,7 @@ interface ChatMessage {
 class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "channels" | "prompts" | "history" | "usage" | "notifications" | "billing" | "modelKey" | "settings" | "security" | "account" | "privacy" | "support";
+type Panel = "overview" | "assistant" | "channels" | "prompts" | "history" | "usage" | "notifications" | "billing" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
 type AsyncStatus = "idle" | "working" | "done" | "error";
 type WorkspaceLoadStatus = "loading" | "ready" | "error";
 
@@ -79,6 +81,7 @@ export default function ChatApp({
   termsUrl,
   byokEnabled = false,
   channelsEnabled = true,
+  botTools = [],
   preview = false,
 }: {
   email: string;
@@ -104,6 +107,9 @@ export default function ChatApp({
   byokEnabled?: boolean;
   /** ALLOW_CHANNEL_CONNECT — the customer may connect messaging apps themselves. */
   channelsEnabled?: boolean;
+  /** BOT_TOOLS — the per-assistant tools (power, backup, files, ...) this
+   *  storefront offers its customers. Empty hides the Bot tools panel. */
+  botTools?: BotToolId[];
   preview?: boolean;
 }) {
   const copy = translations[locale];
@@ -705,6 +711,7 @@ export default function ChatApp({
   const manageNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "billing", label: copy.controlBilling, icon: "$" },
     ...(byokEnabled ? [{ panel: "modelKey" as Panel, label: copy.controlModelKey, icon: "⚿" }] : []),
+    ...(botTools.length > 0 ? [{ panel: "botTools" as Panel, label: copy.botTools.navLabel, icon: "▤" }] : []),
     { panel: "settings", label: copy.controlSettings, icon: "⚙" },
     { panel: "security", label: copy.controlSecurity, icon: "◇" },
     { panel: "account", label: copy.controlAccount, icon: "○" },
@@ -1074,6 +1081,10 @@ export default function ChatApp({
 
         {panel === "modelKey" && byokEnabled && (
           <ModelKeyPanel copy={copy} brandName={brandName} preview={preview} />
+        )}
+
+        {panel === "botTools" && botTools.length > 0 && (
+          <BotToolsPanel copy={copy} preview={preview} tools={botTools} />
         )}
 
         {panel === "settings" && (

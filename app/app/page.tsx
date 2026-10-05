@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../lib/session";
 import { getStore } from "../../lib/store";
-import { allowChannelConnect, allowEndUserByok, brand, demoSignupUrl, paymentsEnabled, stripe } from "../../lib/config";
+import { allowChannelConnect, allowEndUserByok, brand, demoSignupUrl, enabledBotTools, paymentsEnabled, stripe } from "../../lib/config";
 import { confirmCheckoutSession } from "../../lib/billing";
 import { getLocaleState } from "../../lib/locale";
 import ChatApp from "./ChatApp";
@@ -61,6 +61,7 @@ export default async function AppPage({
       termsUrl={brand.termsUrl}
       byokEnabled={allowEndUserByok}
       channelsEnabled={allowChannelConnect}
+      botTools={enabledBotTools}
     />
   );
 }

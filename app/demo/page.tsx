@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { brand, demoMode, demoSignupUrl } from "../../lib/config";
+import { brand, demoMode, demoSignupUrl, knownBotTools } from "../../lib/config";
 import { getLocaleState } from "../../lib/locale";
 import ChatApp from "../app/ChatApp";
 
@@ -37,10 +37,11 @@ export default async function DemoControlPanel({
       templateUrl={demoSignupUrl}
       supportEmail={brand.supportEmail}
       privacyUrl={brand.privacyUrl}
-      // The showcase always renders both self-service panels, whatever this
+      // The showcase always renders every self-service panel, whatever this
       // deployment sells, so a prospective reseller can see what they get.
       byokEnabled
       channelsEnabled
+      botTools={[...knownBotTools]}
       termsUrl={brand.termsUrl}
       preview
     />
