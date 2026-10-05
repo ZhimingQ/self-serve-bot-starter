@@ -153,9 +153,21 @@ const encoder = new TextEncoder();
  */
 export function multipartStream(
   body: ReadableStream<Uint8Array>,
-  opts: { boundary: string; fileField: string; filename: string; contentType: string; fields?: Record<string, string>; max: number },
-): { stream: ReadableStream<Uint8Array>; cap: StreamCap } {
+  opts: {
+    boundary: string;
+    fileField: string;
+    filename: string;
+    contentType: string;
+    fields?: Record<string, string>;
+    max: number;
+    /** The upload's declared size. When given, the stream fails unless the
+     *  body is exactly this long, and `length` is the envelope's exact size
+     *  (for a Content-Length header). */
+    expectedBytes?: number;
+  },
+): { stream: ReadableStream<Uint8Array>; cap: StreamCap; length: number | null } {
   const cap: StreamCap = { exceeded: false, bytes: 0 };
+  const expected = opts.expectedBytes;
   let head = "";
   for (const [name, value] of Object.entries(opts.fields ?? {})) {
     head += `--${opts.boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`;
@@ -184,7 +196,16 @@ export function multipartStream(
             controller.error(new Error("too_large"));
             return;
           }
+          if (expected !== undefined && cap.bytes > expected) {
+            await reader.cancel().catch(() => {});
+            controller.error(new Error("length_mismatch"));
+            return;
+          }
           controller.enqueue(value);
+          return;
+        }
+        if (expected !== undefined && cap.bytes !== expected) {
+          controller.error(new Error("length_mismatch"));
           return;
         }
         stage = 2;
@@ -196,7 +217,8 @@ export function multipartStream(
       return reader.cancel(reason);
     },
   });
-  return { stream, cap };
+  const length = expected === undefined ? null : prefix.byteLength + expected + suffix.byteLength;
+  return { stream, cap, length };
 }
 
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

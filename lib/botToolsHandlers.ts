@@ -112,6 +112,8 @@ const KNOWN_ERRORS = new Set([
   "wrong_framework",
   "import_in_progress",
   "server_busy",
+  "upload_timeout",
+  "length_required",
   "import_rolled_back",
   "import_failed",
 ]);
@@ -572,23 +574,32 @@ async function forwardImport(
   fields: Record<string, string> | undefined,
   timeoutMs: number,
 ): Promise<{ result: UpstreamResult } | { response: Response }> {
-  const declared = Number(ctx.request.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > MAX_IMPORT_BYTES) return { response: fail("archive_too_large", 413) };
-  if (!ctx.request.body) return { response: fail("invalid_archive", 400) };
+  // The platform needs the exact size up front (it reserves the upload in one
+  // buffer and answers 411 without it), so the browser's own Content-Length is
+  // required here — fetch() with a File always sends one — and the envelope's
+  // size is added to it. The stream still never holds the file in memory, and
+  // fails if the body turns out longer or shorter than declared.
+  const rawLength = ctx.request.headers.get("content-length");
+  const declared = rawLength && /^\d{1,12}$/.test(rawLength) ? Number(rawLength) : NaN;
+  if (!Number.isSafeInteger(declared)) return { response: fail("length_required", 411) };
+  if (declared > MAX_IMPORT_BYTES) return { response: fail("archive_too_large", 413) };
+  if (declared === 0 || !ctx.request.body) return { response: fail("invalid_archive", 400) };
   const boundary = `----bottools${crypto.randomUUID().replace(/-/g, "")}`;
-  const { stream, cap } = multipartStream(ctx.request.body, {
+  const { stream, cap, length } = multipartStream(ctx.request.body, {
     boundary,
     fileField: "file",
     filename: "backup.zip",
     contentType: "application/zip",
     fields,
     max: MAX_IMPORT_BYTES,
+    expectedBytes: declared,
   });
   try {
     const result = await botToolCall(ctx.instanceId, path, {
       method: "POST",
       stream,
       contentType: `multipart/form-data; boundary=${boundary}`,
+      contentLength: length ?? undefined,
       timeoutMs,
     });
     return { result };

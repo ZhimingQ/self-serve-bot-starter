@@ -167,8 +167,8 @@ Things worth knowing before you turn them on:
   need a Node host or "Deploy via your bot". Long restores also need a function
   time limit of about 5 minutes (`maxDuration` is set to 300 on the route).
 - A few values come straight from the platform and are shown as returned: the
-  endpoint's base URL, the SSH machine name and the "my computer" connect
-  command. They name the platform's own hosts.
+  endpoint's base URL and the "my computer" connect command name the
+  platform's own hosts. (The connector itself prints only the code.)
 
 ## When a customer forgets their password
 

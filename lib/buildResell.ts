@@ -221,6 +221,9 @@ export interface BotToolRequest {
   /** A pre-built streamed body (uploads), sent with `contentType`. */
   stream?: ReadableStream<Uint8Array>;
   contentType?: string;
+  /** Exact byte length of `stream`, sent as Content-Length instead of chunked
+   *  encoding. fetch fails the request if the stream does not match it. */
+  contentLength?: number;
   /** Hard ceiling for the whole call. Omitted for downloads, which are bounded
    *  by `signal` (the customer's own request) instead: a timeout would cut a
    *  large backup off mid-stream. */
@@ -239,7 +242,10 @@ async function botToolSend(instanceId: string, path: string, req: BotToolRequest
   if (req.signal) signals.push(req.signal);
   const init: RequestInit & { duplex?: "half" } = {
     method: req.method,
-    headers: authHeaders(req.contentType ? { "Content-Type": req.contentType } : undefined),
+    headers: authHeaders({
+      ...(req.contentType ? { "Content-Type": req.contentType } : {}),
+      ...(req.stream && req.contentLength !== undefined ? { "Content-Length": String(req.contentLength) } : {}),
+    }),
     cache: "no-store",
     ...(signals.length ? { signal: signals.length === 1 ? signals[0] : AbortSignal.any(signals) } : {}),
   };
