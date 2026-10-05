@@ -2265,12 +2265,152 @@ a.control-brand:hover strong { text-decoration: underline; text-underline-offset
 .channel-steps { margin: 16px 0 0; padding-left: 18px; color: var(--text-muted); font-size: 12.5px; }
 .channel-steps li { margin: 5px 0; line-height: 1.5; }
 
+/* ── Bot tools panel ──────────────────────────────────────────────────────── */
+/* Reuses the byok-card / byok-field / byok-actions vocabulary; these are only
+   the pieces the tools need on top of it. */
+
+.bt-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 26px; }
+.bt-tabs [role="tab"] {
+  padding: 8px 13px;
+  border: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.bt-tabs [role="tab"]:hover { color: var(--text); }
+.bt-tabs [role="tab"].is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--text); box-shadow: inset 0 0 0 1px var(--accent); }
+.bt-tabs [role="tab"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bt-tabs > .bt-status { margin-left: auto; }
+
+.bt-status { display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: 11px; }
+.bt-status i { width: 8px; height: 8px; border-radius: 999px; background: #a8a296; }
+.bt-status.is-running i { background: #4f8656; box-shadow: 0 0 0 4px rgb(79 134 86 / 12%); }
+.bt-status.is-starting i,
+.bt-status.is-sleeping i { background: #c49a3c; }
+.bt-status.is-error i { background: #b4463d; }
+
+.bt-subhead { margin: 22px 0 0; font-size: 13px; font-weight: 700; }
+.bt-confirm { margin-top: 18px; padding: 14px 16px; border: 1px solid #deb5b0; background: #fff6f3; }
+.bt-confirm p { margin: 0; font-size: 13px; line-height: 1.55; }
+.bt-confirm .byok-actions { margin-top: 12px; }
+.bt-confirm.is-inline { margin-top: 0; }
+
+.bt-copy { margin-top: 18px; }
+.bt-copy > span { display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 12px; }
+.bt-copy > div { display: flex; align-items: stretch; gap: 8px; }
+.bt-copy code,
+.bt-copy pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  background: var(--cream);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.bt-copy.is-secret code { border-color: var(--accent); background: #fff; }
+.bt-copy .btn { flex: none; }
+
+.bt-keybox { margin-top: 18px; padding: 16px 18px; border: 1px solid #ddc9a4; background: #fbf5e8; }
+.bt-keybox > p { margin: 0; font-size: 13px; line-height: 1.55; }
+
+.bt-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 16px 0 0; font-size: 12.5px; }
+.bt-facts dt { color: var(--text-muted); }
+.bt-facts dd { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+
+.bt-checks { display: grid; gap: 8px; margin: 20px 0 0; padding: 0; border: 0; }
+.bt-checks legend { margin-bottom: 8px; padding: 0; color: var(--text-muted); font-size: 12px; }
+.bt-checks label,
+.bt-agree { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.45; cursor: pointer; }
+.control-shell .bt-checks input,
+.control-shell .bt-agree input { min-height: 0; margin-top: 2px; accent-color: var(--accent); }
+.bt-checks label,
+.bt-agree { min-height: 28px; }
+.bt-agree { margin-top: 14px; }
+
+.bt-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 20px; font-size: 12.5px; }
+.bt-crumbs span { display: inline-flex; align-items: center; gap: 4px; }
+.bt-crumbs b { color: var(--text-muted); font-weight: 400; }
+.bt-crumbs button { padding: 2px 0; border: 0; background: transparent; color: var(--accent-hover); font: inherit; cursor: pointer; }
+.bt-crumbs button:disabled { color: var(--text); font-weight: 650; cursor: default; }
+
+.bt-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+
+.bt-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.bt-inline label { color: var(--text-muted); font-size: 12px; }
+.bt-inline input,
+.bt-folder-row input {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.bt-inline input:focus,
+.bt-folder-row input:focus { border-color: var(--accent); outline: none; }
+.bt-inline.is-row { margin-top: 0; }
+
+.bt-table-wrap { margin-top: 16px; overflow-x: auto; border: 1px solid var(--border); }
+.bt-files { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.bt-files th { padding: 9px 12px; border-bottom: 1px solid var(--border); background: var(--cream); color: var(--text-muted); font-weight: 650; text-align: left; white-space: nowrap; }
+.bt-files td { padding: 4px 12px; border-bottom: 1px solid #ebe7de; vertical-align: middle; }
+.bt-files tr:last-child td { border-bottom: 0; }
+.bt-files td:nth-child(2),
+.bt-files td:nth-child(3) { color: var(--text-muted); white-space: nowrap; }
+.bt-files td:first-child { min-width: 140px; }
+.bt-entry { display: inline-flex; align-items: center; gap: 7px; overflow-wrap: break-word; }
+.bt-entry i { width: 10px; color: var(--text-muted); font-style: normal; }
+button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--accent-hover); font: inherit; font-weight: 650; text-align: left; cursor: pointer; }
+.bt-row-actions { display: flex; justify-content: flex-end; gap: 12px; white-space: nowrap; }
+.bt-files .bt-row-actions .settings-reset { padding: 0 0 1px; font-size: 11.5px; }
+
+.bt-steps li { margin: 10px 0; }
+.bt-steps small { display: block; margin-top: 6px; }
+.bt-os { display: inline-flex; gap: 4px; margin: 8px 0 0 8px; vertical-align: middle; }
+.bt-os button { padding: 4px 9px; border: 1px solid var(--border); background: var(--paper); color: var(--text-muted); font: inherit; font-size: 11px; cursor: pointer; }
+.bt-os button.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+
+.bt-folders { display: grid; gap: 8px; margin: 20px 0 0; padding: 0; border: 0; }
+.bt-folders legend { margin-bottom: 8px; padding: 0; color: var(--text-muted); font-size: 12px; }
+.bt-folders small { color: var(--text-muted); font-size: 12px; line-height: 1.55; }
+.bt-folders > .settings-reset { justify-self: start; }
+.bt-folder-row { display: flex; align-items: center; gap: 10px; }
+.bt-folder-row input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.bt-connections { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
+.bt-connections li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border: 1px solid var(--border); background: #fff; }
+.bt-connections li > div:first-child { display: grid; gap: 3px; min-width: 0; }
+.bt-connections strong { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.bt-connections span { color: var(--text-muted); font-size: 12px; }
+.bt-connections code { color: var(--text-muted); font-size: 11.5px; overflow-wrap: anywhere; }
+.bt-dot { width: 8px; height: 8px; border-radius: 999px; background: #a8a296; }
+.bt-dot.is-on { background: #4f8656; }
+
+.bt-found p { margin: 6px 0 0; color: var(--text-muted); font-size: 12.5px; overflow-wrap: anywhere; }
+
 @media (max-width: 900px) {
   .byok-providers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .channel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
+  .bt-tabs > .bt-status { width: 100%; margin-left: 0; }
+  .bt-copy > div { flex-direction: column; }
+  .bt-connections li { flex-direction: column; align-items: stretch; }
+  .bt-files td:nth-child(3),
+  .bt-files th:nth-child(3) { display: none; }
+  .bt-files td,
+  .bt-files th { padding-right: 8px; padding-left: 8px; }
+  .bt-row-actions { flex-direction: column; align-items: flex-end; gap: 0; }
   .byok-card { padding: 20px; }
   .byok-card > header { flex-direction: column; gap: 10px; }
   .byok-providers,
