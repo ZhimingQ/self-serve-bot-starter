@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "../../../../lib/session";
 import { getStore } from "../../../../lib/store";
 import { rateLimit } from "../../../../lib/rateLimit";
-import { botToolEnabled, enabledBotTools } from "../../../../lib/config";
+import { botToolEnabled, enabledBotTools, paymentsEnabled } from "../../../../lib/config";
 import { BOT_TOOL_ACTIONS, type Method } from "../../../../lib/botToolsHandlers";
 
 /**
@@ -22,6 +22,9 @@ import { BOT_TOOL_ACTIONS, type Method } from "../../../../lib/botToolsHandlers"
  *      request. All bots sit behind the same reseller key, so accepting an id
  *      from the browser would let any customer act on every other customer's bot.
  *   4. Every action carries a per-customer rate limit.
+ *   5. With payments on, the customer must have an active subscription — the
+ *      same server-side gate as /api/chat. Otherwise a lapsed customer could
+ *      start a stopped bot, open SSH or restore a backup from this panel.
  *
  * The reseller's sk_live_ key never leaves the server: lib/buildResell is
  * import-guarded ("server-only").
@@ -60,6 +63,13 @@ async function dispatch(method: Method, request: NextRequest, params: Promise<{ 
         { error: "rate_limited" },
         { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
       );
+    }
+  }
+
+  if (paymentsEnabled) {
+    const user = await getStore().getUserById(session.userId);
+    if (user?.billingStatus !== "active") {
+      return NextResponse.json({ error: "payment_required" }, { status: 402 });
     }
   }
 
