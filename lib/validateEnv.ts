@@ -22,6 +22,7 @@
  * a startup validator wants the raw environment anyway.
  */
 import { validateLocaleConfig } from "./localeConfig";
+import { botToolsProblems } from "./botTools";
 
 export function validateEnv(): void {
   if (process.env.NODE_ENV !== "production") return;
@@ -96,6 +97,10 @@ export function validateEnv(): void {
       );
     }
   }
+
+  // BOT_TOOLS is an allowlist enforced server-side, so a typo decides what
+  // customers can do. Unknown names fail the boot rather than being dropped.
+  problems.push(...botToolsProblems(process.env.BOT_TOOLS));
 
   if (problems.length) {
     throw new Error(

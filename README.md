@@ -83,8 +83,8 @@ No code changes needed to reskin the app for a new reseller.
 
 ## What your customers can set up themselves
 
-Two panels in the customer workspace let a customer finish their own setup, so
-you are not the middleman for either.
+Three panels in the customer workspace let a customer finish their own setup
+and run their own assistant, so you are not the middleman for any of it.
 
 ### Model key — the customer brings their own API key
 
@@ -127,6 +127,48 @@ assistant.
 Connecting a channel restarts the customer's bot (about a minute; a first WeChat
 connect installs a plugin and takes 2 to 4), which the panel says out loud rather
 than leaving them watching a spinner.
+
+### Bot tools — the customer runs their own assistant
+
+The "Bot tools" panel under Manage gives each customer the per-assistant tools
+you would otherwise run for them, one tab each:
+
+| Tool (`BOT_TOOLS` name) | What the customer can do |
+|---|---|
+| `power` | See whether the assistant is running; start, stop or restart it. |
+| `backup` | Download a `.zip` backup, choosing what goes in. Settings and personality by default; conversations, workspace files and skills only when ticked. |
+| `import` | Restore such a backup. The panel shows what is inside first, lets them pick what to restore, and reports what was applied. Settings you manage (model, chat apps) are never overwritten by a backup. |
+| `files` | Browse the assistant's folder; download (up to 25 MB), upload (up to 50 MB), create folders, rename, delete. Files the platform manages are shown read-only. |
+| `ssh` | Join the assistant to the customer's own Tailscale network with an auth key they generate, then `ssh` in from their own devices. The panel walks them through creating the key. |
+| `endpoint` | Turn on an OpenAI-compatible API endpoint for their own apps. The key is shown once; it can be replaced or the endpoint turned off. |
+| `desktop` | Open a live view of the assistant's own desktop in a new tab. |
+| `computer` | Let the assistant use chosen folders on the customer's computer: they run a one-line command, type the code it prints into the panel, and pick folders and access level. |
+
+All tools are on by default. `BOT_TOOLS=power,backup,files` offers just those,
+and `BOT_TOOLS=none` hides the panel. A tool that is not listed is hidden in the
+UI and answers 404 server-side, so it is a real switch, not a cosmetic one.
+
+How it is wired, if you extend it: every action goes through one route,
+`app/api/bot-tools/[action]`, which looks the customer's bot up from their
+session — never from the request — and maps each action in an explicit table
+(`lib/botToolsHandlers.ts`) to exactly one Build & Resell API call. Each tool's UI
+is one component in `app/app/botTools/`, registered in `app/app/BotToolsPanel.tsx`.
+
+Things worth knowing before you turn them on:
+
+- Most tools need the assistant to be running; the panel says so and points at
+  the Power tab.
+- Some tools add capability on your Build & Resell plan (SSH, endpoint, desktop,
+  my computer, import, file writes) and are refused while your plan is inactive.
+  The customer then sees "temporarily unavailable", never your billing state.
+- Uploads (files, restore) stream through your storefront to the platform rather
+  than being held in memory. Your host must still accept the request body: on
+  Vercel, functions cap request bodies at 4.5 MB, so larger uploads and restores
+  need a Node host or "Deploy via your bot". Long restores also need a function
+  time limit of about 5 minutes (`maxDuration` is set to 300 on the route).
+- A few values come straight from the platform and are shown as returned: the
+  endpoint's base URL, the SSH machine name and the "my computer" connect
+  command. They name the platform's own hosts.
 
 ## When a customer forgets their password
 
@@ -234,8 +276,8 @@ Open http://localhost:3000.
 The authenticated `/app` includes a full customer workspace: overview,
 assistant, channels, prompt library, persistent conversation history, usage and
 access, billing, model key, assistant settings, account, privacy and data, and
-help and support. Channels and model key are the two panels a reseller can switch
-off — see "What your customers can set up themselves" above.
+help and support, plus bot tools. Channels, model key and bot tools are the panels
+a reseller can switch off — see "What your customers can set up themselves" above.
 Customers can carry saved conversation history and response preferences across
 devices, open Stripe's customer portal for recurring subscriptions, download a
 storefront-only data export, clear the history displayed by the storefront, and
@@ -298,6 +340,7 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | `ALLOW_END_USER_BYOK` | no (defaults off) | Shows the Model key panel, where a customer funds the assistant with their own provider key. See below. |
 | `ALLOW_CHANNEL_CONNECT` | no (defaults **on**) | Set `0` to hide the Channels panel and connect apps for your customers yourself. |
 | `CHANNELS` | no (defaults to all) | Restrict the Channels panel, e.g. `wechat,telegram`. |
+| `BOT_TOOLS` | no (defaults to all) | Bot tools offered to customers: `power,backup,import,files,ssh,endpoint,desktop,computer`, or `none`. See "Bot tools" above. |
 | `RESEND_API_KEY` | no | Enables emailed password resets. Unset ⇒ the Forgot-password page points customers at support and you use `npm run reset-password`. |
 | `RESET_EMAIL_FROM` | with `RESEND_API_KEY` | Sender address, on a domain verified in Resend. |
 
@@ -320,6 +363,7 @@ app/
   api/account/route.ts       Confirmed account + bot + billing deletion
   api/account/export/route.ts Download storefront-owned customer data
   api/provision/route.ts     Idempotent bot creation + status polling (payment-gated)
+  api/bot-tools/[action]/route.ts  Bot tools: session-scoped allowlist of /v1 calls
   api/chat/route.ts          SSE passthrough to the Build & Resell API (payment-gated)
   api/checkout/route.ts      Start a Stripe Checkout session
   api/stripe/webhook/route.ts  Stripe webhook → keeps billingStatus in sync
@@ -334,6 +378,8 @@ lib/
   buildResell.ts                Server-only Build & Resell API client
   billing.ts                    Verify a Checkout session + activate the user
   rateLimit.ts                  Fixed-window limiter (Upstash / in-memory)
+  botTools.ts                   BOT_TOOLS parsing + input validation + upload streaming (pure)
+  botToolsHandlers.ts           Server-only bot-tools action table → Build & Resell API
 instrumentation.ts          Boot hook → validates env in production
 ```
 

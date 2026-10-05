@@ -8,6 +8,7 @@
 export type BotFramework = "openclaw" | "hermes";
 
 import { readFileSync } from "node:fs";
+import { parseBotTools, type BotToolId } from "./botTools";
 
 export interface BrandConfig {
   revision: number;
@@ -255,6 +256,25 @@ export const offeredChannels: ChannelId[] = (() => {
     .map((s) => s.trim().toLowerCase())
     .filter((s): s is ChannelId => (knownChannels as readonly string[]).includes(s));
 })();
+
+// ── Customer self-service: bot tools ──────────────────────────────────────
+// The "Bot tools" panel under Manage gives each customer the per-assistant
+// tools you would otherwise run for them: power (start/stop/restart), backup
+// (download an archive), SSH (into their own Tailscale network), files, an
+// API endpoint for their own apps, import (restore a backup), a live desktop
+// view, and "my computer" (let the assistant reach folders on their computer).
+//
+//  BOT_TOOLS=power,backup,files  offers just those. Unset (the default) offers
+//    every tool; BOT_TOOLS=none hides the panel entirely. A tool that is not
+//    listed is hidden in the UI AND answers 404 server-side — the route checks
+//    this list, it is not a cosmetic switch. A list naming nothing known offers
+//    nothing (and fails validateEnv in production), never everything.
+//
+// Every tool acts only on the signed-in customer's own assistant, resolved
+// from the session; see app/api/bot-tools.
+export { knownBotTools, type BotToolId } from "./botTools";
+export const enabledBotTools: BotToolId[] = parseBotTools(process.env.BOT_TOOLS);
+export const botToolEnabled = (id: BotToolId): boolean => enabledBotTools.includes(id);
 
 // ── Startup validation ────────────────────────────────────────────────────
 // Lives in ./validateEnv so that instrumentation.ts can import it WITHOUT

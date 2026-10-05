@@ -185,6 +185,103 @@ export function channelAction(instanceId: string, body: Record<string, unknown>)
   return callApi(`/instances/${encodeURIComponent(instanceId)}/channels`, { method: "POST", body });
 }
 
+// ── Customer self-service: bot tools ─────────────────────────────────────────
+// Power, backup, SSH, files, API endpoint, desktop, "my computer" and import.
+// Same contract as above: the caller has resolved `instanceId` from the session.
+//
+// The sub-path is a CLOSED set of literals, so no string the browser sent can
+// ever become part of an upstream URL path — browser input only reaches the
+// query string (encoded by URLSearchParams) or a JSON body the route built
+// field by field. The one path segment that is not a literal, a computer
+// connection id, has its own function below and is UUID-checked there.
+
+export type BotToolPath =
+  | ""
+  | "/start"
+  | "/stop"
+  | "/restart"
+  | "/export"
+  | "/ssh"
+  | "/files"
+  | "/files/content"
+  | "/files/mkdir"
+  | "/files/rename"
+  | "/endpoint"
+  | "/desktop"
+  | "/computer"
+  | "/computer/approve"
+  | "/import/preview"
+  | "/import/apply";
+
+export interface BotToolRequest {
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  query?: Record<string, string>;
+  /** A JSON body, serialized here. */
+  json?: unknown;
+  /** A pre-built streamed body (uploads), sent with `contentType`. */
+  stream?: ReadableStream<Uint8Array>;
+  contentType?: string;
+  /** Hard ceiling for the whole call. Omitted for downloads, which are bounded
+   *  by `signal` (the customer's own request) instead: a timeout would cut a
+   *  large backup off mid-stream. */
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
+
+function botToolUrl(instanceId: string, path: string, query?: Record<string, string>): string {
+  const qs = query && Object.keys(query).length ? `?${new URLSearchParams(query).toString()}` : "";
+  return `${brand.apiBase}/instances/${encodeURIComponent(instanceId)}${path}${qs}`;
+}
+
+async function botToolSend(instanceId: string, path: string, req: BotToolRequest): Promise<Response> {
+  const signals: AbortSignal[] = [];
+  if (req.timeoutMs) signals.push(AbortSignal.timeout(req.timeoutMs));
+  if (req.signal) signals.push(req.signal);
+  const init: RequestInit & { duplex?: "half" } = {
+    method: req.method,
+    headers: authHeaders(req.contentType ? { "Content-Type": req.contentType } : undefined),
+    cache: "no-store",
+    ...(signals.length ? { signal: signals.length === 1 ? signals[0] : AbortSignal.any(signals) } : {}),
+  };
+  if (req.stream) {
+    init.body = req.stream;
+    // Required by fetch for a streamed request body.
+    init.duplex = "half";
+  } else if (req.json !== undefined) {
+    init.body = JSON.stringify(req.json);
+  }
+  return fetch(botToolUrl(instanceId, path, req.query), init);
+}
+
+/** One bot-tool call, answered as status + parsed JSON body (never throws on a
+ *  non-2xx; the route maps the platform's error code for the customer). */
+export async function botToolCall<T = Record<string, unknown>>(
+  instanceId: string,
+  path: BotToolPath,
+  req: BotToolRequest,
+): Promise<UpstreamResult<T>> {
+  const res = await botToolSend(instanceId, path, { timeoutMs: CONTROL_TIMEOUT_MS, ...req });
+  const body = (await res.json().catch(() => ({}))) as T;
+  return { ok: res.ok, status: res.status, body };
+}
+
+/** The same, returning the raw Response so a download can be piped straight
+ *  through to the customer without buffering it. */
+export function botToolRaw(instanceId: string, path: BotToolPath, req: BotToolRequest): Promise<Response> {
+  return botToolSend(instanceId, path, req);
+}
+
+/** Disconnect one computer from the bot. The id must already be a UUID; it is
+ *  checked again here because it is the only non-literal path segment. */
+export async function computerDisconnect(instanceId: string, connectionId: string): Promise<UpstreamResult> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(connectionId)) {
+    return { ok: false, status: 404, body: { error: "connection_not_found" } };
+  }
+  const res = await botToolSend(instanceId, `/computer/${connectionId}`, { method: "DELETE", timeoutMs: CONTROL_TIMEOUT_MS * 3 });
+  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  return { ok: res.ok, status: res.status, body };
+}
+
 export interface StreamResponseParams {
   instanceId: string;
   input: string;
