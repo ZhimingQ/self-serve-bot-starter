@@ -120,6 +120,10 @@ export default function VideoSection({ copy, preview, status, onStatus }: Sectio
         // panel last saw while it was restarting.
         const info = await toolFetch<{ status: string }>("info");
         if (info.ok && typeof info.data.status === "string") onStatus(info.data.status);
+        // A switch that landed has brought the assistant back up (as Power
+        // assumes after its own restart), so a failed read must not leave Save
+        // disabled on a stale "starting".
+        else if (!next.applyFailed) onStatus("running");
         if (next.applyFailed) { setSaved(false); setError(errorText(copy, next.applyError ?? "video_failed")); }
         const known = [...next.models, ...(next.included?.models ?? [])];
         setChoice(next.model && known.some((m) => m.id === next.model) ? next.model : "off");
