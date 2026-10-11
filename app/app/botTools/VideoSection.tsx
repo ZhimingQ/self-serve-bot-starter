@@ -16,6 +16,8 @@ interface VideoState {
   applying: boolean;
   /** The last switch failed after the save was answered. */
   applyFailed: boolean;
+  /** Why, as an error code the panel can explain. */
+  applyError: string | null;
   keyPreviews: { fal: string | null; google: string | null };
   models: VideoModel[];
   /** Video the seller pays for, when they turned it on for this assistant. */
@@ -26,6 +28,7 @@ const PREVIEW_STATE: VideoState = {
   model: null,
   applying: false,
   applyFailed: false,
+  applyError: null,
   keyPreviews: { fal: null, google: null },
   models: [
     { id: "google/veo-3.1-fast-generate-preview", label: "Veo 3.1 Fast", provider: "google", price: null },
@@ -60,6 +63,8 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [pollTick, setPollTick] = useState(0);
   const pollUntil = useRef(0);
 
   /** quiet: a background re-read while a switch applies, which keeps the form. */
@@ -72,6 +77,7 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
         model: typeof res.data.model === "string" ? res.data.model : null,
         applying: res.data.applying === true,
         applyFailed: res.data.applyFailed === true,
+        applyError: typeof res.data.applyError === "string" ? res.data.applyError : null,
         keyPreviews: {
           fal: res.data.keyPreviews?.fal ?? null,
           google: res.data.keyPreviews?.google ?? null,
@@ -106,16 +112,22 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
       const next = await refresh(true);
       if (next && !next.applying) {
         pollUntil.current = 0;
-        if (next.applyFailed) { setSaved(false); setError(errorText(copy, "video_failed")); }
+        if (next.applyFailed) { setSaved(false); setError(errorText(copy, next.applyError ?? "video_failed")); }
         const known = [...next.models, ...(next.included?.models ?? [])];
         setChoice(next.model && known.some((m) => m.id === next.model) ? next.model : "off");
       } else if (Date.now() > pollUntil.current) {
+        // Gave up following it: say so rather than claim it was saved.
         pollUntil.current = 0;
+        setSaved(false);
+        setUnconfirmed(true);
         setState((s) => (s ? { ...s, applying: false } : s));
+      } else {
+        // Still applying, or this read failed: look again.
+        setPollTick((n) => n + 1);
       }
     }, APPLY_POLL_MS);
     return () => clearTimeout(id);
-  }, [applying, preview, refresh, copy, state]);
+  }, [applying, preview, refresh, copy, pollTick]);
 
   const selected = [...(state?.models ?? []), ...(state?.included?.models ?? [])].find((m) => m.id === choice) ?? null;
   // Included models are paid by the seller and take no key.
@@ -128,6 +140,7 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
   async function save() {
     setError("");
     setSaved(false);
+    setUnconfirmed(false);
     if (preview) {
       setState((s) => (s ? { ...s, model: choice === "off" ? null : choice } : s));
       setKey("");
@@ -231,6 +244,7 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
           </div>
           {applying && <p className="byok-note" role="status">{t.applying}</p>}
           {saved && !applying && <p className="byok-note" role="status">{t.saved}</p>}
+          {unconfirmed && !applying && <p className="byok-note" role="status">{t.stillApplying}</p>}
         </form>
       )}
 

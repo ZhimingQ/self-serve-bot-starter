@@ -475,6 +475,8 @@ function videoView(data: Record<string, unknown>) {
     // A switch restarts the assistant and finishes after the PUT has answered.
     applying: data.applying === true,
     applyFailed: data.apply_failed === true,
+    // Only codes the panel can explain; anything else reads as video_failed.
+    applyError: typeof data.apply_error === "string" && KNOWN_ERRORS.has(data.apply_error) ? data.apply_error : null,
     keyPreviews: { fal: str(previews.fal), google: str(previews.google) },
     models: modelList(data.models, ["fal", "google"]),
     // Included video (paid by the seller): models plus how much of this
