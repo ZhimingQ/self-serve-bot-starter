@@ -53,7 +53,7 @@ const KEY_PAGES = {
  * assistants support this — the platform answers 404 for the rest, which is
  * shown as "not available".
  */
-export default function VideoSection({ copy, preview, status }: SectionProps) {
+export default function VideoSection({ copy, preview, status, onStatus }: SectionProps) {
   const t = copy.botTools.video;
   const [state, setState] = useState<VideoState | null>(preview ? PREVIEW_STATE : null);
   const [load, setLoad] = useState<"loading" | "ready" | "error" | "unavailable">(preview ? "ready" : "loading");
@@ -116,6 +116,10 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
       const next = await refresh(true);
       if (next && !next.applying) {
         pollUntil.current = 0;
+        // The restart is over: pick up the assistant's real status, which the
+        // panel last saw while it was restarting.
+        const info = await toolFetch<{ status: string }>("info");
+        if (info.ok && typeof info.data.status === "string") onStatus(info.data.status);
         if (next.applyFailed) { setSaved(false); setError(errorText(copy, next.applyError ?? "video_failed")); }
         const known = [...next.models, ...(next.included?.models ?? [])];
         setChoice(next.model && known.some((m) => m.id === next.model) ? next.model : "off");
@@ -131,7 +135,7 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
       }
     }, APPLY_POLL_MS);
     return () => clearTimeout(id);
-  }, [applying, preview, refresh, copy, pollTick]);
+  }, [applying, preview, refresh, copy, pollTick, onStatus]);
 
   const selected = [...(state?.models ?? []), ...(state?.included?.models ?? [])].find((m) => m.id === choice) ?? null;
   // Included models are paid by the seller and take no key.
