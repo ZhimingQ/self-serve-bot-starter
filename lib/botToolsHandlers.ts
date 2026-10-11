@@ -116,6 +116,13 @@ const KNOWN_ERRORS = new Set([
   "length_required",
   "import_rolled_back",
   "import_failed",
+  "key_required",
+  "invalid_key",
+  "invalid_model",
+  "model_not_allowed",
+  "provider_not_allowed",
+  "bot_update_required",
+  "video_failed",
 ]);
 
 /** Map a failed platform call to a customer-safe status + code. */
@@ -444,6 +451,55 @@ const endpointDisable: ActionSpec = {
   },
 };
 
+// ── Video (the customer's own provider key) ─────────────────────────────────
+// Hermes assistants only; the platform answers 404 for any other kind, which
+// the panel shows as "not available". The key is the CUSTOMER's: it pays for
+// their videos, is validated by the platform before the assistant is touched,
+// and only a masked preview ever comes back.
+
+function videoView(data: Record<string, unknown>) {
+  const previews = data.key_previews && typeof data.key_previews === "object" ? (data.key_previews as Record<string, unknown>) : {};
+  const models = Array.isArray(data.models) ? data.models : [];
+  return {
+    model: str(data.model),
+    keyPreviews: { fal: str(previews.fal), google: str(previews.google) },
+    models: models
+      .filter((m): m is Record<string, unknown> => !!m && typeof m === "object")
+      .map((m) => ({ id: str(m.id) ?? "", label: str(m.label) ?? "", provider: str(m.provider) ?? "", price: str(m.price) }))
+      .filter((m) => m.id && (m.provider === "fal" || m.provider === "google")),
+  };
+}
+
+const videoStatus: ActionSpec = {
+  tool: "video",
+  limit: { max: 120, windowSec: 600 },
+  async run({ instanceId }) {
+    const result = await botToolCall(instanceId, "/video", { method: "GET" });
+    if (!result.ok) return upstreamFailure(result);
+    return json(videoView(dataOf(result)));
+  },
+};
+
+const videoSet: ActionSpec = {
+  tool: "video",
+  limit: { max: 10, windowSec: 600 },
+  async run({ request, instanceId }) {
+    const body = await readJson(request);
+    const model = body?.model;
+    const key = body?.key;
+    if (typeof model !== "string" || !model || model.length > 200) return fail("invalid_model", 400);
+    if (key !== undefined && (typeof key !== "string" || !key.trim() || key.length > 512)) return fail("invalid_key", 400);
+    // Switching restarts the assistant with the new setting.
+    const result = await botToolCall(instanceId, "/video", {
+      method: "PUT",
+      json: key === undefined ? { model } : { model, key: (key as string).trim() },
+      timeoutMs: 150_000,
+    });
+    if (!result.ok) return upstreamFailure(result);
+    return json({ model: str(dataOf(result).model) });
+  },
+};
+
 // ── Desktop ─────────────────────────────────────────────────────────────────
 
 const desktopStatus: ActionSpec = {
@@ -683,6 +739,8 @@ const importApply: ActionSpec = {
  *   DELETE computer?id=    → DELETE /v1/instances/{id}/computer/{uuid}
  *   POST   import-preview  → POST   /v1/instances/{id}/import/preview  (raw zip → multipart)
  *   POST   import-apply    → POST   /v1/instances/{id}/import/apply    (raw zip → multipart)
+ *   GET    video           → GET    /v1/instances/{id}/video
+ *   PUT    video           → PUT    /v1/instances/{id}/video   {model, key?}
  *
  * To add a tool: add its id to knownBotTools (lib/botTools.ts), its actions
  * here, and one section component in app/app/botTools/.
@@ -701,4 +759,5 @@ export const BOT_TOOL_ACTIONS: Record<string, Partial<Record<Method, ActionSpec>
   computer: { GET: computerStatus, POST: computerApprove, DELETE: computerRemove },
   "import-preview": { POST: importPreview },
   "import-apply": { POST: importApply },
+  video: { GET: videoStatus, PUT: videoSet },
 };

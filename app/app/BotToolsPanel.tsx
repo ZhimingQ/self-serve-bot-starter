@@ -12,10 +12,11 @@ import EndpointSection from "./botTools/EndpointSection";
 import ImportSection from "./botTools/ImportSection";
 import DesktopSection from "./botTools/DesktopSection";
 import ComputerSection from "./botTools/ComputerSection";
+import VideoSection from "./botTools/VideoSection";
 
 /**
- * "Bot tools" — power, backup, SSH, files, API endpoint, restore, desktop and
- * "my computer" for the customer's OWN assistant.
+ * "Bot tools" — power, backup, SSH, files, API endpoint, restore, desktop,
+ * "my computer" and video for the customer's OWN assistant.
  *
  * Rendered only when BOT_TOOLS leaves at least one tool on; `tools` is that
  * list, and a section is shown only when its tool is in it. The server enforces
@@ -37,6 +38,7 @@ const SECTIONS: { id: BotToolId; Component: ComponentType<SectionProps> }[] = [
   { id: "endpoint", Component: EndpointSection },
   { id: "desktop", Component: DesktopSection },
   { id: "computer", Component: ComputerSection },
+  { id: "video", Component: VideoSection },
 ];
 
 const PREVIEW_CATEGORIES = ["config", "agents", "skills", "sessions", "knowledge"];

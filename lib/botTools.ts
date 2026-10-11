@@ -1,7 +1,7 @@
 /**
  * "Bot tools" — the per-assistant tools a customer can drive from the Manage
  * section of their workspace: power, backup, SSH, files, API endpoint, import,
- * desktop and "my computer".
+ * desktop, "my computer" and video (with the customer's own provider key).
  *
  * This module is PURE (no node:fs, no imports) so that:
  *   - lib/config.ts and lib/validateEnv.ts can share one parser for BOT_TOOLS,
@@ -14,7 +14,7 @@
  * always the signed-in customer's own bot, resolved from the session.
  */
 
-export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "computer"] as const;
+export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "computer", "video"] as const;
 export type BotToolId = (typeof knownBotTools)[number];
 
 /**

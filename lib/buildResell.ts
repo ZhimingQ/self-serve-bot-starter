@@ -211,7 +211,8 @@ export type BotToolPath =
   | "/computer"
   | "/computer/approve"
   | "/import/preview"
-  | "/import/apply";
+  | "/import/apply"
+  | "/video";
 
 export interface BotToolRequest {
   method: "GET" | "POST" | "PUT" | "DELETE";
