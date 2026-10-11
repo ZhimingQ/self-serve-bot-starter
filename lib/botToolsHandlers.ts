@@ -124,6 +124,7 @@ const KNOWN_ERRORS = new Set([
   "bot_update_required",
   "video_failed",
   "included_video_off",
+  "video_restart_failed",
 ]);
 
 /** Map a failed platform call to a customer-safe status + code. */
