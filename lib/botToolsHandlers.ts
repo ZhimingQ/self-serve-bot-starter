@@ -123,6 +123,7 @@ const KNOWN_ERRORS = new Set([
   "provider_not_allowed",
   "bot_update_required",
   "video_failed",
+  "included_video_off",
 ]);
 
 /** Map a failed platform call to a customer-safe status + code. */
@@ -457,16 +458,28 @@ const endpointDisable: ActionSpec = {
 // their videos, is validated by the platform before the assistant is touched,
 // and only a masked preview ever comes back.
 
+function modelList(raw: unknown, providers: readonly string[]) {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((m): m is Record<string, unknown> => !!m && typeof m === "object")
+    .map((m) => ({ id: str(m.id) ?? "", label: str(m.label) ?? "", provider: str(m.provider) ?? "", price: str(m.price) }))
+    .filter((m) => m.id && providers.includes(m.provider));
+}
+
 function videoView(data: Record<string, unknown>) {
   const previews = data.key_previews && typeof data.key_previews === "object" ? (data.key_previews as Record<string, unknown>) : {};
-  const models = Array.isArray(data.models) ? data.models : [];
+  const included = data.included && typeof data.included === "object" ? (data.included as Record<string, unknown>) : {};
+  const budget = num(included.monthly_budget_usd) ?? 0;
+  const spent = num(included.spent_usd_this_month) ?? 0;
   return {
     model: str(data.model),
     keyPreviews: { fal: str(previews.fal), google: str(previews.google) },
-    models: models
-      .filter((m): m is Record<string, unknown> => !!m && typeof m === "object")
-      .map((m) => ({ id: str(m.id) ?? "", label: str(m.label) ?? "", provider: str(m.provider) ?? "", price: str(m.price) }))
-      .filter((m) => m.id && (m.provider === "fal" || m.provider === "google")),
+    models: modelList(data.models, ["fal", "google"]),
+    // Included video (paid by the seller): models plus how much of this
+    // month's allowance is used, as a percentage. The seller's dollar budget
+    // and their cost are not the customer's business, so no amounts here.
+    included: budget > 0
+      ? { models: modelList(included.models, ["openrouter"]).map((m) => ({ ...m, price: null })), usedPercent: Math.min(100, Math.round((spent / budget) * 100)) }
+      : null,
   };
 }
 

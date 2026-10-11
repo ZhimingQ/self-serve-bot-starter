@@ -6,7 +6,7 @@ import { SectionState, errorText, toolFetch, type SectionProps } from "./shared"
 interface VideoModel {
   id: string;
   label: string;
-  provider: "fal" | "google";
+  provider: "fal" | "google" | "openrouter";
   price: string | null;
 }
 
@@ -14,6 +14,8 @@ interface VideoState {
   model: string | null;
   keyPreviews: { fal: string | null; google: string | null };
   models: VideoModel[];
+  /** Video the seller pays for, when they turned it on for this assistant. */
+  included: { models: VideoModel[]; usedPercent: number } | null;
 }
 
 const PREVIEW_STATE: VideoState = {
@@ -23,6 +25,7 @@ const PREVIEW_STATE: VideoState = {
     { id: "google/veo-3.1-fast-generate-preview", label: "Veo 3.1 Fast", provider: "google", price: null },
     { id: "fal/fal-ai/kling-video/v2.1/master/text-to-video", label: "Kling 2.1 Master", provider: "fal", price: null },
   ],
+  included: null,
 };
 
 const KEY_PAGES = {
@@ -60,9 +63,11 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
           google: res.data.keyPreviews?.google ?? null,
         },
         models: Array.isArray(res.data.models) ? res.data.models : [],
+        included: res.data.included && Array.isArray(res.data.included.models) ? res.data.included : null,
       };
       setState(next);
-      setChoice(next.model && next.models.some((m) => m.id === next.model) ? next.model : "off");
+      const known = [...next.models, ...(next.included?.models ?? [])];
+      setChoice(next.model && known.some((m) => m.id === next.model) ? next.model : "off");
       setLoad("ready");
     } else if (res.status === 404) {
       setLoad("unavailable");
@@ -74,11 +79,13 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  const selected = state?.models.find((m) => m.id === choice) ?? null;
-  const storedKey = selected && state ? state.keyPreviews[selected.provider] : null;
+  const selected = [...(state?.models ?? []), ...(state?.included?.models ?? [])].find((m) => m.id === choice) ?? null;
+  // Included models are paid by the seller and take no key.
+  const keyProvider = selected && selected.provider !== "openrouter" ? selected.provider : null;
+  const storedKey = keyProvider && state ? state.keyPreviews[keyProvider] : null;
   const current = state?.model ?? null;
   const unchanged = choice === (current ?? "off") && !key.trim();
-  const needsKey = !!selected && !storedKey && !key.trim();
+  const needsKey = !!keyProvider && !storedKey && !key.trim();
 
   async function save() {
     setError("");
@@ -90,7 +97,7 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
       return;
     }
     setBusy(true);
-    const body = choice === "off" ? { model: "off" } : key.trim() ? { model: choice, key: key.trim() } : { model: choice };
+    const body = choice === "off" ? { model: "off" } : keyProvider && key.trim() ? { model: choice, key: key.trim() } : { model: choice };
     const res = await toolFetch<{ model: string | null }>("video", { method: "PUT", json: body });
     setBusy(false);
     if (!res.ok) {
@@ -128,6 +135,13 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
               onChange={(e) => { setChoice(e.target.value); setKey(""); setError(""); setSaved(false); }}
             >
               <option value="off">{t.offOption}</option>
+              {state.included && state.included.models.length > 0 && (
+                <optgroup label={t.includedGroup}>
+                  {state.included.models.map((m) => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </optgroup>
+              )}
               {state.models.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.label} — {m.provider === "fal" ? "fal" : "Google"}{m.price ? ` · ${m.price}` : ""}
@@ -136,9 +150,13 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
             </select>
           </div>
 
-          {selected && (
+          {state.included && (
+            <p className="byok-note">{t.includedUsage.replace("{percent}", String(state.included.usedPercent))}</p>
+          )}
+
+          {keyProvider && (
             <div className="byok-field">
-              <label htmlFor="bt-video-key">{selected.provider === "fal" ? t.falKeyLabel : t.googleKeyLabel}</label>
+              <label htmlFor="bt-video-key">{keyProvider === "fal" ? t.falKeyLabel : t.googleKeyLabel}</label>
               <input
                 id="bt-video-key"
                 type="password"
@@ -151,7 +169,7 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
               />
               <p className="byok-note">
                 {storedKey ? t.keyReplaceHint : t.keyHint}{" "}
-                <a href={KEY_PAGES[selected.provider]} target="_blank" rel="noreferrer">{t.getKey}</a>
+                <a href={KEY_PAGES[keyProvider]} target="_blank" rel="noreferrer">{t.getKey}</a>
               </p>
             </div>
           )}
@@ -165,7 +183,7 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
             >
               {busy ? copy.botTools.working : t.save}
             </button>
-            <span className="byok-effect">{busy ? t.restartNote : t.billingNote}</span>
+            <span className="byok-effect">{busy ? t.restartNote : selected?.provider === "openrouter" ? t.includedNote : t.billingNote}</span>
           </div>
           {saved && <p className="byok-note" role="status">{t.saved}</p>}
         </form>
