@@ -795,6 +795,8 @@ export const messages = {
       video: {
         title: "Video",
         body: "Let your assistant make videos in chat, paid for with your own fal or Google (Veo) API key.",
+        bodyIncluded: "Let your assistant make videos in chat — included with your plan, or with your own fal or Google (Veo) API key.",
+        applying: "Saved. Your assistant is restarting to apply this — about a minute or two.",
         on: "On",
         off: "Off",
         modelLabel: "Video model",
@@ -1667,6 +1669,8 @@ export const messages = {
       video: {
         title: "视频",
         body: "让助手在聊天中生成视频，费用由您自己的 fal 或 Google（Veo）API 密钥支付。",
+        bodyIncluded: "让助手在聊天中生成视频——可使用套餐内含额度，也可使用您自己的 fal 或 Google（Veo）API 密钥。",
+        applying: "已保存。助手正在重启以应用设置，大约需要一两分钟。",
         on: "已开启",
         off: "已关闭",
         modelLabel: "视频模型",

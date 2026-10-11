@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SectionState, errorText, toolFetch, type SectionProps } from "./shared";
 
 interface VideoModel {
@@ -12,6 +12,10 @@ interface VideoModel {
 
 interface VideoState {
   model: string | null;
+  /** A switch is still being applied (the assistant is restarting). */
+  applying: boolean;
+  /** The last switch failed after the save was answered. */
+  applyFailed: boolean;
   keyPreviews: { fal: string | null; google: string | null };
   models: VideoModel[];
   /** Video the seller pays for, when they turned it on for this assistant. */
@@ -20,6 +24,8 @@ interface VideoState {
 
 const PREVIEW_STATE: VideoState = {
   model: null,
+  applying: false,
+  applyFailed: false,
   keyPreviews: { fal: null, google: null },
   models: [
     { id: "google/veo-3.1-fast-generate-preview", label: "Veo 3.1 Fast", provider: "google", price: null },
@@ -27,6 +33,10 @@ const PREVIEW_STATE: VideoState = {
   ],
   included: null,
 };
+
+/** How long the panel follows a switch that is still restarting the assistant. */
+const APPLY_POLL_MS = 5_000;
+const APPLY_POLL_LIMIT_MS = 5 * 60_000;
 
 const KEY_PAGES = {
   fal: "https://fal.ai/dashboard/keys",
@@ -50,14 +60,18 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const pollUntil = useRef(0);
 
-  const refresh = useCallback(async () => {
-    if (preview) return;
-    setLoad("loading");
+  /** quiet: a background re-read while a switch applies, which keeps the form. */
+  const refresh = useCallback(async (quiet = false): Promise<VideoState | null> => {
+    if (preview) return null;
+    if (!quiet) setLoad("loading");
     const res = await toolFetch<VideoState>("video");
     if (res.ok) {
       const next: VideoState = {
         model: typeof res.data.model === "string" ? res.data.model : null,
+        applying: res.data.applying === true,
+        applyFailed: res.data.applyFailed === true,
         keyPreviews: {
           fal: res.data.keyPreviews?.fal ?? null,
           google: res.data.keyPreviews?.google ?? null,
@@ -67,17 +81,41 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
       };
       setState(next);
       const known = [...next.models, ...(next.included?.models ?? [])];
-      setChoice(next.model && known.some((m) => m.id === next.model) ? next.model : "off");
+      if (!quiet) setChoice(next.model && known.some((m) => m.id === next.model) ? next.model : "off");
       setLoad("ready");
-    } else if (res.status === 404) {
+      return next;
+    }
+    if (quiet) return null;
+    if (res.status === 404) {
       setLoad("unavailable");
     } else {
       setLoadError(errorText(copy, res.data.error));
       setLoad("error");
     }
+    return null;
   }, [preview, copy]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // While the assistant restarts onto a new setting, re-read until it lands.
+  const applying = !!state?.applying;
+  useEffect(() => {
+    if (!applying || preview) return;
+    if (!pollUntil.current) pollUntil.current = Date.now() + APPLY_POLL_LIMIT_MS;
+    const id = setTimeout(async () => {
+      const next = await refresh(true);
+      if (next && !next.applying) {
+        pollUntil.current = 0;
+        if (next.applyFailed) { setSaved(false); setError(errorText(copy, "video_failed")); }
+        const known = [...next.models, ...(next.included?.models ?? [])];
+        setChoice(next.model && known.some((m) => m.id === next.model) ? next.model : "off");
+      } else if (Date.now() > pollUntil.current) {
+        pollUntil.current = 0;
+        setState((s) => (s ? { ...s, applying: false } : s));
+      }
+    }, APPLY_POLL_MS);
+    return () => clearTimeout(id);
+  }, [applying, preview, refresh, copy, state]);
 
   const selected = [...(state?.models ?? []), ...(state?.included?.models ?? [])].find((m) => m.id === choice) ?? null;
   // Included models are paid by the seller and take no key.
@@ -98,7 +136,7 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
     }
     setBusy(true);
     const body = choice === "off" ? { model: "off" } : keyProvider && key.trim() ? { model: choice, key: key.trim() } : { model: choice };
-    const res = await toolFetch<{ model: string | null }>("video", { method: "PUT", json: body });
+    const res = await toolFetch<{ model: string | null; applying?: boolean }>("video", { method: "PUT", json: body });
     setBusy(false);
     if (!res.ok) {
       setError(errorText(copy, res.data.error));
@@ -106,6 +144,12 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
     }
     setKey("");
     setSaved(true);
+    if (res.data.applying) {
+      // Still restarting: show the chosen setting as applying and follow it.
+      pollUntil.current = 0;
+      setState((s) => (s ? { ...s, model: res.data.model ?? null, applying: true, applyFailed: false } : s));
+      return;
+    }
     await refresh();
   }
 
@@ -114,7 +158,7 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
       <header>
         <div>
           <h2>{t.title}</h2>
-          <p>{t.body}</p>
+          <p>{state?.included && state.included.models.length > 0 ? t.bodyIncluded : t.body}</p>
         </div>
         {load === "ready" && state && (
           <span className={current ? "byok-badge is-own" : "byok-badge"}>{current ? t.on : t.off}</span>
@@ -174,18 +218,19 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
             </div>
           )}
 
-          {status !== "running" && !preview && <p className="byok-note">{copy.botTools.needsRunning}</p>}
+          {status !== "running" && !preview && !applying && <p className="byok-note">{copy.botTools.needsRunning}</p>}
           <div className="byok-actions">
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={busy || unchanged || needsKey || (!preview && status !== "running")}
+              disabled={busy || applying || unchanged || needsKey || (!preview && status !== "running")}
             >
               {busy ? copy.botTools.working : t.save}
             </button>
             <span className="byok-effect">{busy ? t.restartNote : selected?.provider === "openrouter" ? t.includedNote : t.billingNote}</span>
           </div>
-          {saved && <p className="byok-note" role="status">{t.saved}</p>}
+          {applying && <p className="byok-note" role="status">{t.applying}</p>}
+          {saved && !applying && <p className="byok-note" role="status">{t.saved}</p>}
         </form>
       )}
 

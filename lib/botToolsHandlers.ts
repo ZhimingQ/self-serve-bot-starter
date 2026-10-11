@@ -472,6 +472,9 @@ function videoView(data: Record<string, unknown>) {
   const spent = num(included.spent_usd_this_month) ?? 0;
   return {
     model: str(data.model),
+    // A switch restarts the assistant and finishes after the PUT has answered.
+    applying: data.applying === true,
+    applyFailed: data.apply_failed === true,
     keyPreviews: { fal: str(previews.fal), google: str(previews.google) },
     models: modelList(data.models, ["fal", "google"]),
     // Included video (paid by the seller): models plus how much of this
@@ -502,14 +505,16 @@ const videoSet: ActionSpec = {
     const key = body?.key;
     if (typeof model !== "string" || !model || model.length > 200) return fail("invalid_model", 400);
     if (key !== undefined && (typeof key !== "string" || !key.trim() || key.length > 512)) return fail("invalid_key", 400);
-    // Switching restarts the assistant with the new setting.
+    // Switching restarts the assistant. The platform answers within ~20s, with
+    // `applying: true` when the restart is still running; the panel then polls.
     const result = await botToolCall(instanceId, "/video", {
       method: "PUT",
       json: key === undefined ? { model } : { model, key: (key as string).trim() },
-      timeoutMs: 150_000,
+      timeoutMs: 60_000,
     });
     if (!result.ok) return upstreamFailure(result);
-    return json({ model: str(dataOf(result).model) });
+    const data = dataOf(result);
+    return json({ model: str(data.model), applying: data.applying === true });
   },
 };
 
