@@ -107,6 +107,18 @@ export default function VideoSection({ copy, preview, status, onStatus }: Sectio
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // The status handed down can be stale (seen while a restart was running and
+  // never refreshed since); re-read it once when this tab opens on one.
+  const statusOnOpen = useRef(status);
+  useEffect(() => {
+    if (preview || statusOnOpen.current === "running") return;
+    let live = true;
+    void toolFetch<{ status: string }>("info").then((info) => {
+      if (live && info.ok && typeof info.data.status === "string") onStatus(info.data.status);
+    });
+    return () => { live = false; };
+  }, [preview, onStatus]);
+
   // While the assistant restarts onto a new setting, re-read until it lands.
   const applying = !!state?.applying;
   useEffect(() => {
