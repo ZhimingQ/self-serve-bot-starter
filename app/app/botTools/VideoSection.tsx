@@ -87,7 +87,11 @@ export default function VideoSection({ copy, preview, status }: SectionProps) {
       };
       setState(next);
       const known = [...next.models, ...(next.included?.models ?? [])];
-      if (!quiet) setChoice(next.model && known.some((m) => m.id === next.model) ? next.model : "off");
+      if (!quiet) {
+        setChoice(next.model && known.some((m) => m.id === next.model) ? next.model : "off");
+        // A switch that failed while the panel was closed.
+        if (next.applyFailed) setError(errorText(copy, next.applyError ?? "video_failed"));
+      }
       setLoad("ready");
       return next;
     }
