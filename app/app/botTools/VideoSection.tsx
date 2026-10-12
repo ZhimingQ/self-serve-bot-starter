@@ -264,10 +264,10 @@ export default function VideoSection({ copy, preview, status, onStatus }: Sectio
             >
               {busy ? copy.botTools.working : t.save}
             </button>
-            <span className="byok-effect">{busy ? t.restartNote : selected?.provider === "openrouter" ? t.includedNote : t.billingNote}</span>
+            <span className="byok-effect">{busy ? t.restartNote : selected?.provider === "openrouter" ? t.includedNote : selected ? t.billingNote : ""}</span>
           </div>
           {applying && <p className="byok-note" role="status">{t.applying}</p>}
-          {saved && !applying && <p className="byok-note" role="status">{t.saved}</p>}
+          {saved && !applying && <p className="byok-note" role="status">{current ? t.saved : t.savedOff}</p>}
           {unconfirmed && !applying && <p className="byok-note" role="status">{t.stillApplying}</p>}
         </form>
       )}
