@@ -1,6 +1,10 @@
 export const MAX_HISTORY_MESSAGES = 200;
 export const MAX_HISTORY_CONTENT_CHARS = 20_000;
 export const MAX_CUSTOM_INSTRUCTIONS_CHARS = 1_000;
+/** The reseller's own standing instructions for every customer's assistant
+ *  (assistant-instructions.txt / ASSISTANT_INSTRUCTIONS). Larger than a
+ *  customer's preferences because it describes the whole service. */
+export const MAX_ASSISTANT_INSTRUCTIONS_CHARS = 2_000;
 
 export type ResponseStyle = "balanced" | "concise" | "detailed";
 
@@ -95,17 +99,40 @@ export function normalizeAssistantPreferences(value: unknown): AssistantPreferen
   return { responseStyle, customInstructions };
 }
 
-export function prepareAssistantInput(input: string, preferences: AssistantPreferences): string {
-  const normalized = normalizeAssistantPreferences(preferences);
-  if (normalized.responseStyle === "balanced" && !normalized.customInstructions) return input;
+/** Trim and cap the reseller's standing instructions. Non-strings read as none. */
+export function normalizeAssistantInstructions(value: unknown): string {
+  return typeof value === "string" ? value.trim().slice(0, MAX_ASSISTANT_INSTRUCTIONS_CHARS) : "";
+}
 
-  const style = {
-    balanced: "Use a balanced amount of detail.",
-    concise: "Keep the response concise and direct.",
-    detailed: "Give a thorough response with useful detail.",
-  }[normalized.responseStyle];
-  const extra = normalized.customInstructions
-    ? ` Follow these customer preferences when relevant: ${normalized.customInstructions}`
-    : "";
-  return `[Customer response preferences: ${style}${extra}]\n\nCustomer request:\n${input}`;
+/** Wrap the customer's message with the reseller's standing instructions (if
+ *  any) and the customer's own response preferences (if not the defaults).
+ *  The reseller's block comes first and is applied on every turn server-side,
+ *  so it holds for the whole conversation and a customer cannot switch it off
+ *  from the browser. With neither set, the input passes through unchanged. */
+export function prepareAssistantInput(
+  input: string,
+  preferences: AssistantPreferences,
+  assistantInstructions = ""
+): string {
+  const normalized = normalizeAssistantPreferences(preferences);
+  const service = normalizeAssistantInstructions(assistantInstructions);
+  const hasPreferences = !(normalized.responseStyle === "balanced" && !normalized.customInstructions);
+  if (!service && !hasPreferences) return input;
+
+  const blocks: string[] = [];
+  if (service) {
+    blocks.push(`[Service instructions from the provider of this assistant — always follow these: ${service}]`);
+  }
+  if (hasPreferences) {
+    const style = {
+      balanced: "Use a balanced amount of detail.",
+      concise: "Keep the response concise and direct.",
+      detailed: "Give a thorough response with useful detail.",
+    }[normalized.responseStyle];
+    const extra = normalized.customInstructions
+      ? ` Follow these customer preferences when relevant: ${normalized.customInstructions}`
+      : "";
+    blocks.push(`[Customer response preferences: ${style}${extra}]`);
+  }
+  return `${blocks.join("\n")}\n\nCustomer request:\n${input}`;
 }

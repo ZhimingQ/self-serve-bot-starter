@@ -9,6 +9,8 @@ export type BotFramework = "openclaw" | "hermes";
 
 import { readFileSync } from "node:fs";
 import { parseBotTools, type BotToolId } from "./botTools";
+import { parseWorkspaceMode, type WorkspaceMode } from "./workspaceMode";
+import { normalizeAssistantInstructions } from "./customerWorkspace";
 
 export interface BrandConfig {
   revision: number;
@@ -229,13 +231,42 @@ function envFlag(value: string | undefined, fallback: boolean): boolean {
   return v === "1" || v === "true" || v === "yes";
 }
 
+// ── Workspace mode ────────────────────────────────────────────────────────
+// WORKSPACE_MODE=simple turns the customer area into "sign in and chat": the
+// customer lands in the chat, and Channels / Model key / Bot tools are forced
+// OFF below — hidden AND refused server-side, whatever their own switches say.
+// Unset or "full" keeps the whole workspace. See lib/workspaceMode.ts.
+export const workspaceMode: WorkspaceMode = parseWorkspaceMode(process.env.WORKSPACE_MODE);
+export const simpleWorkspace = workspaceMode === "simple";
+
+// ── Assistant instructions ────────────────────────────────────────────────
+// Standing instructions YOU give every customer's assistant, applied on every
+// chat turn (e.g. "You help GCSE students research coursework. Cite sources and
+// never write the essay for them."). Read from ASSISTANT_INSTRUCTIONS_FILE when
+// set — a plain text file, re-read on each turn so an edit applies without a
+// restart — otherwise from ASSISTANT_INSTRUCTIONS. Capped at 2,000 characters.
+// A missing or unreadable file means no instructions, never a failed chat.
+export function assistantInstructions(): string {
+  const filename = process.env.ASSISTANT_INSTRUCTIONS_FILE?.trim();
+  if (filename) {
+    try {
+      const raw = readFileSync(filename, "utf8");
+      if (Buffer.byteLength(raw, "utf8") <= 64 * 1024) return normalizeAssistantInstructions(raw);
+    } catch {
+      // Fall through to the env value.
+    }
+  }
+  return normalizeAssistantInstructions(process.env.ASSISTANT_INSTRUCTIONS);
+}
+
 export const allowEndUserByok =
+  !simpleWorkspace &&
   envFlag(process.env.ALLOW_END_USER_BYOK, false) &&
   // Hermes has no end-user BYOK path on the platform side; showing the panel
   // would only produce a 400 the customer cannot act on.
   (isBotFramework(rawFramework) ? rawFramework : "openclaw") === "openclaw";
 
-export const allowChannelConnect = envFlag(process.env.ALLOW_CHANNEL_CONNECT, true);
+export const allowChannelConnect = !simpleWorkspace && envFlag(process.env.ALLOW_CHANNEL_CONNECT, true);
 
 /** The channels this storefront offers, in display order. An empty CHANNELS var
  *  (the default) means "all of them" — the panel then filters again against what
@@ -273,7 +304,8 @@ export const offeredChannels: ChannelId[] = (() => {
 // Every tool acts only on the signed-in customer's own assistant, resolved
 // from the session; see app/api/bot-tools.
 export { knownBotTools, type BotToolId } from "./botTools";
-export const enabledBotTools: BotToolId[] = parseBotTools(process.env.BOT_TOOLS);
+// Simple mode offers no bot tools at all (see WORKSPACE_MODE above).
+export const enabledBotTools: BotToolId[] = simpleWorkspace ? [] : parseBotTools(process.env.BOT_TOOLS);
 export const botToolEnabled = (id: BotToolId): boolean => enabledBotTools.includes(id);
 
 // ── Startup validation ────────────────────────────────────────────────────

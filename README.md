@@ -81,6 +81,40 @@ BOT_FRAMEWORK=openclaw     # or "hermes" — which framework new bots use
 
 No code changes needed to reskin the app for a new reseller.
 
+## Simple mode and assistant instructions
+
+The full customer workspace is a control panel: overview, prompts, history,
+usage, billing, settings, security, privacy and more. For an audience that only
+needs to talk to the assistant (students, for example), set:
+
+```bash
+WORKSPACE_MODE=simple
+```
+
+Customers then land straight in the chat, and the sidebar offers only Chat,
+History, Account, Your data, Help, and Billing when payments are on. Channels,
+Model key and Bot tools are switched off in this mode, hidden in the UI and
+refused server-side, whatever their own settings say. Leave `WORKSPACE_MODE`
+unset (or `full`) for the whole workspace. Any other value is read as `simple`,
+so a typo never re-exposes panels you meant to hide.
+
+To give every customer's assistant the same standing instructions, put them in a
+plain text file and point `ASSISTANT_INSTRUCTIONS_FILE` at it, or set
+`ASSISTANT_INSTRUCTIONS` directly (one line). Up to 2,000 characters, added to
+every message server-side, so a customer cannot switch them off:
+
+```text
+You help GCSE and A-level students research their coursework. Cite reliable
+sources, explain your reasoning, and never write the essay for them.
+```
+
+They travel with each message to the customer's own assistant, so treat them as
+a strong default rather than a lock: a determined customer can still argue their
+own assistant out of them. The file is re-read on every message, so edits apply
+without a restart. With
+"Deploy via your bot", both are set from the install dialog, and the bot hosting
+the storefront can change them for you later: ask it to.
+
 ## What your customers can set up themselves
 
 Three panels in the customer workspace let a customer finish their own setup
@@ -340,6 +374,8 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | `ALLOW_END_USER_BYOK` | no (defaults off) | Shows the Model key panel, where a customer funds the assistant with their own provider key. See below. |
 | `ALLOW_CHANNEL_CONNECT` | no (defaults **on**) | Set `0` to hide the Channels panel and connect apps for your customers yourself. |
 | `CHANNELS` | no (defaults to all) | Restrict the Channels panel, e.g. `wechat,telegram`. |
+| `WORKSPACE_MODE` | no (defaults to `full`) | `simple` = customers only see sign-in and chat; Channels, Model key and Bot tools are forced off. See "Simple mode" above. |
+| `ASSISTANT_INSTRUCTIONS_FILE` / `ASSISTANT_INSTRUCTIONS` | no | Standing instructions added to every customer message (up to 2,000 characters). The file wins and is re-read each message. |
 | `BOT_TOOLS` | no (defaults to all) | Bot tools offered to customers: `power,backup,import,files,ssh,endpoint,desktop,computer`, or `none`. See "Bot tools" above. |
 | `RESEND_API_KEY` | no | Enables emailed password resets. Unset ⇒ the Forgot-password page points customers at support and you use `npm run reset-password`. |
 | `RESET_EMAIL_FROM` | with `RESEND_API_KEY` | Sender address, on a domain verified in Resend. |

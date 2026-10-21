@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { streamResponse } from "../../../lib/buildResell";
-import { paymentsEnabled } from "../../../lib/config";
+import { assistantInstructions, paymentsEnabled } from "../../../lib/config";
 import { rateLimit } from "../../../lib/rateLimit";
 import {
   consumeAssistantSseText,
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
   try {
     upstream = await streamResponse({
       instanceId,
-      input: prepareAssistantInput(input, preferences),
+      input: prepareAssistantInput(input, preferences, assistantInstructions()),
       sessionId: existingSessionId,
     });
   } catch (error) {
