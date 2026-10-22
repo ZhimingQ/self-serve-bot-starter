@@ -5,6 +5,7 @@ import {
   parseConfiguredHosts,
   parseConfiguredLocale,
 } from "./localeConfig";
+import { parseWorkspaceMode } from "./workspaceMode";
 
 export interface LocaleState {
   locale: Locale;
@@ -12,6 +13,11 @@ export interface LocaleState {
 }
 
 export async function getLocaleState(): Promise<LocaleState> {
+  // The student website (WORKSPACE_MODE=students) is written for UK GCSE and
+  // A-level students and exists in English only, so every page stays in
+  // English with no language switcher.
+  if (parseWorkspaceMode(process.env.WORKSPACE_MODE) === "students") return { locale: "en", locked: true };
+
   // SITE_LOCALE locks a single-domain deployment. Host mappings let one running
   // storefront serve separate, language-specific demo domains without copying
   // the app or its user store.

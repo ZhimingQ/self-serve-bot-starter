@@ -4,7 +4,8 @@ import { getStore } from "../../../../lib/store";
 import { hashPassword } from "../../../../lib/password";
 import { setSession } from "../../../../lib/session";
 import { rateLimit, clientIp } from "../../../../lib/rateLimit";
-import { demoMode } from "../../../../lib/config";
+import { demoMode, studentWorkspace } from "../../../../lib/config";
+import { parseStudentSignup, type StudentProfile } from "../../../../lib/studentTutor";
 
 export async function POST(request: NextRequest) {
   // Live-demo guard: in DEMO_MODE this storefront is a public showcase, so signup
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { email?: string; password?: string };
+  let body: { email?: string; password?: string; ageBand?: unknown; guardianConsent?: unknown; schoolYear?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -45,6 +46,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Student website: our terms allow 13 and over, with a parent or guardian's
+  // consent under 18. Checked here, before any account exists, so a direct
+  // POST cannot skip what the form asks.
+  let student: StudentProfile | undefined;
+  if (studentWorkspace) {
+    const checked = parseStudentSignup(body);
+    if (!checked.ok) {
+      return NextResponse.json({ error: checked.error }, { status: checked.error === "under_13" ? 403 : 400 });
+    }
+    student = checked.profile;
+  }
+
   const store = getStore();
   const existing = await store.getUserByEmail(email);
   if (existing) {
@@ -62,6 +75,7 @@ export async function POST(request: NextRequest) {
     passwordHash: hash,
     passwordSalt: salt,
     createdAt: new Date().toISOString(),
+    ...(student ? { student } : {}),
   });
   if (!user) {
     return NextResponse.json(

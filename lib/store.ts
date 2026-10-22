@@ -20,6 +20,7 @@ import { promises as fs } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { storeDir, upstash } from "./config";
+import type { StudentProfile } from "./studentTutor";
 import {
   defaultAssistantPreferences,
   limitStoredHistory,
@@ -59,6 +60,10 @@ export interface StoredUser {
   /** Unix-ms expiry of the reset token. A token past this is refused and treated
    *  as absent. */
   resetTokenExpiresAt?: number;
+  /** Student website only (WORKSPACE_MODE=students): the age band and school
+   *  year given at sign-up, and when a 13-17 student confirmed guardian
+   *  consent. */
+  student?: StudentProfile;
 }
 
 /** Credential fields a password reset rewrites. Deliberately separate from

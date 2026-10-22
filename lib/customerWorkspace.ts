@@ -112,14 +112,21 @@ export function normalizeAssistantInstructions(value: unknown): string {
 export function prepareAssistantInput(
   input: string,
   preferences: AssistantPreferences,
-  assistantInstructions = ""
+  assistantInstructions = "",
+  /** Rules the storefront itself ships with (the student website's tutor
+   *  rules). Ours, not the owner's, so they sit outside the owner's cap. */
+  builtInRules = ""
 ): string {
   const normalized = normalizeAssistantPreferences(preferences);
   const service = normalizeAssistantInstructions(assistantInstructions);
+  const builtIn = builtInRules.trim();
   const hasPreferences = !(normalized.responseStyle === "balanced" && !normalized.customInstructions);
-  if (!service && !hasPreferences) return input;
+  if (!builtIn && !service && !hasPreferences) return input;
 
   const blocks: string[] = [];
+  if (builtIn) {
+    blocks.push(`[Built-in rules for this assistant — always follow these: ${builtIn}]`);
+  }
   if (service) {
     blocks.push(`[Service instructions from the provider of this assistant — always follow these: ${service}]`);
   }

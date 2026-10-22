@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { streamResponse } from "../../../lib/buildResell";
-import { assistantInstructions, paymentsEnabled } from "../../../lib/config";
+import { assistantInstructions, paymentsEnabled, studentWorkspace } from "../../../lib/config";
+import { studentTutorRules } from "../../../lib/studentTutor";
 import { rateLimit } from "../../../lib/rateLimit";
 import {
   consumeAssistantSseText,
@@ -61,8 +62,9 @@ export async function POST(request: NextRequest) {
   // Entitlement gate (server-side, authoritative): when Stripe is configured, a
   // user whose subscription has lapsed must not keep chatting by POSTing here
   // directly — the paywall UI alone isn't enough. Mirrors /api/provision.
+  // Read once when either the paywall or the student rules need it.
+  const user = paymentsEnabled || studentWorkspace ? await store.getUserById(session.userId) : null;
   if (paymentsEnabled) {
-    const user = await store.getUserById(session.userId);
     if (user?.billingStatus !== "active") {
       return NextResponse.json(
         { error: "payment_required", message: "Subscribe to activate your assistant." },
@@ -87,7 +89,12 @@ export async function POST(request: NextRequest) {
   try {
     upstream = await streamResponse({
       instanceId,
-      input: prepareAssistantInput(input, preferences, assistantInstructions()),
+      input: prepareAssistantInput(
+        input,
+        preferences,
+        assistantInstructions(),
+        studentWorkspace ? studentTutorRules(user?.student?.schoolYear, user?.student?.ageBand) : ""
+      ),
       sessionId: existingSessionId,
     });
   } catch (error) {

@@ -24,6 +24,9 @@ export async function GET() {
       createdAt: user.createdAt,
       accessStatus: paymentsEnabled ? user.billingStatus ?? "none" : "included",
       billingMode: paymentsEnabled ? stripe.mode : "none",
+      // What a student told the student website at sign-up, so their copy of
+      // their data includes it.
+      ...(user.student ? { studentProfile: user.student } : {}),
     },
     assistantPreferences: preferences,
     conversationHistory,

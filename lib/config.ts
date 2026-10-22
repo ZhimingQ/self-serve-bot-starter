@@ -237,7 +237,11 @@ function envFlag(value: string | undefined, fallback: boolean): boolean {
 // OFF below — hidden AND refused server-side, whatever their own switches say.
 // Unset or "full" keeps the whole workspace. See lib/workspaceMode.ts.
 export const workspaceMode: WorkspaceMode = parseWorkspaceMode(process.env.WORKSPACE_MODE);
-export const simpleWorkspace = workspaceMode === "simple";
+// WORKSPACE_MODE=students is the student website, and carries every simple-mode
+// restriction with it: a student storefront never offers Channels, Model key or
+// Bot tools either.
+export const simpleWorkspace = workspaceMode !== "full";
+export const studentWorkspace = workspaceMode === "students";
 
 // ── Assistant instructions ────────────────────────────────────────────────
 // Standing instructions YOU give every customer's assistant, applied on every
