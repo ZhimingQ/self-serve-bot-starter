@@ -1119,8 +1119,10 @@ a {
 .msg-md blockquote { padding-left: 12px; border-left: 3px solid var(--border); color: var(--text-muted); }
 .msg-md hr { margin: 16px 0; border: 0; border-top: 1px solid var(--border); }
 .msg-md .md-table { overflow-x: auto; }
-.msg-md table { border-collapse: collapse; font-size: 13px; line-height: 1.5; }
-.msg-md th, .msg-md td { padding: 6px 10px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.msg-md table { border-collapse: collapse; font-size: 13px; line-height: 1.5; word-break: normal; overflow-wrap: normal; }
+.msg-md th, .msg-md td { min-width: 8ch; padding: 6px 10px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+/* A reply with a table needs the room; the 76% bubble squeezes it on a phone. */
+@media (max-width: 640px) { .msg-md { max-width: 100%; } }
 .msg-md th { background: rgba(0, 0, 0, 0.04); font-weight: 700; }
 
 .chat-input-row {
