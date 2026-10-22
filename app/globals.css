@@ -2858,9 +2858,8 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 .st-price { margin: 14px 0 0; color: var(--text-muted); font-size: 14px; }
 .st-points { display: grid; gap: 12px; margin: 30px 0 0; padding: 0; list-style: none; color: #334155; font-size: 16px; }
 .st-points li { display: flex; gap: 12px; }
-.st-yes, .st-no { flex: 0 0 auto; width: 18px; font-weight: 700; text-align: center; }
+.st-yes { flex: 0 0 auto; width: 18px; font-weight: 700; text-align: center; }
 .st-yes { color: var(--accent-hover); }
-.st-no { color: #e11d48; }
 
 .st-example {
   margin: 0;

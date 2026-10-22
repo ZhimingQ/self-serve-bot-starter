@@ -66,7 +66,6 @@ export default function StudentLanding() {
               <li><span className="st-yes" aria-hidden="true">✓</span>Explains topics step by step, at your level</li>
               <li><span className="st-yes" aria-hidden="true">✓</span>Finds sources and links every one</li>
               <li><span className="st-yes" aria-hidden="true">✓</span>Helps you plan and check your own writing</li>
-              <li><span className="st-no" aria-hidden="true">✕</span>Won&apos;t write your coursework for you</li>
             </ul>
           </div>
 
