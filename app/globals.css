@@ -1102,6 +1102,27 @@ a {
   color: var(--accent-hover);
 }
 
+/* Assistant replies rendered from Markdown (ChatMarkdown.tsx). */
+.msg-md { white-space: normal; }
+.msg-md > :first-child { margin-top: 0; }
+.msg-md > :last-child { margin-bottom: 0; }
+.msg-md p, .msg-md ul, .msg-md ol, .msg-md blockquote, .msg-md pre, .msg-md .md-table { margin: 0 0 12px; }
+.msg-md h3, .msg-md h4 { margin: 18px 0 8px; font-size: 15px; font-weight: 700; line-height: 1.4; }
+.msg-md h4 { font-size: 14px; }
+.msg-md ul, .msg-md ol { padding-left: 22px; }
+.msg-md li { margin: 3px 0; }
+.msg-md strong { font-weight: 700; }
+.msg-md a { color: var(--accent-hover); text-decoration: underline; }
+.msg-md code { padding: 1px 5px; border-radius: 4px; background: rgba(0, 0, 0, 0.06); font-size: 0.92em; }
+.msg-md pre { overflow-x: auto; padding: 12px 14px; border-radius: 8px; background: rgba(0, 0, 0, 0.05); line-height: 1.55; }
+.msg-md pre code { padding: 0; background: none; white-space: pre; }
+.msg-md blockquote { padding-left: 12px; border-left: 3px solid var(--border); color: var(--text-muted); }
+.msg-md hr { margin: 16px 0; border: 0; border-top: 1px solid var(--border); }
+.msg-md .md-table { overflow-x: auto; }
+.msg-md table { border-collapse: collapse; font-size: 13px; line-height: 1.5; }
+.msg-md th, .msg-md td { padding: 6px 10px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.msg-md th { background: rgba(0, 0, 0, 0.04); font-weight: 700; }
+
 .chat-input-row {
   display: flex;
   gap: 12px;

@@ -14,6 +14,7 @@ import {
   type AssistantPreferences,
   type StoredChatMessage,
 } from "../../lib/customerWorkspace";
+import ChatMarkdown from "./ChatMarkdown";
 
 interface ChatMessage {
   id?: string;
@@ -951,11 +952,14 @@ export default function ChatApp({
                 {messages.map((message, index) => (
                   <div
                     key={index}
-                    className={message.role === "user" ? "msg msg-user" : "msg msg-assistant"}
+                    className={message.role === "user" ? "msg msg-user" : message.error || !message.content ? "msg msg-assistant" : "msg msg-assistant msg-md"}
                     data-label={message.role === "user" ? copy.you : copy.assistant}
                     style={message.error ? { color: "#b91c1c" } : undefined}
                   >
-                    {message.content || (sending && index === messages.length - 1 ? "…" : "")}
+                    {/* Replies are Markdown; the customer's own text stays as typed. */}
+                    {message.role !== "user" && !message.error && message.content
+                      ? <ChatMarkdown text={message.content} />
+                      : message.content || (sending && index === messages.length - 1 ? "…" : "")}
                   </div>
                 ))}
               </div>
