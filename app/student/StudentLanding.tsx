@@ -16,8 +16,8 @@ export function StudentBrandMark({ size = "md" }: { size?: "sm" | "md" }) {
 
 /**
  * The landing page of the student website (WORKSPACE_MODE=students): says
- * plainly what the tutor does and does not do, shows one example answer with
- * its sources, and speaks to parents and teachers. English only.
+ * plainly what the tutor does and does not do, and shows one example answer
+ * with its sources. English only.
  */
 export default function StudentLanding() {
   const copy = messages.en;
@@ -82,17 +82,6 @@ export default function StudentLanding() {
               </div>
             </div>
           </figure>
-        </section>
-
-        <section className="st-audience">
-          <div>
-            <h2>For parents and guardians</h2>
-            <p>Students under 18 need your permission to sign up. Conversations are private to the student, and the tutor is set up to explain and guide, not to hand over finished work.</p>
-          </div>
-          <div>
-            <h2>For teachers</h2>
-            <p>Every research answer comes with its sources, so the research trail can be checked.</p>
-          </div>
         </section>
       </main>
 

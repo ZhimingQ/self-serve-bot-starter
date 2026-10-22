@@ -14,6 +14,7 @@ import {
   type AssistantPreferences,
   type StoredChatMessage,
 } from "../../lib/customerWorkspace";
+import SetupProgress from "./SetupProgress";
 import ChatMarkdown from "./ChatMarkdown";
 
 interface ChatMessage {
@@ -47,6 +48,8 @@ const POLL_INTERVAL_MS = 3000;
 // (Observed: a signup where the assistant came up fine while the storefront
 // had already told the customer it went wrong.)
 const SLOW_AFTER_ATTEMPTS = 40; // ~2 minutes at the fast interval
+// The student website's setup steps (it is English only).
+const STUDENT_SETUP_STEPS = ["Reserving your tutor", "Setting up web search", "Final checks"] as const;
 const SLOW_POLL_INTERVAL_MS = 10000;
 // The real giving-up point: ~2 min fast + ~10 min slow. Past this something is
 // genuinely wrong and a retry button is the honest answer.
@@ -88,6 +91,7 @@ export default function ChatApp({
   botTools = [],
   simpleMode = false,
   studentMode = false,
+  turnsOutliveThePage = false,
   preview = false,
 }: {
   email: string;
@@ -125,6 +129,9 @@ export default function ChatApp({
    *  what the tutor will and won't do, starter chips, and "New question". Always
    *  arrives with simpleMode on. */
   studentMode?: boolean;
+  /** The server keeps a chat turn running after the browser leaves (a single
+   *  long-lived process; not a serverless host), so the page may say so. */
+  turnsOutliveThePage?: boolean;
   preview?: boolean;
 }) {
   const copy = translations[locale];
@@ -135,6 +142,12 @@ export default function ChatApp({
   // A FLAG, not the localized string: provisioning can outlast a language
   // switch, and storing the text would leave the note in the old language.
   const [provisionSlow, setProvisionSlow] = useState(false);
+  // A returning customer's first status check answers in well under a second;
+  // only past this delay does the full setup screen replace a brief "opening".
+  const [checkingLong, setCheckingLong] = useState(false);
+  // One clock for the whole setup, so the progress does not restart when the
+  // first check hands over to polling.
+  const [setupStartedAt, setSetupStartedAt] = useState(() => Date.now());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -167,7 +180,15 @@ export default function ChatApp({
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmNewTopic, setConfirmNewTopic] = useState(false);
   const [newTopicStatus, setNewTopicStatus] = useState<AsyncStatus>("idle");
-  const assistantInputRef = useRef<HTMLInputElement>(null);
+  const assistantInputRef = useRef<HTMLTextAreaElement>(null);
+  // A turn taking a while shows a "still working" note; a turn found running on
+  // load (the page was reloaded mid-answer) is waited for until it lands.
+  const [slowTurn, setSlowTurn] = useState(false);
+  const [resumedTurn, setResumedTurn] = useState(false);
+  const resumedTurnRef = useRef<{ input: string; startedAt: string } | null>(null);
+  // True while this tab's own send is in flight, so its turn is never mistaken
+  // for one to resume.
+  const localSendRef = useRef(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const hasLocalActivityRef = useRef(false);
@@ -211,7 +232,12 @@ export default function ChatApp({
       if (Array.isArray(historyData.messages)) {
         const storedMessages = historyData.messages as StoredChatMessage[];
         const usage = summarizeSavedHistory(storedMessages);
-        if (!hasLocalActivityRef.current) setMessages(storedMessages);
+        if (!hasLocalActivityRef.current) {
+          // Reloaded mid-answer: show the question and wait for the reply.
+          if (localSendRef.current || !showRunningTurn(storedMessages, historyData.working)) {
+            setMessages(storedMessages);
+          }
+        }
         setSavedUserTurns(usage.userTurns);
         setSavedAssistantReplies(usage.assistantReplies);
         setSavedLatestActivityAt(usage.latestActivityAt);
@@ -224,6 +250,127 @@ export default function ChatApp({
       if ((error as Error).name !== "AbortError") setWorkspaceLoadStatus("error");
     }
   }, [preview]);
+
+  /** Shows a turn the server is still working on (after a reload, or when this
+   *  tab's stream dropped) and starts waiting for it. False when there is none,
+   *  or when the history already holds it (it finished as history was read). */
+  function showRunningTurn(storedMessages: StoredChatMessage[], working: unknown): boolean {
+    const turn = working as { input?: unknown; startedAt?: unknown } | null | undefined;
+    if (!turn || typeof turn.input !== "string" || typeof turn.startedAt !== "string") return false;
+    const { input: turnInput, startedAt } = turn as { input: string; startedAt: string };
+    if (storedMessages.some((m) => m.role === "user" && m.createdAt === startedAt)) return false;
+    setMessages([
+      ...storedMessages,
+      { role: "user", content: turnInput, createdAt: startedAt },
+      { role: "assistant", content: "", createdAt: startedAt },
+    ]);
+    resumedTurnRef.current = { input: turnInput, startedAt };
+    setSending(true);
+    setSlowTurn(true);
+    setResumedTurn(true);
+    return true;
+  }
+
+  /** This tab's stream failed: if the server is still on the turn, wait for it;
+   *  if it already saved the answer to `sentInput`, show it. The composer stays
+   *  locked (sending) until this settles, so no newer turn can be overwritten. */
+  async function resumeIfStillWorking(sentInput: string, savedActivityBefore: string | null) {
+    try {
+      const response = await fetch("/api/history", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!Array.isArray(data.messages)) return;
+      const storedMessages = data.messages as StoredChatMessage[];
+      if (showRunningTurn(storedMessages, data.working)) return;
+      // Saved meanwhile: show it, but only if it is a NEW question (a repeat of
+      // an earlier identical one must not stand in for a send that failed).
+      const usageNow = summarizeSavedHistory(storedMessages);
+      const lastQuestion = [...storedMessages].reverse().find((m) => m.role === "user");
+      const isNew = !!lastQuestion?.createdAt &&
+        (!savedActivityBefore || new Date(lastQuestion.createdAt) > new Date(savedActivityBefore));
+      if (!data.working && isNew && lastQuestion?.content === sentInput) {
+        setMessages(storedMessages);
+        setSavedUserTurns(usageNow.userTurns);
+        setSavedAssistantReplies(usageNow.assistantReplies);
+        setSavedLatestActivityAt(usageNow.latestActivityAt);
+      }
+    } catch {
+      // Nothing more to do: the error is already on screen.
+    } finally {
+      if (!resumedTurnRef.current) setSending(false);
+    }
+  }
+
+  // After a reload mid-turn, wait for the server to finish the turn and then
+  // show the saved conversation, reply included.
+  useEffect(() => {
+    if (!resumedTurn || preview) return;
+    let stopped = false;
+    // A turn that ended without its reply saved is reported only after a few
+    // checks in a row, so one answer from a server that cannot see the turn
+    // (a host running several copies) is not taken for a failure.
+    let unsavedChecks = 0;
+    const poll = async () => {
+      if (stopped) return;
+      try {
+        const response = await fetch("/api/history", { cache: "no-store" });
+        if (response.status === 401) {
+          // Signed out meanwhile: stop waiting and let the page re-check the session.
+          setResumedTurn(false);
+          setSlowTurn(false);
+          setSending(false);
+          router.refresh();
+          return;
+        }
+        if (response.ok) {
+          const data = await response.json();
+          if (data.working) unsavedChecks = 0;
+          if (!stopped && !data.working && Array.isArray(data.messages)) {
+            const storedMessages = data.messages as StoredChatMessage[];
+            const usage = summarizeSavedHistory(storedMessages);
+            // A turn that ended without a reply saves nothing; keep the question
+            // and say so instead of letting it vanish.
+            const pending = resumedTurnRef.current;
+            const saved = pending && storedMessages.some((m) => m.role === "user" && m.createdAt === pending.startedAt);
+            if (pending && !saved && ++unsavedChecks < 3) {
+              timer = window.setTimeout(poll, 5000);
+              return;
+            }
+            setMessages(
+              pending && !saved
+                ? [
+                    ...storedMessages,
+                    { role: "user", content: pending.input, createdAt: pending.startedAt },
+                    { role: "assistant", content: copy.chatError, createdAt: pending.startedAt, error: true },
+                  ]
+                : storedMessages
+            );
+            setSavedUserTurns(usage.userTurns);
+            setSavedAssistantReplies(usage.assistantReplies);
+            setSavedLatestActivityAt(usage.latestActivityAt);
+            resumedTurnRef.current = null;
+            setResumedTurn(false);
+            setSlowTurn(false);
+            setSending(false);
+            return;
+          }
+        }
+      } catch {
+        // Try again on the next tick.
+      }
+      if (!stopped) timer = window.setTimeout(poll, 5000);
+    };
+    let timer = window.setTimeout(poll, 5000);
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [resumedTurn, preview, router, copy.chatError]);
+
+  // Keep the composer's height in step with its text, including the clear after send.
+  useEffect(() => {
+    fitComposer(assistantInputRef.current);
+  }, [input]);
 
   const refreshSavedUsage = useCallback(async () => {
     if (preview) return;
@@ -277,6 +424,7 @@ export default function ChatApp({
     const stale = () => run !== provisionRunRef.current;
     let attempts = 0;
     setProvisionSlow(false);
+    setSetupStartedAt(Date.now());
 
     const poll = async (): Promise<void> => {
       if (stale()) return;
@@ -328,6 +476,12 @@ export default function ChatApp({
   }, [copy.provisionFailed, copy.provisionSlow, copy.serverUnavailable, copy.storefrontUnavailable]);
 
   useEffect(() => {
+    if (provisionState !== "checking") return;
+    const timer = window.setTimeout(() => setCheckingLong(true), 1500);
+    return () => window.clearTimeout(timer);
+  }, [provisionState]);
+
+  useEffect(() => {
     // Only provision once the user is entitled — a paywalled user provisions
     // after they pay (Stripe redirects back to /app?paid=1 → server passes
     // paid=true → this effect runs).
@@ -338,7 +492,9 @@ export default function ChatApp({
   useEffect(() => {
     const container = chatMessagesRef.current;
     container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+    // Also when the chat first appears: history often loads while the setup
+    // screen is still up, before this container exists.
+  }, [messages, provisionState, panel]);
 
   useEffect(() => {
     if (panelInitializedRef.current) {
@@ -418,7 +574,15 @@ export default function ChatApp({
     }
 
     let gotContent = false; // did the assistant stream any actual reply text?
+    // The connection failed, or a turn is already running: the server may
+    // still be answering, so look for it once this send has cleaned up.
+    let checkServer = false;
+    // Server time of the newest saved message before this send; a saved question
+    // newer than it can only be this one.
+    const savedActivityBefore = savedLatestActivityAt;
+    const slowTimer = window.setTimeout(() => setSlowTurn(true), 20_000);
 
+    localSendRef.current = true;
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -427,10 +591,16 @@ export default function ChatApp({
       });
 
       if (!res.ok || !res.body) {
+        if (res.status === 409) {
+          // Refused (another turn or a clear is running): hand the question
+          // back so it can be sent once that is done.
+          checkServer = true;
+          setInput((current) => current || trimmed);
+        }
         // Our own API errors carry a friendly `message` (402 pay, 429 slow down,
         // 413 too long) — show ONLY that (never `data.error`, which can be a raw
         // code/text). Anything else collapses to the generic line.
-        const known = res.status === 402 || res.status === 429 || res.status === 413;
+        const known = res.status === 402 || res.status === 429 || res.status === 413 || res.status === 409;
         throw new ChatDisplayError(
           known ? localizedChatError(res.status, locale, copy) : copy.chatError
         );
@@ -495,6 +665,7 @@ export default function ChatApp({
       // Only our own ChatDisplayError carries a message safe to show; any other
       // thrown value (raw fetch/stream exception) collapses to the generic line.
       const msg = err instanceof ChatDisplayError ? err.message : copy.chatError;
+      if (!(err instanceof ChatDisplayError)) checkServer = true;
       // If a partial reply already streamed, keep it and add the interrupted note;
       // otherwise replace the empty placeholder bubble with the error message.
       if (gotContent) {
@@ -503,8 +674,12 @@ export default function ChatApp({
         setLastAssistantMessage(setMessages, msg, true);
       }
     } finally {
-      setSending(false);
+      window.clearTimeout(slowTimer);
+      localSendRef.current = false;
+      setSlowTurn(false);
+      if (!checkServer) setSending(false);
     }
+    if (checkServer) void resumeIfStillWorking(trimmed, savedActivityBefore);
   }
 
   async function savePreferences(event: React.FormEvent) {
@@ -618,6 +793,7 @@ export default function ChatApp({
     window.setTimeout(() => {
       const field = assistantInputRef.current;
       if (!field) return;
+      fitComposer(field);
       field.focus();
       field.setSelectionRange(prefix.length, prefix.length);
     }, 0);
@@ -686,13 +862,29 @@ export default function ChatApp({
     );
   }
 
-  if (provisionState === "checking" || provisionState === "provisioning") {
+  if (provisionState === "checking" && !checkingLong) {
+    // A returning customer's bot already exists: say "opening", not "setting up".
     return (
-      <div className="provisioning">
+      <div className="provisioning" role="status">
         <div className="spinner" />
         <LanguageSwitcher locale={locale} locked={localeLocked} />
-        <h2>{copy.provisioningTitle}</h2>
+        <p>{studentMode ? "Opening your study desk…" : copy.openingWorkspace}</p>
+      </div>
+    );
+  }
+
+  if (provisionState === "checking" || provisionState === "provisioning") {
+    const setupTitle = studentMode ? "Setting up your tutor" : copy.provisioningTitle;
+    return (
+      <div className="provisioning" role="status" aria-live="polite">
+        <LanguageSwitcher locale={locale} locked={localeLocked} />
+        <h2>{setupTitle}</h2>
         <p>{copy.provisioningBody(email.split("@")[0])}</p>
+        <SetupProgress
+          label={setupTitle}
+          steps={studentMode ? STUDENT_SETUP_STEPS : copy.provisioningSteps}
+          startedAt={setupStartedAt}
+        />
         {provisionSlow && <p className="muted">{copy.provisionStillWorking}</p>}
       </div>
     );
@@ -1020,6 +1212,13 @@ export default function ChatApp({
                       : message.content || (sending && index === messages.length - 1 ? "Researching…" : "")}
                   </div>
                 ))}
+                {sending && slowTurn && !messages[messages.length - 1]?.content && (
+                  <p className="chat-working-note" role="status">
+                    {turnsOutliveThePage
+                      ? "Still researching. Bigger questions can take a few minutes, and you can leave this page: the answer will be here when you come back."
+                      : "Still researching. Bigger questions can take a few minutes."}
+                  </p>
+                )}
               </div>
               <div className="st-chips" aria-label="Starting points">
                 {([
@@ -1033,7 +1232,7 @@ export default function ChatApp({
               </div>
               <form className="chat-input-row" onSubmit={handleSend}>
                 <label className="sr-only" htmlFor="assistant-message">Your question</label>
-                <input id="assistant-message" ref={assistantInputRef} type="text" placeholder="Ask about your coursework…" value={input} onChange={(event) => setInput(event.target.value)} disabled={sending || newTopicStatus === "working"} />
+                <textarea id="assistant-message" ref={assistantInputRef} rows={1} placeholder="Ask about your coursework…" value={input} onChange={(event) => { setInput(event.target.value); fitComposer(event.currentTarget); }} onKeyDown={sendOnEnter} disabled={sending || newTopicStatus === "working"} />
                 <button type="submit" className="btn btn-primary" disabled={sending || newTopicStatus === "working" || !input.trim()}>{copy.send}</button>
               </form>
             </div>
@@ -1062,10 +1261,15 @@ export default function ChatApp({
                       : message.content || (sending && index === messages.length - 1 ? "…" : "")}
                   </div>
                 ))}
+                {sending && slowTurn && !messages[messages.length - 1]?.content && (
+                  <p className="chat-working-note" role="status">
+                    {turnsOutliveThePage ? copy.chatStillWorkingLeave : copy.chatStillWorking}
+                  </p>
+                )}
               </div>
               <form className="chat-input-row" onSubmit={handleSend}>
                 <label className="sr-only" htmlFor="assistant-message">{copy.messageLabel}</label>
-                <input id="assistant-message" type="text" placeholder={copy.messagePlaceholder} value={input} onChange={(event) => setInput(event.target.value)} disabled={sending} />
+                <textarea id="assistant-message" ref={assistantInputRef} rows={1} placeholder={copy.messagePlaceholder} value={input} onChange={(event) => { setInput(event.target.value); fitComposer(event.currentTarget); }} onKeyDown={sendOnEnter} disabled={sending} />
                 <button type="submit" className="btn btn-primary" disabled={sending || !input.trim()}>{copy.send}</button>
               </form>
             </div>
@@ -1330,6 +1534,23 @@ export default function ChatApp({
   );
 }
 
+/** Grow the composer with its text, up to the CSS max-height, then scroll. */
+function fitComposer(field: HTMLTextAreaElement | null) {
+  if (!field) return;
+  field.style.height = "auto";
+  field.style.height = `${field.scrollHeight}px`;
+}
+
+/** Enter sends and Shift+Enter adds a line. Never while an input method is
+ *  composing (Chinese, Japanese, Korean): that Enter picks a candidate. Safari
+ *  reports it only through keyCode 229. */
+function sendOnEnter(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+  if (event.key !== "Enter" || event.shiftKey) return;
+  if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+  event.preventDefault();
+  event.currentTarget.form?.requestSubmit();
+}
+
 function localizedChatError(
   status: number,
   locale: Locale,
@@ -1340,6 +1561,9 @@ function localizedChatError(
     return locale === "zh" ? "消息发送过快，请稍后再试。" : "You’re sending messages too fast. Please slow down.";
   }
   if (status === 413) return locale === "zh" ? "消息内容过长。" : "Your message is too long.";
+  if (status === 409) {
+    return locale === "zh" ? "你的助手还在处理上一个请求，请等它完成。" : "Your assistant is still working on your last request.";
+  }
   return copy.chatError;
 }
 

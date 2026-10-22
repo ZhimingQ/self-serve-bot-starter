@@ -318,3 +318,8 @@ export const botToolEnabled = (id: BotToolId): boolean => enabledBotTools.includ
 // the note at the top of that file. Re-exported here so the old import path
 // keeps working.
 export { validateEnv } from "./validateEnv";
+
+// A chat turn keeps running after the browser leaves (app/api/chat/route.ts)
+// only on a long-lived server process. A serverless host may end the function
+// with the request, so the page does not promise it there.
+export const turnsOutliveThePage = !process.env.VERCEL;

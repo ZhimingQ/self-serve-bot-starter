@@ -984,6 +984,108 @@ a {
   display: none;
 }
 
+/* The setup screen: a bar that eases toward 95% and a short step list, both
+   on the clock (the API only says "starting" until the bot is ready). It
+   replaces the ring and the spinner, so the screen has one moving thing. */
+.provisioning:has(.setup-progress)::before {
+  display: none;
+}
+
+.setup-progress {
+  width: min(360px, 100%);
+  margin: 10px 0 18px;
+  text-align: left;
+}
+
+.setup-bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.setup-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform 0.5s linear;
+}
+
+.setup-steps {
+  display: grid;
+  gap: 12px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 15px;
+  transition: color 0.3s ease;
+}
+
+.setup-steps li.active {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.setup-steps i {
+  position: relative;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid color-mix(in srgb, var(--text-muted) 55%, var(--border));
+  border-radius: 50%;
+}
+
+.setup-steps li.active i {
+  border-color: var(--accent);
+}
+
+.setup-steps li.active i::after {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
+  animation: setup-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes setup-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+
+.setup-steps li.done i {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.setup-steps li.done i::after {
+  position: absolute;
+  top: 3px;
+  left: 5.5px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--accent-on);
+  border-width: 0 2px 2px 0;
+  content: "";
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setup-bar span, .setup-steps li { transition: none; }
+  .setup-steps li.active i::after { animation: none; }
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -1132,7 +1234,12 @@ a {
   border-top: 1px solid var(--border);
 }
 
-.chat-input-row input {
+.chat-input-row {
+  align-items: flex-end;
+}
+
+.chat-input-row input,
+.chat-input-row textarea {
   flex: 1;
   min-width: 0;
   padding: 12px 2px;
@@ -1140,10 +1247,21 @@ a {
   outline: none;
   background: transparent;
   color: var(--text);
+  font: inherit;
   font-size: 14px;
+  line-height: 1.5;
 }
 
-.chat-input-row input:focus {
+/* The composer grows with its text (ChatApp fitComposer), up to this height,
+   then scrolls. */
+.chat-input-row textarea {
+  max-height: 180px;
+  overflow-y: auto;
+  resize: none;
+}
+
+.chat-input-row input:focus,
+.chat-input-row textarea:focus {
   outline: 2px solid var(--accent-hover);
   outline-offset: 3px;
 }
@@ -2895,16 +3013,6 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 .st-sources { display: grid; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9; color: var(--accent-hover); font-size: 13px; }
 .st-sources > span { display: flex; align-items: flex-start; gap: 8px; }
 
-.st-audience {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-  padding: 28px max(clamp(16px, 4vw, 40px), calc((100% - 1180px) / 2 + 40px));
-  border-top: 1px solid #f1f5f9;
-  background: #f8fafc;
-}
-.st-audience h2 { margin: 0; color: var(--ink); font-size: 16px; font-weight: 700; }
-.st-audience p { max-width: 520px; margin: 6px 0 0; color: #475569; font-size: 15px; line-height: 1.6; }
 
 .st-footer {
   display: flex;
@@ -2986,6 +3094,9 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 .st-empty strong { display: block; color: var(--ink); font-size: 24px; font-weight: 700; letter-spacing: -0.015em; }
 .st-empty p { margin: 8px 0 0; color: var(--text-muted); font-size: 15px; line-height: 1.6; }
 .st-desk .chat-messages { gap: 18px; }
+/* Scroll the conversation inside the desk, so the newest answer and the
+   composer stay on screen instead of growing the page below the fold. */
+.st-desk .chat-messages { max-height: max(320px, calc(100vh - 400px)); max-height: max(320px, calc(100dvh - 400px)); }
 .st-desk .msg { font-size: 15px; line-height: 1.65; }
 .st-desk .msg::before { display: none; }
 .st-desk .msg-user {
@@ -3022,9 +3133,25 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 .st-chips button:hover:not(:disabled) { border-color: var(--accent); color: var(--ink); }
 .st-chips button:disabled { opacity: 0.55; cursor: not-allowed; }
 .st-desk .chat-input-row { padding-top: 0; border-top: 0; }
-.st-desk .chat-input-row input { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; }
-.st-desk .chat-input-row input:focus { outline: 2px solid var(--accent-hover); outline-offset: 1px; }
+.st-desk .chat-input-row input,
+.st-desk .chat-input-row textarea { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; }
+.st-desk .chat-input-row textarea { max-height: 132px; }
+.st-desk .chat-input-row input:focus,
+.st-desk .chat-input-row textarea:focus { outline: 2px solid var(--accent-hover); outline-offset: 1px; }
 .st-desk .chat-input-row .btn { min-width: 84px; border-radius: 12px; }
+
+/* A long turn explains itself (ChatApp slowTurn). */
+.chat-working-note {
+  align-self: flex-start;
+  max-width: 34rem;
+  margin: 2px 0 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
 .st-confirm {
   display: flex;
   flex-wrap: wrap;
@@ -3044,7 +3171,6 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 
 @media (max-width: 860px) {
   .st-hero { grid-template-columns: minmax(0, 1fr); }
-  .st-audience { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 640px) {
@@ -3054,7 +3180,7 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
   .st-cta { flex: 1 1 100%; }
   .st-example { padding: 16px; }
   .st-desk .chat-window { min-height: 0; margin-top: 18px; padding: 0 14px 14px; }
-  .st-desk .chat-messages { min-height: 220px; padding: 20px 0; }
+  .st-desk .chat-messages { min-height: 220px; max-height: max(240px, calc(100dvh - 540px)); padding: 20px 0; }
   .st-empty strong { font-size: 20px; }
   .st-reminder { margin: 0 -14px; padding: 10px 14px; font-size: 12px; }
   .st-desk .msg-user, .st-desk .msg-assistant { max-width: 100%; }

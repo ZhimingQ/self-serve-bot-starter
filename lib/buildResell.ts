@@ -308,6 +308,7 @@ export interface StreamResponseParams {
   instanceId: string;
   input: string;
   sessionId?: string | null;
+  signal?: AbortSignal;
 }
 
 /**
@@ -320,6 +321,7 @@ export async function streamResponse({
   instanceId,
   input,
   sessionId,
+  signal,
 }: StreamResponseParams): Promise<Response> {
   const res = await fetch(`${brand.apiBase}/responses`, {
     method: "POST",
@@ -331,6 +333,7 @@ export async function streamResponse({
       stream: true,
     }),
     cache: "no-store",
+    signal,
   });
 
   if (!res.ok || !res.body) {

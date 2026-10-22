@@ -64,7 +64,7 @@ export default function StudentSignupForm({ brandName }: { brandName: string }) 
       <Link href="/" className="st-auth-back">← {brandName}</Link>
       <div className="st-auth-card">
         <h1>Create your account</h1>
-        <p className="st-auth-hint">Your tutor is ready about a minute after you sign up.</p>
+        <p className="st-auth-hint">Your tutor is set up for you as soon as you sign up.</p>
         {error && <div className="form-error" role="alert">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="field">
