@@ -32,7 +32,7 @@ export class BuildResellApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly code: string | null,
-    operation: "createInstance" | "listInstances" | "deleteInstance",
+    operation: "createInstance" | "getInstance" | "listInstances" | "deleteInstance",
   ) {
     super(`${operation} failed (${status})${code ? `: ${code}` : ""}`);
     this.name = "BuildResellApiError";
@@ -41,7 +41,7 @@ export class BuildResellApiError extends Error {
 
 async function upstreamError(
   res: Response,
-  operation: "createInstance" | "listInstances" | "deleteInstance",
+  operation: "createInstance" | "getInstance" | "listInstances" | "deleteInstance",
 ): Promise<BuildResellApiError> {
   const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
   const code = typeof body?.error === "string" ? body.error : null;
@@ -109,10 +109,25 @@ export async function listInstances(): Promise<BuildResellInstance[]> {
   return body.data ?? [];
 }
 
-/** Look up a single instance by id (used to poll for "running" status). */
+/** Look up a single instance by id (used to poll for "running" status).
+ *  Uses GET /instances/{id}, not the list: that endpoint checks the bot live and
+ *  reports "running" the moment it answers, so the customer is not left on the
+ *  spinner waiting for a background sweep. A missing bot returns null. */
 export async function getInstance(instanceId: string): Promise<BuildResellInstance | null> {
-  const instances = await listInstances();
-  return instances.find((instance) => instance.id === instanceId) ?? null;
+  const res = await fetch(`${brand.apiBase}/instances/${encodeURIComponent(instanceId)}`, {
+    method: "GET",
+    headers: authHeaders(),
+    cache: "no-store",
+    signal: AbortSignal.timeout(CONTROL_TIMEOUT_MS),
+  });
+
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw await upstreamError(res, "getInstance");
+  }
+
+  const body = (await res.json()) as { data?: BuildResellInstance };
+  return body.data ?? null;
 }
 
 /** Permanently retire a customer's bot. A missing bot is already deleted, so
