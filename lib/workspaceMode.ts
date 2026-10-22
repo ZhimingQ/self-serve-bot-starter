@@ -10,8 +10,9 @@
  *          the UI and refused server-side — whatever their own switches say.
  *          Made for audiences that only need to talk to the assistant.
  *  students  everything simple mode restricts, plus a student website: a
- *          coursework landing page, a sign-up that asks the student's age
- *          (13+, guardian consent under 18) and school year, a study-desk chat,
+ *          coursework landing page, a sign-up with an optional school year
+ *          (creating the account confirms 13+, a guardian's agreement under
+ *          18), a study-desk chat,
  *          and built-in tutor rules (explain, cite sources, never write the
  *          coursework). Made for GCSE and A-level coursework help.
  *

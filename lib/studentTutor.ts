@@ -1,15 +1,10 @@
 /**
- * The student website (WORKSPACE_MODE=students): who may sign up, and the tutor
- * rules every student's assistant follows.
+ * The student website (WORKSPACE_MODE=students): what sign-up records, and the
+ * tutor rules every student's assistant follows.
  *
  * Kept free of node: imports so the rules and the sign-up check are testable on
  * their own.
  */
-
-/** Under 13 is not a band: those visitors are turned away before an account
- *  exists, so it is never stored. */
-export const studentAgeBands = ["13-17", "18+"] as const;
-export type StudentAgeBand = (typeof studentAgeBands)[number];
 
 export const schoolYears = [
   { id: "y9", label: "Year 9" },
@@ -22,48 +17,30 @@ export const schoolYears = [
 export type SchoolYearId = (typeof schoolYears)[number]["id"];
 
 export interface StudentProfile {
-  ageBand: StudentAgeBand;
-  /** ISO time the student confirmed a parent or guardian agreed. Set only for
-   *  13 to 17. */
-  guardianConsentAt?: string;
+  /** ISO time the student created the account under the sign-up line "you
+   *  confirm you're 13 or over and, if under 18, a parent or guardian agrees".
+   *  A self-declared age is not a check, so none is asked for; the tutor rules
+   *  assume every student may be under 18 instead. */
+  termsConfirmedAt: string;
   schoolYear?: SchoolYearId;
 }
 
 export type StudentSignupResult =
   | { ok: true; profile: StudentProfile }
-  | { ok: false; error: "under_13" | "age_required" | "guardian_consent_required" | "invalid_school_year" };
+  | { ok: false; error: "invalid_school_year" };
 
-/** Validates the student half of a sign-up. The server is the authority here:
- *  the form shows the same rules, but a direct POST must not get past them. */
+/** Validates the student half of a sign-up: only the optional school year. */
 export function parseStudentSignup(
-  body: { ageBand?: unknown; guardianConsent?: unknown; schoolYear?: unknown },
+  body: { schoolYear?: unknown },
   now: Date = new Date()
 ): StudentSignupResult {
-  const age = body.ageBand;
-  if (age === "under-13") return { ok: false, error: "under_13" };
-  if (typeof age !== "string" || !(studentAgeBands as readonly string[]).includes(age)) {
-    return { ok: false, error: "age_required" };
-  }
-  const ageBand = age as StudentAgeBand;
-  if (ageBand === "13-17" && body.guardianConsent !== true) {
-    return { ok: false, error: "guardian_consent_required" };
-  }
-
   let schoolYear: SchoolYearId | undefined;
   if (body.schoolYear !== undefined && body.schoolYear !== null && body.schoolYear !== "") {
     const year = schoolYears.find((item) => item.id === body.schoolYear);
     if (!year) return { ok: false, error: "invalid_school_year" };
     schoolYear = year.id;
   }
-
-  return {
-    ok: true,
-    profile: {
-      ageBand,
-      ...(ageBand === "13-17" ? { guardianConsentAt: now.toISOString() } : {}),
-      ...(schoolYear ? { schoolYear } : {}),
-    },
-  };
+  return { ok: true, profile: { termsConfirmedAt: now.toISOString(), ...(schoolYear ? { schoolYear } : {}) } };
 }
 
 function levelLine(schoolYear: SchoolYearId | undefined): string {
@@ -83,7 +60,7 @@ function levelLine(schoolYear: SchoolYearId | undefined): string {
 
 /** The built-in rules, applied on every chat turn of a student storefront in
  *  addition to anything the storefront owner adds. */
-export function studentTutorRules(schoolYear?: SchoolYearId, ageBand?: StudentAgeBand): string {
+export function studentTutorRules(schoolYear?: SchoolYearId): string {
   return [
     "You are a coursework research tutor for UK secondary school students (GCSE and A-level).",
     levelLine(schoolYear),
@@ -91,8 +68,6 @@ export function studentTutorRules(schoolYear?: SchoolYearId, ageBand?: StudentAg
     "Use web search to find reliable sources for factual and research questions. Prefer educational, academic, museum, government and established news sources.",
     "End every research answer with a 'Sources' list of real links, written as Markdown links, one per line. Only list pages you actually found; never invent a source or a link. If you could not search, say so plainly.",
     "Never write coursework, essays, or answers to assessed work for the student, even if asked directly. Instead, help them plan, explain the ideas, point to sources, and give feedback on writing they have done themselves.",
-    ageBand === "13-17"
-      ? "The student is under 18: keep every answer appropriate for a teenager, and do not ask for personal details."
-      : "Keep every answer appropriate for a school setting, and do not ask for personal details.",
+    "The student may be under 18: keep every answer appropriate for a teenager, and do not ask for personal details.",
   ].join(" ");
 }

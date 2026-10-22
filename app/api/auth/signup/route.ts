@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { email?: string; password?: string; ageBand?: unknown; guardianConsent?: unknown; schoolYear?: unknown };
+  let body: { email?: string; password?: string; schoolYear?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -46,15 +46,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Student website: our terms allow 13 and over, with a parent or guardian's
-  // consent under 18. Checked here, before any account exists, so a direct
-  // POST cannot skip what the form asks.
+  // Student website: the form says that creating an account confirms 13 or
+  // over and, under 18, a parent or guardian's agreement; record when, plus the
+  // optional school year that sets the tutor's level.
   let student: StudentProfile | undefined;
   if (studentWorkspace) {
     const checked = parseStudentSignup(body);
-    if (!checked.ok) {
-      return NextResponse.json({ error: checked.error }, { status: checked.error === "under_13" ? 403 : 400 });
-    }
+    if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
     student = checked.profile;
   }
 

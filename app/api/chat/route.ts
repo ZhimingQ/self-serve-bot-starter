@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         input,
         preferences,
         assistantInstructions(),
-        studentWorkspace ? studentTutorRules(user?.student?.schoolYear, user?.student?.ageBand) : ""
+        studentWorkspace ? studentTutorRules(user?.student?.schoolYear) : ""
       ),
       sessionId: existingSessionId,
     });

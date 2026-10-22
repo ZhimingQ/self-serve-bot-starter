@@ -60,9 +60,8 @@ export interface StoredUser {
   /** Unix-ms expiry of the reset token. A token past this is refused and treated
    *  as absent. */
   resetTokenExpiresAt?: number;
-  /** Student website only (WORKSPACE_MODE=students): the age band and school
-   *  year given at sign-up, and when a 13-17 student confirmed guardian
-   *  consent. */
+  /** Student website only (WORKSPACE_MODE=students): the optional school year
+   *  given at sign-up, and when the student confirmed the sign-up terms. */
   student?: StudentProfile;
 }
 
