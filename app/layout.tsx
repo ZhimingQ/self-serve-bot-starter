@@ -12,6 +12,12 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
+  if (studentWorkspace) {
+    return {
+      title: `${brand.name} — Coursework research tutor`,
+      description: `${brand.name} helps GCSE and A-level students research their coursework, with sources for every answer.`,
+    };
+  }
   const copy = messages[await getLocale()];
   return {
     title: copy.metadataTitle(brand.name),
