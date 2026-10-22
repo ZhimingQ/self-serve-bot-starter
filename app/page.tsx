@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { brand, demoMode, demoSignupUrl, paymentsEnabled, stripe } from "../lib/config";
+import { brand, demoMode, demoSignupUrl, paymentsEnabled, stripe, studentWorkspace } from "../lib/config";
+import StudentLanding from "./student/StudentLanding";
 import { messages } from "../lib/i18n";
 import { getLocaleState } from "../lib/locale";
 import { getOfferKind } from "../lib/offer";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 export default async function LandingPage() {
+  // WORKSPACE_MODE=students has its own landing page.
+  if (studentWorkspace) return <StudentLanding />;
   const { locale, locked } = await getLocaleState();
   const copy = messages[locale];
   // Demo mode blocks public signup/provisioning. Keep login available for

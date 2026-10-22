@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { brand, demoMode, demoSignupUrl, knownBotTools } from "../../lib/config";
+import { brand, demoMode, demoSignupUrl, knownBotTools, studentWorkspace } from "../../lib/config";
 import { getLocaleState } from "../../lib/locale";
 import ChatApp from "../app/ChatApp";
 
@@ -12,12 +12,13 @@ export default async function DemoControlPanel({
 
   const localeState = await getLocaleState();
   const requestedLocale = (await searchParams).locale;
-  const locale = requestedLocale === "zh" ? "zh" : localeState.locale;
+  // The student website is English only (see lib/locale.ts).
+  const locale = requestedLocale === "zh" && !studentWorkspace ? "zh" : localeState.locale;
   const sessionStartedAt = Date.now();
   // A query override is intentionally fixed for this shareable preview URL.
   // ChatApp also updates the document lang after hydration so assistive tech and
   // the Chinese typography rules match the visible language.
-  const localeLocked = requestedLocale === "zh" || localeState.locked;
+  const localeLocked = (requestedLocale === "zh" && !studentWorkspace) || localeState.locked;
 
   return (
     <ChatApp
@@ -43,6 +44,9 @@ export default async function DemoControlPanel({
       channelsEnabled
       botTools={[...knownBotTools]}
       termsUrl={brand.termsUrl}
+      // A student storefront's demo shows the study desk its students get.
+      simpleMode={studentWorkspace}
+      studentMode={studentWorkspace}
       preview
     />
   );

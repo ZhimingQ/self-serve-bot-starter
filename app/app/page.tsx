@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../lib/session";
 import { getStore } from "../../lib/store";
-import { allowChannelConnect, allowEndUserByok, brand, demoSignupUrl, enabledBotTools, paymentsEnabled, simpleWorkspace, stripe } from "../../lib/config";
+import { allowChannelConnect, allowEndUserByok, brand, demoSignupUrl, enabledBotTools, paymentsEnabled, simpleWorkspace, stripe, studentWorkspace } from "../../lib/config";
 import { confirmCheckoutSession } from "../../lib/billing";
 import { getLocaleState } from "../../lib/locale";
 import ChatApp from "./ChatApp";
@@ -63,6 +63,7 @@ export default async function AppPage({
       channelsEnabled={allowChannelConnect}
       botTools={enabledBotTools}
       simpleMode={simpleWorkspace}
+      studentMode={studentWorkspace}
     />
   );
 }

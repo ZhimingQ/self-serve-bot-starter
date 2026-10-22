@@ -87,6 +87,7 @@ export default function ChatApp({
   channelsEnabled = true,
   botTools = [],
   simpleMode = false,
+  studentMode = false,
   preview = false,
 }: {
   email: string;
@@ -120,6 +121,10 @@ export default function ChatApp({
    *  are on) are offered. The server forces Channels, Model key and Bot tools off
    *  in this mode, so those arrive here already disabled. */
   simpleMode?: boolean;
+  /** WORKSPACE_MODE=students — the chat becomes a study desk: a reminder of
+   *  what the tutor will and won't do, starter chips, and "New question". Always
+   *  arrives with simpleMode on. */
+  studentMode?: boolean;
   preview?: boolean;
 }) {
   const copy = translations[locale];
@@ -160,6 +165,9 @@ export default function ChatApp({
   const [sessionStatus, setSessionStatus] = useState<AsyncStatus>("idle");
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmNewTopic, setConfirmNewTopic] = useState(false);
+  const [newTopicStatus, setNewTopicStatus] = useState<AsyncStatus>("idle");
+  const assistantInputRef = useRef<HTMLInputElement>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const hasLocalActivityRef = useRef(false);
@@ -385,7 +393,9 @@ export default function ChatApp({
   async function handleSend(event: React.FormEvent) {
     event.preventDefault();
     const trimmed = input.trim();
-    if (!trimmed || sending) return;
+    // Not while "New question" is clearing the conversation: the turn would go
+    // to the old conversation and then be wiped from the screen.
+    if (!trimmed || sending || newTopicStatus === "working") return;
 
     hasLocalActivityRef.current = true;
     setInput("");
@@ -579,6 +589,40 @@ export default function ChatApp({
     } catch { setClearStatus("error"); }
   }
 
+  // Student "New question": the tutor keeps one conversation, so starting a
+  // new topic clears it (after an inline confirm — never window.confirm).
+  async function startNewTopic() {
+    if (sending) return;
+    if (messages.length === 0) { assistantInputRef.current?.focus(); return; }
+    if (!confirmNewTopic) { setNewTopicStatus("idle"); setConfirmNewTopic(true); return; }
+    setNewTopicStatus("working");
+    try {
+      if (!preview) {
+        const res = await fetch("/api/history", { method: "DELETE" });
+        if (!res.ok) throw new Error();
+      }
+      setMessages([]);
+      setSessionUserTurns(0);
+      setSessionAssistantReplies(0);
+      setSavedUserTurns(0);
+      setSavedAssistantReplies(0);
+      setSavedLatestActivityAt(null);
+      setConfirmNewTopic(false);
+      setNewTopicStatus("idle");
+      assistantInputRef.current?.focus();
+    } catch { setNewTopicStatus("error"); }
+  }
+
+  function startWith(prefix: string) {
+    setInput(prefix);
+    window.setTimeout(() => {
+      const field = assistantInputRef.current;
+      if (!field) return;
+      field.focus();
+      field.setSelectionRange(prefix.length, prefix.length);
+    }, 0);
+  }
+
   async function deleteAccount() {
     if (!confirmDelete) {
       setDeleteStatus("idle");
@@ -740,7 +784,7 @@ export default function ChatApp({
   // and help. Billing appears only when there is something to pay.
   const primaryNav: { panel: Panel; label: string; icon: string }[] = simpleMode
     ? [
-        { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
+        { panel: "assistant", label: studentMode ? "Study desk" : copy.controlAssistant, icon: "✦" },
         { panel: "history", label: copy.controlHistory, icon: "↻" },
       ]
     : fullPrimaryNav;
@@ -821,7 +865,7 @@ export default function ChatApp({
       >
         <header className="control-topbar">
           <div>
-            <span>{copy.workspace}</span>
+            <span>{studentMode ? brandName : copy.workspace}</span>
             <strong>{currentPanelTitle}</strong>
           </div>
           <div className="control-topbar-actions">
@@ -834,7 +878,7 @@ export default function ChatApp({
         </header>
 
         <label className="control-mobile-nav">
-          <span>{copy.mobileNavigationLabel}</span>
+          <span>{studentMode ? "Go to" : copy.mobileNavigationLabel}</span>
           <select id="control-mobile-section" name="control-section" value={panel} onChange={(event) => openPanel(event.target.value as Panel)}>
             {allNav.map((item) => (
               <option key={item.panel} value={item.panel}>
@@ -940,7 +984,63 @@ export default function ChatApp({
           </div>
         )}
 
-        {panel === "assistant" && (
+        {panel === "assistant" && studentMode && (
+          <div className="control-content control-chat-content st-desk">
+            <section className="control-heading control-heading-row">
+              <div><h1>Your study desk</h1></div>
+              <button type="button" className="btn btn-primary st-new-topic" onClick={() => void startNewTopic()} disabled={sending || newTopicStatus === "working"}>+ New question</button>
+            </section>
+            {confirmNewTopic && (
+              <div className="st-confirm" role="alert">
+                <span>{newTopicStatus === "error" ? "That didn't work. Please try again." : "Start a new question? This clears the conversation on screen."}</span>
+                <div>
+                  <button type="button" className="btn btn-primary" onClick={() => void startNewTopic()} disabled={newTopicStatus === "working"}>{newTopicStatus === "working" ? "Clearing…" : "Yes, start fresh"}</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => { setConfirmNewTopic(false); setNewTopicStatus("idle"); }} disabled={newTopicStatus === "working"}>Cancel</button>
+                </div>
+              </div>
+            )}
+            <div className="chat-window">
+              <p className="st-reminder"><i aria-hidden="true" />Explains and finds sources. It won&apos;t write your coursework for you.</p>
+              <div className="chat-messages" ref={chatMessagesRef}>
+                {messages.length === 0 && (
+                  <div className="st-empty">
+                    <strong>What are you working on?</strong>
+                    <p>Ask about a topic, or pick a starting point below. Answers come with links to their sources.</p>
+                  </div>
+                )}
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={message.role === "user" ? "msg msg-user" : message.error || !message.content ? "msg msg-assistant" : "msg msg-assistant msg-md"}
+                    data-label={message.role === "user" ? "You" : "Tutor"}
+                    style={message.error ? { color: "#b91c1c" } : undefined}
+                  >
+                    {message.role !== "user" && !message.error && message.content
+                      ? <ChatMarkdown text={message.content} />
+                      : message.content || (sending && index === messages.length - 1 ? "Researching…" : "")}
+                  </div>
+                ))}
+              </div>
+              <div className="st-chips" aria-label="Starting points">
+                {([
+                  ["Explain a topic", "Explain this topic to me step by step: "],
+                  ["Find sources", "Find reliable sources I can cite about: "],
+                  ["Plan my essay", "Help me plan (not write) an essay on: "],
+                  ["Check my paragraph", "Give me feedback on this paragraph I wrote: "],
+                ] as const).map(([label, prefix]) => (
+                  <button key={label} type="button" onClick={() => startWith(prefix)} disabled={sending || newTopicStatus === "working"}>{label}</button>
+                ))}
+              </div>
+              <form className="chat-input-row" onSubmit={handleSend}>
+                <label className="sr-only" htmlFor="assistant-message">Your question</label>
+                <input id="assistant-message" ref={assistantInputRef} type="text" placeholder="Ask about your coursework…" value={input} onChange={(event) => setInput(event.target.value)} disabled={sending || newTopicStatus === "working"} />
+                <button type="submit" className="btn btn-primary" disabled={sending || newTopicStatus === "working" || !input.trim()}>{copy.send}</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {panel === "assistant" && !studentMode && (
           <div className="control-content control-chat-content">
             <section className="control-heading control-heading-row">
               <div><span>{copy.privateAssistant}</span><h1>{copy.chatTitle}</h1><p>{copy.chatSubtitle}</p></div>
