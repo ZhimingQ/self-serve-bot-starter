@@ -16,6 +16,7 @@ import {
 } from "../../lib/customerWorkspace";
 import SetupProgress from "./SetupProgress";
 import ChatMarkdown from "./ChatMarkdown";
+import WorkingIndicator from "./WorkingIndicator";
 
 interface ChatMessage {
   id?: string;
@@ -1220,7 +1221,7 @@ export default function ChatApp({
                   >
                     {message.role !== "user" && !message.error && message.content
                       ? <ChatMarkdown text={message.content} />
-                      : message.content || (sending && index === messages.length - 1 ? "Researching…" : "")}
+                      : message.content || (sending && index === messages.length - 1 ? <WorkingIndicator label="Researching" /> : "")}
                   </div>
                 ))}
                 {sending && slowTurn && !messages[messages.length - 1]?.content && (
@@ -1269,7 +1270,7 @@ export default function ChatApp({
                     {/* Replies are Markdown; the customer's own text stays as typed. */}
                     {message.role !== "user" && !message.error && message.content
                       ? <ChatMarkdown text={message.content} />
-                      : message.content || (sending && index === messages.length - 1 ? "…" : "")}
+                      : message.content || (sending && index === messages.length - 1 ? <WorkingIndicator /> : "")}
                   </div>
                 ))}
                 {sending && slowTurn && !messages[messages.length - 1]?.content && (
