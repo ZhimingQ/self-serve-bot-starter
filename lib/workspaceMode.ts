@@ -6,8 +6,10 @@
  *          plus Channels / Model key / Bot tools when those are enabled.
  *  simple  sign in and chat. The customer lands straight in the chat and sees
  *          only Chat, History, Account, Your data, Help, and Billing when payments
- *          are on. Channels, Model key and Bot tools are forced OFF — hidden in
- *          the UI and refused server-side — whatever their own switches say.
+ *          are on. Channels, Model key and Bot tools start OFF (hidden in the UI
+ *          and refused server-side); setting one's own switch explicitly
+ *          (ALLOW_CHANNEL_CONNECT=1, BOT_TOOLS=..., ALLOW_END_USER_BYOK=1)
+ *          still turns it on, and it then appears in the sidebar.
  *          Made for audiences that only need to talk to the assistant.
  *  students  everything simple mode restricts, plus a student website: a
  *          coursework landing page, a sign-up with an optional school year

@@ -18,6 +18,13 @@ const nextConfig = {
   // Next app. Note a standalone build's server.js does NOT read .env at runtime;
   // the prebuilt deploy path ships a start.js wrapper that loads it first.
   ...(process.env.STOREFRONT_STANDALONE === "1" ? { output: "standalone" } : {}),
+  // Set only by scripts/rebuild-from-source.sh, which builds inside the owner's
+  // bot container. Next sizes its build workers from os.cpus(), which there is
+  // the HOST's core count, and those workers drop the heap cap: one worker keeps
+  // the build inside the memory the bot can spare.
+  ...(process.env.STOREFRONT_BUILD_CPUS
+    ? { experimental: { cpus: Math.max(1, Number(process.env.STOREFRONT_BUILD_CPUS) || 1) } }
+    : {}),
 };
 
 module.exports = nextConfig;

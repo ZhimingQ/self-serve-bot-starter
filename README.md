@@ -93,8 +93,10 @@ WORKSPACE_MODE=simple
 
 Customers then land straight in the chat, and the sidebar offers only Chat,
 History, Account, Your data, Help, and Billing when payments are on. Channels,
-Model key and Bot tools are switched off in this mode, hidden in the UI and
-refused server-side, whatever their own settings say. Leave `WORKSPACE_MODE`
+Model key and Bot tools start off in this mode, hidden in the UI and refused
+server-side. To offer one anyway, set its own setting explicitly
+(`ALLOW_CHANNEL_CONNECT=1`, `BOT_TOOLS=files,backup`, `ALLOW_END_USER_BYOK=1`);
+it then appears in the sidebar. Leave `WORKSPACE_MODE`
 unset (or `full`) for the whole workspace. Any other value is read as `simple`,
 so a typo never re-exposes panels you meant to hide.
 
@@ -374,7 +376,7 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | `ALLOW_END_USER_BYOK` | no (defaults off) | Shows the Model key panel, where a customer funds the assistant with their own provider key. See below. |
 | `ALLOW_CHANNEL_CONNECT` | no (defaults **on**) | Set `0` to hide the Channels panel and connect apps for your customers yourself. |
 | `CHANNELS` | no (defaults to all) | Restrict the Channels panel, e.g. `wechat,telegram`. |
-| `WORKSPACE_MODE` | no (defaults to `full`) | `simple` = customers only see sign-in and chat; Channels, Model key and Bot tools are forced off. See "Simple mode" above. |
+| `WORKSPACE_MODE` | no (defaults to `full`) | `simple` = customers only see sign-in and chat; Channels, Model key and Bot tools start off unless set explicitly. See "Simple mode" above. |
 | `ASSISTANT_INSTRUCTIONS_FILE` / `ASSISTANT_INSTRUCTIONS` | no | Standing instructions added to every customer message (up to 2,000 characters). The file wins and is re-read each message. |
 | `BOT_TOOLS` | no (defaults to all) | Bot tools offered to customers: `power,backup,import,files,ssh,endpoint,desktop,computer`, or `none`. See "Bot tools" above. |
 | `RESEND_API_KEY` | no | Enables emailed password resets. Unset ⇒ the Forgot-password page points customers at support and you use `npm run reset-password`. |

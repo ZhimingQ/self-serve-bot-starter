@@ -233,13 +233,15 @@ function envFlag(value: string | undefined, fallback: boolean): boolean {
 
 // ── Workspace mode ────────────────────────────────────────────────────────
 // WORKSPACE_MODE=simple turns the customer area into "sign in and chat": the
-// customer lands in the chat, and Channels / Model key / Bot tools are forced
-// OFF below — hidden AND refused server-side, whatever their own switches say.
-// Unset or "full" keeps the whole workspace. See lib/workspaceMode.ts.
+// customer lands in the chat, and Channels / Model key / Bot tools start OFF
+// below. The mode sets the defaults, not a ceiling: the owner (or the owner's
+// bot) can still turn one of them on by setting its own switch explicitly
+// (ALLOW_CHANNEL_CONNECT=1, BOT_TOOLS=files,..., ALLOW_END_USER_BYOK=1). Off is
+// hidden AND refused server-side. Unset or "full" keeps the whole workspace,
+// everything on by default. See lib/workspaceMode.ts.
 export const workspaceMode: WorkspaceMode = parseWorkspaceMode(process.env.WORKSPACE_MODE);
-// WORKSPACE_MODE=students is the student website, and carries every simple-mode
-// restriction with it: a student storefront never offers Channels, Model key or
-// Bot tools either.
+// WORKSPACE_MODE=students is the student website, and starts with the same
+// simple-mode defaults: no Channels, Model key or Bot tools unless switched on.
 export const simpleWorkspace = workspaceMode !== "full";
 export const studentWorkspace = workspaceMode === "students";
 
@@ -264,13 +266,13 @@ export function assistantInstructions(): string {
 }
 
 export const allowEndUserByok =
-  !simpleWorkspace &&
   envFlag(process.env.ALLOW_END_USER_BYOK, false) &&
   // Hermes has no end-user BYOK path on the platform side; showing the panel
   // would only produce a 400 the customer cannot act on.
   (isBotFramework(rawFramework) ? rawFramework : "openclaw") === "openclaw";
 
-export const allowChannelConnect = !simpleWorkspace && envFlag(process.env.ALLOW_CHANNEL_CONNECT, true);
+// On by default in full mode; in simple/students mode only when set to 1.
+export const allowChannelConnect = envFlag(process.env.ALLOW_CHANNEL_CONNECT, !simpleWorkspace);
 
 /** The channels this storefront offers, in display order. An empty CHANNELS var
  *  (the default) means "all of them" — the panel then filters again against what
@@ -308,8 +310,10 @@ export const offeredChannels: ChannelId[] = (() => {
 // Every tool acts only on the signed-in customer's own assistant, resolved
 // from the session; see app/api/bot-tools.
 export { knownBotTools, type BotToolId } from "./botTools";
-// Simple mode offers no bot tools at all (see WORKSPACE_MODE above).
-export const enabledBotTools: BotToolId[] = simpleWorkspace ? [] : parseBotTools(process.env.BOT_TOOLS);
+// Simple/students mode offers none unless BOT_TOOLS names some explicitly
+// (unset means "all" only in full mode; see WORKSPACE_MODE above).
+export const enabledBotTools: BotToolId[] =
+  simpleWorkspace && !process.env.BOT_TOOLS?.trim() ? [] : parseBotTools(process.env.BOT_TOOLS);
 export const botToolEnabled = (id: BotToolId): boolean => enabledBotTools.includes(id);
 
 // ── Startup validation ────────────────────────────────────────────────────

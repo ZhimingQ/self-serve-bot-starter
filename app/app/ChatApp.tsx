@@ -156,10 +156,17 @@ export default function ChatApp({
   const [panel, setPanel] = useState<Panel>(simpleMode ? "assistant" : "overview");
   // Every navigation goes through here. In simple mode a link to a panel that
   // mode does not offer (an overview tile, "browse prompts", ...) lands on the
-  // chat instead of opening a page the reseller chose to hide.
+  // chat instead of opening a page the reseller chose to hide. A feature the
+  // owner switched on explicitly (Channels, Model key, Bot tools) is offered.
   const openPanel = useCallback(
-    (next: Panel) => setPanel(simpleMode && !SIMPLE_PANELS.has(next) ? "assistant" : next),
-    [simpleMode]
+    (next: Panel) => {
+      const switchedOn =
+        (next === "channels" && channelsEnabled) ||
+        (next === "modelKey" && byokEnabled) ||
+        (next === "botTools" && botTools.length > 0);
+      setPanel(simpleMode && !SIMPLE_PANELS.has(next) && !switchedOn ? "assistant" : next);
+    },
+    [simpleMode, channelsEnabled, byokEnabled, botTools.length]
   );
   const [sessionUserTurns, setSessionUserTurns] = useState(0);
   const [sessionAssistantReplies, setSessionAssistantReplies] = useState(0);
@@ -974,15 +981,19 @@ export default function ChatApp({
   // Simple mode: the chat and the few things a customer must still be able to
   // reach — their saved history, their account, their data (download / delete)
   // and help. Billing appears only when there is something to pay.
+  // A feature the owner switched on explicitly shows here too.
   const primaryNav: { panel: Panel; label: string; icon: string }[] = simpleMode
     ? [
         { panel: "assistant", label: studentMode ? "Study desk" : copy.controlAssistant, icon: "✦" },
+        ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
         { panel: "history", label: copy.controlHistory, icon: "↻" },
       ]
     : fullPrimaryNav;
   const manageNav: { panel: Panel; label: string; icon: string }[] = simpleMode
     ? [
         ...(paymentsEnabled ? [{ panel: "billing" as Panel, label: copy.controlBilling, icon: "$" }] : []),
+        ...(byokEnabled ? [{ panel: "modelKey" as Panel, label: copy.controlModelKey, icon: "⚿" }] : []),
+        ...(botTools.length > 0 ? [{ panel: "botTools" as Panel, label: copy.botTools.navLabel, icon: "▤" }] : []),
         { panel: "account", label: copy.controlAccount, icon: "○" },
         { panel: "privacy", label: copy.controlPrivacy, icon: "⌁" },
         { panel: "support", label: copy.controlSupport, icon: "?" },
