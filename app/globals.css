@@ -3136,9 +3136,30 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 .st-desk .chat-input-row input,
 .st-desk .chat-input-row textarea { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; }
 .st-desk .chat-input-row textarea { max-height: 132px; }
+/* 16px keeps iOS Safari from zooming the page when the box is tapped. */
+.student-site .chat-input-row textarea { font-size: 16px; }
+/* Keep the scrollbar out of the message bubbles. */
+.st-desk .chat-messages { scrollbar-gutter: stable; scrollbar-width: thin; }
 .st-desk .chat-input-row input:focus,
 .st-desk .chat-input-row textarea:focus { outline: 2px solid var(--accent-hover); outline-offset: 1px; }
 .st-desk .chat-input-row .btn { min-width: 84px; border-radius: 12px; }
+
+/* A failed reply offers to ask the same question again (ChatApp retryLastQuestion). */
+.chat-retry {
+  display: block;
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink, #0f172a);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chat-retry:hover { border-color: var(--accent); }
+.chat-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* The reply is on its way (WorkingIndicator): moving dots, then a counter. */
 .working-indicator { display: inline-flex; align-items: center; gap: 8px; color: #64748b; }
@@ -3204,4 +3225,27 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
   .st-desk .msg-user, .st-desk .msg-assistant { max-width: 100%; }
   .st-desk .control-heading-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; text-align: left; }
   .st-desk .control-heading-row .btn { min-height: 40px; padding: 8px 12px; }
+  .st-desk .control-heading-row h1 { font-size: 24px; }
+  .student-site .st-chips button { min-height: 40px; }
+}
+
+/* Phones: the section menu already names the page, so the student site drops
+   the repeated title (and the whole top bar when it holds nothing else) and
+   shows the "Go to" label to screen readers only, so the chat starts higher. */
+@media (max-width: 700px) {
+  .student-site .control-topbar > div:first-child { display: none; }
+  .student-site .control-topbar:not(:has(.control-topbar-actions > :not(.control-live))) { display: none; }
+  .student-site .control-mobile-nav { padding: 10px 16px; }
+  /* Visually hidden only: it stays the select's accessible label. */
+  .student-site .control-mobile-nav > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }

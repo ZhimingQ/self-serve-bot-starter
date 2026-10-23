@@ -24,6 +24,8 @@ interface ChatMessage {
   content: string;
   createdAt?: string;
   error?: boolean;
+  /** A reply cut off part-way: kept and formatted as usual, but offers Try again. */
+  interrupted?: boolean;
 }
 
 // White-label: the end-user must never see the reseller's raw upstream error text
@@ -554,9 +556,30 @@ export default function ChatApp({
     }
   }
 
-  async function handleSend(event: React.FormEvent) {
+  function handleSend(event: React.FormEvent) {
     event.preventDefault();
-    const trimmed = input.trim();
+    void sendText(input);
+  }
+
+  /** A failed reply's "Try again": ask the same question once more, in place of
+   *  the failed pair, so the student never has to retype it. */
+  function retryLastQuestion() {
+    if (sending || newTopicStatus === "working") return;
+    const last = messages[messages.length - 1];
+    const question = messages[messages.length - 2];
+    if (!(last?.error || last?.interrupted) || question?.role !== "user") return;
+    setMessages((prev) => prev.slice(0, -2));
+    void sendText(question.content);
+  }
+
+  /** Only the newest bubble, only when it failed and follows the question. */
+  function canRetry(index: number) {
+    return !sending && newTopicStatus !== "working" && index === messages.length - 1
+      && Boolean(messages[index]?.error || messages[index]?.interrupted) && messages[index - 1]?.role === "user";
+  }
+
+  async function sendText(text: string) {
+    const trimmed = text.trim();
     // Not while "New question" is clearing the conversation: the turn would go
     // to the old conversation and then be wiped from the screen.
     if (!trimmed || sending || newTopicStatus === "working") return;
@@ -661,7 +684,7 @@ export default function ChatApp({
       if (!gotContent) {
         setLastAssistantMessage(setMessages, copy.chatError, true);
       } else if (streamErrored) {
-        appendToLastAssistantMessage(setMessages, `\n\n${copy.interrupted}`);
+        appendToLastAssistantMessage(setMessages, `\n\n${copy.interrupted}`, true);
         await refreshSavedUsage();
       } else {
         setSessionAssistantReplies((count) => count + 1);
@@ -677,7 +700,7 @@ export default function ChatApp({
       // If a partial reply already streamed, keep it and add the interrupted note;
       // otherwise replace the empty placeholder bubble with the error message.
       if (gotContent) {
-        appendToLastAssistantMessage(setMessages, `\n\n${copy.interrupted}`);
+        appendToLastAssistantMessage(setMessages, `\n\n${copy.interrupted}`, true);
       } else {
         setLastAssistantMessage(setMessages, msg, true);
       }
@@ -1222,6 +1245,7 @@ export default function ChatApp({
                     {message.role !== "user" && !message.error && message.content
                       ? <ChatMarkdown text={message.content} />
                       : message.content || (sending && index === messages.length - 1 ? <WorkingIndicator label="Researching" /> : "")}
+                    {canRetry(index) && <button type="button" className="chat-retry" onClick={retryLastQuestion}>Try again</button>}
                   </div>
                 ))}
                 {sending && slowTurn && !messages[messages.length - 1]?.content && (
@@ -1244,7 +1268,7 @@ export default function ChatApp({
               </div>
               <form className="chat-input-row" onSubmit={handleSend}>
                 <label className="sr-only" htmlFor="assistant-message">Your question</label>
-                <textarea id="assistant-message" ref={assistantInputRef} rows={1} placeholder="Ask about your coursework…" value={input} onChange={(event) => { setInput(event.target.value); fitComposer(event.currentTarget); }} onKeyDown={sendOnEnter} disabled={sending || newTopicStatus === "working"} />
+                <textarea id="assistant-message" ref={assistantInputRef} rows={1} placeholder="Ask a question…" value={input} onChange={(event) => { setInput(event.target.value); fitComposer(event.currentTarget); }} onKeyDown={sendOnEnter} disabled={sending || newTopicStatus === "working"} />
                 <button type="submit" className="btn btn-primary" disabled={sending || newTopicStatus === "working" || !input.trim()}>{copy.send}</button>
               </form>
             </div>
@@ -1271,6 +1295,7 @@ export default function ChatApp({
                     {message.role !== "user" && !message.error && message.content
                       ? <ChatMarkdown text={message.content} />
                       : message.content || (sending && index === messages.length - 1 ? <WorkingIndicator /> : "")}
+                    {canRetry(index) && <button type="button" className="chat-retry" onClick={retryLastQuestion}>{copy.tryAgain}</button>}
                   </div>
                 ))}
                 {sending && slowTurn && !messages[messages.length - 1]?.content && (
@@ -1594,13 +1619,14 @@ function formatDate(value: string, locale: Locale): string {
 
 function appendToLastAssistantMessage(
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  delta: string
+  delta: string,
+  interrupted = false
 ) {
   setMessages((prev) => {
     const next = [...prev];
     const lastIndex = next.length - 1;
     if (lastIndex >= 0 && next[lastIndex].role === "assistant") {
-      next[lastIndex] = { ...next[lastIndex], content: next[lastIndex].content + delta };
+      next[lastIndex] = { ...next[lastIndex], content: next[lastIndex].content + delta, ...(interrupted ? { interrupted: true } : {}) };
     }
     return next;
   });
