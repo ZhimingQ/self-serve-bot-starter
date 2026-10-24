@@ -62,10 +62,11 @@ async function serve(request: Request, params: Promise<{ id: string }>, method: 
   const upstream = await platformFetch(`/d/${encodeURIComponent(id)}`, {
     method,
     headers: forwardRequestHeaders(request, { accept: "application/json", ...visitorHeaders(request) }),
+    signal: request.signal,
   });
   if (!upstream) return errorResponse(request, 502);
   if (!PASS_STATUSES.has(upstream.status)) {
-    await upstream.body?.cancel().catch(() => {});
+    void upstream.body?.cancel().catch(() => {});
     return errorResponse(request, upstream.status);
   }
   return new Response(method === "HEAD" ? null : upstream.body, {

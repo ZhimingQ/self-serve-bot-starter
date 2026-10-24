@@ -122,10 +122,27 @@ export function forwardResponseHeaders(upstream: Response): Headers {
   return out;
 }
 
+/**
+ * The fetch beneath Next.js's caching layer. What remains under it still
+ * dedupes a GET by teeing the response body, unless the request carries a
+ * signal (platformFetch always passes one): a tee'd download or SSE answer
+ * would pile up whole in memory on the branch nobody reads, and cancelling the
+ * other branch never settles.
+ */
+function rawFetch(): typeof fetch {
+  const patched = globalThis.fetch as typeof fetch & { _nextOriginalFetch?: typeof fetch };
+  return patched._nextOriginalFetch ?? patched;
+}
+
 /** fetch() to the platform. Never follows redirects: a redirect would leak the platform host. */
 export async function platformFetch(path: string, init: RequestInit & { duplex?: "half" }): Promise<Response | null> {
   try {
-    return await fetch(`${platformOrigin()}${path}`, { ...init, redirect: "manual", cache: "no-store" });
+    return await rawFetch()(`${platformOrigin()}${path}`, {
+      ...init,
+      signal: init.signal ?? new AbortController().signal,
+      redirect: "manual",
+      cache: "no-store",
+    });
   } catch {
     return null;
   }

@@ -45,7 +45,7 @@ async function pass(request: Request, ctx: Ctx): Promise<Response> {
   // A redirect would hand the customer's client the platform's address (and
   // send its bearer key there). The platform's endpoint never redirects.
   if (upstream.status >= 300 && upstream.status < 400 && upstream.status !== 304) {
-    await upstream.body?.cancel().catch(() => {});
+    void upstream.body?.cancel().catch(() => {});
     return Response.json({ error: { message: "The assistant could not be reached. Try again shortly.", type: "server_error" } }, { status: 502 });
   }
 
