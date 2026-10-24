@@ -351,15 +351,6 @@ a {
   text-align: right;
 }
 
-.preview-memory {
-  padding-left: 17px;
-  border-left: 2px solid var(--accent);
-}
-
-.preview-memory > span {
-  color: var(--accent-hover);
-}
-
 .preview-composer {
   display: flex;
   align-items: center;
@@ -382,45 +373,6 @@ a {
   background: var(--ink);
   color: #fff;
   font-size: 18px;
-}
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  width: min(1160px, calc(100% - 48px));
-  margin: 0 auto;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-
-.feature-card {
-  min-width: 0;
-  padding: 34px 32px 38px;
-}
-
-.feature-card + .feature-card {
-  border-left: 1px solid var(--border);
-}
-
-.feature-number {
-  color: #aaa49a;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-}
-
-.feature-card h3 {
-  margin: 13px 0 0;
-  font-family: var(--font-serif);
-  font-size: 22px;
-  line-height: 1.25;
-}
-
-.feature-card p {
-  margin: 10px 0 0;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.7;
 }
 
 .section-heading {
@@ -488,59 +440,6 @@ a {
 .use-case-card p {
   margin: 14px 0 0;
   color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.how-section {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(420px, 1.15fr);
-  gap: clamp(54px, 8vw, 110px);
-  width: min(1280px, calc(100% - 48px));
-  margin: 0 auto;
-  padding: 86px clamp(42px, 6vw, 78px);
-  background: var(--ink);
-  color: #fff;
-}
-
-.section-heading-light .eyebrow {
-  color: color-mix(in srgb, var(--accent) 65%, white);
-}
-
-.section-heading-light > p {
-  color: #aaa69e;
-}
-
-.how-steps {
-  border-top: 1px solid #494740;
-}
-
-.how-steps article {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 20px;
-  padding: 25px 0 28px;
-  border-bottom: 1px solid #494740;
-}
-
-.how-steps article > span {
-  padding-top: 4px;
-  color: #858178;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-}
-
-.how-steps h3 {
-  margin: 0;
-  font-family: var(--font-serif);
-  font-size: 24px;
-  font-weight: 500;
-}
-
-.how-steps p {
-  margin: 7px 0 0;
-  color: #aaa69e;
   font-size: 14px;
   line-height: 1.7;
 }
@@ -669,6 +568,277 @@ a {
   font-weight: 500;
   letter-spacing: -0.035em;
   line-height: 1.08;
+}
+
+/* ── Landing page (app/page.tsx) ─────────────────────────────────────────
+   The landing uses the plain sans for its headings; the dashboard and the
+   sign-in pages keep the serif, so every override here is scoped to .landing. */
+.landing {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.landing .brand,
+.landing .footer-brand,
+.landing .hero h1,
+.landing .preview-header strong,
+.landing .preview-assistant p,
+.landing .section-heading h2,
+.landing .use-case-card h3,
+.landing .faq-list summary,
+.landing .closing-cta h2 {
+  font-family: var(--font-sans);
+}
+
+.landing .hero h1 {
+  font-size: clamp(44px, 5.2vw, 68px);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.03;
+}
+
+.landing .section-heading h2,
+.landing .closing-cta h2 {
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.landing .use-case-card h3 {
+  margin-top: 40px;
+  font-size: 21px;
+  letter-spacing: -0.01em;
+}
+
+.landing .faq-list summary {
+  font-size: 17px;
+}
+
+.landing-nav-links {
+  display: flex;
+  gap: 26px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.landing-nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.landing-nav-links a:hover {
+  color: var(--ink);
+}
+
+/* Hero example conversation */
+.landing-demo {
+  margin: 0;
+}
+
+.landing .preview-header strong {
+  font-size: 20px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+/* A brand name can be 60 characters with no spaces; let it wrap rather than
+   push the preview past a phone's edge. */
+.landing .preview-header > div {
+  min-width: 0;
+}
+
+.landing .preview-header .online-status {
+  flex: none;
+}
+
+.landing .preview-assistant p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.landing-demo-result {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--cream);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.landing-demo-result ol {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.preview-message > span.landing-demo-tag {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.landing-demo figcaption {
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* Chat apps strip */
+.landing-channels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 14px;
+  width: min(1160px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 22px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.landing-channels ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-channels li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.landing-channels i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+/* "What it does" cards: an example request and what comes back */
+.use-case-card .landing-job-prompt {
+  margin: 18px 0 0;
+  padding: 10px 13px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.use-case-card .landing-job-result {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Tools */
+.landing-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
+  gap: clamp(40px, 6vw, 80px);
+  align-items: start;
+  width: min(1160px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 0 0 96px;
+}
+
+.landing-tools .section-heading h2 {
+  font-size: clamp(32px, 3.4vw, 44px);
+}
+
+.landing-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.landing-tool-grid li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.landing-tool-grid strong {
+  margin-top: 10px;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.landing-tool-grid li > span {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.landing-tool-icon {
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+@media (max-width: 900px) {
+  .landing-nav-links {
+    display: none;
+  }
+
+  .landing-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-tool-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .landing .hero h1 {
+    font-size: clamp(38px, 11vw, 52px);
+  }
+
+  .landing-channels {
+    justify-content: flex-start;
+  }
+
+  .landing-tools {
+    padding-bottom: 76px;
+  }
+}
+
+@media (max-width: 520px) {
+  .landing-tool-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .site-footer {
@@ -2572,14 +2742,9 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
     width: min(620px, 100%);
   }
 
-  .how-section,
   .pricing-section,
   .faq-section {
     grid-template-columns: 1fr;
-  }
-
-  .how-section {
-    gap: 52px;
   }
 
   .pricing-section,
@@ -2632,9 +2797,9 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 @media (max-width: 700px) {
   .nav,
   .hero,
-  .features,
+  .landing-channels,
   .use-cases,
-  .how-section,
+  .landing-tools,
   .pricing-section,
   .faq-section,
   .closing-cta,
@@ -2686,10 +2851,6 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
     padding-left: 22px;
   }
 
-  .features {
-    grid-template-columns: 1fr;
-  }
-
   .use-cases,
   .pricing-section {
     padding: 76px 0;
@@ -2713,25 +2874,12 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
     margin-top: 34px;
   }
 
-  .how-section {
-    padding: 54px 28px;
-  }
-
   .pricing-card > div {
     padding: 28px 0;
   }
 
   .pricing-card > div + div {
     padding-left: 0;
-    border-top: 1px solid var(--border);
-    border-left: 0;
-  }
-
-  .feature-card {
-    padding: 28px 0;
-  }
-
-  .feature-card + .feature-card {
     border-top: 1px solid var(--border);
     border-left: 0;
   }

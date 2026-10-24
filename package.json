@@ -10,7 +10,7 @@
     "test:store": "tsx --test lib/store.test.mjs lib/store.adversarial.test.mjs lib/storeUpstash.test.mjs",
     "test:session": "tsx --test lib/session.test.mjs",
     "test:security": "tsx --test lib/payment.test.mjs lib/rateLimit.test.mjs",
-    "test:workspace": "node --experimental-strip-types --test lib/customerWorkspace.test.mjs lib/workspaceMode.test.mjs lib/chatMarkdown.test.mjs lib/studentTutor.test.mjs lib/activeTurns.test.mjs lib/elapsed.test.mjs",
+    "test:workspace": "node --experimental-strip-types --test lib/customerWorkspace.test.mjs lib/workspaceMode.test.mjs lib/chatMarkdown.test.mjs lib/studentTutor.test.mjs lib/activeTurns.test.mjs lib/elapsed.test.mjs lib/landingFeatures.test.mjs",
     "test:bottools": "node --experimental-strip-types --test lib/botTools.test.mjs",
     "test:reset": "tsx --import ./lib/registerTestHooks.mjs --test lib/passwordReset.test.mjs lib/passwordReset.unconfigured.test.mjs lib/passwordReset.appurl.test.mjs scripts/reset-password.test.mjs",
     "reset-password": "node scripts/reset-password.mjs",
