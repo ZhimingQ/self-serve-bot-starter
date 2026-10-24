@@ -125,6 +125,8 @@ const KNOWN_ERRORS = new Set([
   "video_failed",
   "included_video_off",
   "video_restart_failed",
+  "google_key_conflict",
+  "video_off_incomplete",
 ]);
 
 /** Map a failed platform call to a customer-safe status + code. */
@@ -454,8 +456,9 @@ const endpointDisable: ActionSpec = {
 };
 
 // ── Video (the customer's own provider key) ─────────────────────────────────
-// Hermes assistants only; the platform answers 404 for any other kind, which
-// the panel shows as "not available". The key is the CUSTOMER's: it pays for
+// Hermes and OpenClaw assistants. Included video (paid by the seller) exists on
+// Hermes only: the platform lists no included models for an OpenClaw assistant,
+// so the panel shows just the own-key choices there. The key is the CUSTOMER's: it pays for
 // their videos, is validated by the platform before the assistant is touched,
 // and only a masked preview ever comes back.
 

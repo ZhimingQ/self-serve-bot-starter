@@ -40,18 +40,12 @@ export type LandingTool =
   | { id: "desktop" | "files" | "computer" | "video" | "ssh" | "endpoint" | "power" | "byok" }
   | { id: "backup"; variant: "both" | "backup" | "restore" };
 
-// Tools the platform serves for one framework only. Video is Hermes-only: the
-// platform's /v1/instances/{id}/video route loads the bot with
-// frameworks: ['hermes'], so an OpenClaw customer could never use it.
-const TOOL_FRAMEWORKS: Partial<Record<BotToolId, readonly string[]>> = {
-  video: ["hermes"],
-};
-
-/** One tile per enabled tool the framework can serve. Backup and restore share
- *  a tile, worded for whichever of the two this storefront actually turned on. */
-export function landingTools(input: { tools: readonly BotToolId[]; byok: boolean; framework: string }): LandingTool[] {
-  const on = (id: BotToolId) =>
-    input.tools.includes(id) && (TOOL_FRAMEWORKS[id]?.includes(input.framework) ?? true);
+/** One tile per enabled tool. Every tool works on both frameworks (Video on
+ *  OpenClaw too since the platform's /v1/instances/{id}/video took OpenClaw
+ *  bots). Backup and restore share a tile, worded for whichever of the two this
+ *  storefront actually turned on. */
+export function landingTools(input: { tools: readonly BotToolId[]; byok: boolean }): LandingTool[] {
+  const on = (id: BotToolId) => input.tools.includes(id);
   const out: LandingTool[] = [];
   for (const id of ["desktop", "files", "computer", "video", "ssh", "endpoint"] as const) {
     if (on(id)) out.push({ id });

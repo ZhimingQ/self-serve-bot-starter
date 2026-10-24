@@ -52,7 +52,7 @@ export default async function LandingPage() {
   });
   const channelNames = channels.map((id) => copy.channelName[id]);
   const firstChannel = channelNames[0] ?? "";
-  const tools = landingTools({ tools: enabledBotTools, byok: allowEndUserByok, framework: brand.framework });
+  const tools = landingTools({ tools: enabledBotTools, byok: allowEndUserByok });
   const demo = firstChannel ? l.scheduled : l.draft;
   const jobs = [
     l.write,
