@@ -162,14 +162,14 @@ export interface UpstreamResult<T = Record<string, unknown>> {
 
 async function callApi<T = Record<string, unknown>>(
   path: string,
-  init: { method: "GET" | "POST" | "PUT"; body?: unknown },
+  init: { method: "GET" | "POST" | "PUT"; body?: unknown; timeoutMs?: number },
 ): Promise<UpstreamResult<T>> {
   const res = await fetch(`${brand.apiBase}${path}`, {
     method: init.method,
     headers: authHeaders(),
     ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
     cache: "no-store",
-    signal: AbortSignal.timeout(CONTROL_TIMEOUT_MS),
+    signal: AbortSignal.timeout(init.timeoutMs ?? CONTROL_TIMEOUT_MS),
   });
   const body = (await res.json().catch(() => ({}))) as T;
   return { ok: res.ok, status: res.status, body };
@@ -191,13 +191,19 @@ export function setModelKey(instanceId: string, modelKey: string, provider?: str
 }
 
 /** Which channels are connected, and which ones this bot's framework supports. */
-export function getChannels(instanceId: string) {
-  return callApi(`/instances/${encodeURIComponent(instanceId)}/channels`, { method: "GET" });
+/** `telegramPrivacy` also asks whether Telegram delivers every group message to
+ *  the bot at all (BotFather Group Privacy off). It costs a Telegram API call, so
+ *  only the panel's own load asks, never its polls. */
+export function getChannels(instanceId: string, opts: { telegramPrivacy?: boolean } = {}) {
+  const q = opts.telegramPrivacy ? "?include=telegram_privacy" : "";
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/channels${q}`, { method: "GET" });
 }
 
 /** connect | qr | pairing_approve | disconnect. See the channels endpoint docs. */
-export function channelAction(instanceId: string, body: Record<string, unknown>) {
-  return callApi(`/instances/${encodeURIComponent(instanceId)}/channels`, { method: "POST", body });
+/** `timeoutMs`: the channel SETTINGS actions answer only after the assistant has
+ *  restarted to apply them, which can take longer than a control call's 20s. */
+export function channelAction(instanceId: string, body: Record<string, unknown>, timeoutMs?: number) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/channels`, { method: "POST", body, timeoutMs });
 }
 
 // ── Customer self-service: bot tools ─────────────────────────────────────────

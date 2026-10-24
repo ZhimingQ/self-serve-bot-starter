@@ -2467,6 +2467,17 @@ a.control-brand:hover strong { text-decoration: underline; text-underline-offset
 /* A channel awaiting pairing offers two actions — finish it, or undo it. */
 .channel-card-actions { display: grid; gap: 8px; margin-top: auto; }
 .channel-card-actions .btn { margin-top: 0; }
+.channel-settings { display: grid; gap: 8px; padding: 10px 0 2px; border-top: 1px solid var(--border); font-size: 12px; }
+.channel-setting-row { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.channel-setting-row input { margin-top: 2px; }
+.channel-setting-row small { display: block; color: var(--text-muted); }
+.channel-setting-field { display: grid; gap: 4px; }
+.channel-setting-field select, .channel-setting-field textarea { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface, #fff); color: inherit; }
+.channel-setting-field select:focus, .channel-setting-field textarea:focus { border-color: var(--accent); outline: none; }
+.channel-setting-actions { display: flex; align-items: center; gap: 8px; }
+.channel-setting-actions .btn { width: auto; }
+.channel-setting-actions small { color: var(--text-muted); }
+.channel-setting-warn { margin: 0; padding: 8px 10px; border-radius: 8px; background: #fff7e6; color: #8a5a00; font-size: 12px; line-height: 1.5; }
 
 .channel-state {
   margin-left: auto;

@@ -24,7 +24,18 @@ import { channelAction, getChannels } from "../../../lib/buildResell";
 
 const disabled = () => NextResponse.json({ error: "not_found" }, { status: 404 });
 
-const ACTIONS = new Set(["connect", "qr", "pairing_approve", "disconnect"]);
+// A settings save waits for the assistant's restart (SETTING_TIMEOUT_MS).
+export const maxDuration = 120;
+const SETTING_TIMEOUT_MS = 100_000;
+
+const ACTIONS = new Set(["connect", "qr", "pairing_approve", "disconnect", "telegram_group_mention", "whatsapp_access"]);
+
+/** Settings on a channel that is already connected. They apply to a channel the
+ *  customer has, so they are checked against the full known set like a
+ *  disconnect: narrowing CHANNELS must not freeze a live channel's settings. */
+const SETTING_PLATFORM: Record<string, string> = { telegram_group_mention: "telegram", whatsapp_access: "whatsapp" };
+const WHATSAPP_MODES = new Set(["self", "allowlist", "open"]);
+const WHATSAPP_NUMBERS_MAX = 50;
 
 /** Per-action ceilings. A connect restarts the customer's container, so it is
  *  kept scarce; QR polling is a UI loop and needs real headroom (a first WeChat
@@ -34,9 +45,12 @@ const LIMITS: Record<string, { max: number; windowSec: number }> = {
   disconnect: { max: 6, windowSec: 3600 },
   pairing_approve: { max: 12, windowSec: 3600 },
   qr: { max: 150, windowSec: 3600 },
+  // Both restart (or recreate) the assistant to apply, like a connect.
+  telegram_group_mention: { max: 6, windowSec: 3600 },
+  whatsapp_access: { max: 6, windowSec: 3600 },
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   if (!allowChannelConnect) return disabled();
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -45,7 +59,7 @@ export async function GET() {
   if (!instanceId) return NextResponse.json({ error: "no_instance" }, { status: 409 });
 
   try {
-    const result = await getChannels(instanceId);
+    const result = await getChannels(instanceId, { telegramPrivacy: request.nextUrl.searchParams.get("privacy") === "1" });
     if (!result.ok) return NextResponse.json({ error: "upstream_error" }, { status: 502 });
     const data = (result.body as { data?: Record<string, unknown> }).data ?? {};
     const supported = (data.supported ?? {}) as { connect?: string[]; disconnect?: string[]; pairing?: string[] };
@@ -70,6 +84,24 @@ export async function GET() {
         connectable,
         disconnectable: tiles.filter((id) => (supported.disconnect ?? []).includes(id)),
         pairing: connectable.filter((id) => (supported.pairing ?? []).includes(id)),
+        // Settings of channels already connected. `whatsappAccess.mode` is null
+        // when it is unknown: the panel then asks the customer to choose.
+        telegramGroups: (() => {
+          const tg = (data.telegram_groups ?? {}) as { mention_only?: unknown; can_read_all_group_messages?: unknown };
+          return {
+            mentionOnly: tg.mention_only !== false,
+            // false = Telegram withholds ordinary group messages (Group Privacy on);
+            // null = not asked or unknown, so no warning is shown.
+            canReadAll: typeof tg.can_read_all_group_messages === "boolean" ? tg.can_read_all_group_messages : null,
+          };
+        })(),
+        whatsappAccess: (() => {
+          const wa = (data.whatsapp_access ?? {}) as { mode?: unknown; numbers?: unknown };
+          return {
+            mode: typeof wa.mode === "string" && WHATSAPP_MODES.has(wa.mode) ? wa.mode : null,
+            numbers: Array.isArray(wa.numbers) ? wa.numbers.filter((n): n is string => typeof n === "string") : [],
+          };
+        })(),
       },
       { headers: { "Cache-Control": "private, no-store" } },
     );
@@ -90,13 +122,15 @@ export async function POST(request: NextRequest) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "invalid_body" }, { status: 400 }); }
   const raw = (body ?? {}) as Record<string, unknown>;
   const action = typeof raw.action === "string" ? raw.action : "";
-  const platform = typeof raw.platform === "string" ? raw.platform.toLowerCase() : "";
   if (!ACTIONS.has(action)) return NextResponse.json({ error: "invalid_action" }, { status: 400 });
+  const platform = SETTING_PLATFORM[action] ?? (typeof raw.platform === "string" ? raw.platform.toLowerCase() : "");
   // The storefront's own offer, enforced server-side rather than only hidden in
   // the UI. Turning a channel OFF is checked against the full known set instead:
   // narrowing CHANNELS after a customer has already connected something must not
   // strand them with a live channel they can no longer disconnect.
-  const allowedHere = action === "disconnect" ? (knownChannels as readonly string[]) : (offeredChannels as string[]);
+  const allowedHere = action === "disconnect" || SETTING_PLATFORM[action]
+    ? (knownChannels as readonly string[])
+    : (offeredChannels as string[]);
   if (!allowedHere.includes(platform)) {
     return NextResponse.json({ error: "unsupported_platform" }, { status: 400 });
   }
@@ -107,7 +141,28 @@ export async function POST(request: NextRequest) {
 
   // Only the fields each action legitimately carries — nothing else from the
   // browser reaches the platform.
-  const payload: Record<string, unknown> = { action, platform };
+  const payload: Record<string, unknown> = SETTING_PLATFORM[action] ? { action } : { action, platform };
+  if (action === "telegram_group_mention") {
+    // Strict boolean, as the platform requires: garbage must never become
+    // "answer every group message".
+    if (typeof raw.mentionOnly !== "boolean") return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+    payload.mention_only = raw.mentionOnly;
+  }
+  if (action === "whatsapp_access") {
+    const mode = typeof raw.mode === "string" ? raw.mode : "";
+    if (!WHATSAPP_MODES.has(mode)) return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+    payload.mode = mode;
+    if (mode === "allowlist") {
+      const numbers = Array.isArray(raw.numbers)
+        ? raw.numbers.filter((n): n is string => typeof n === "string" && !!n.trim()).map((n) => n.trim())
+        : [];
+      // Rejected, never trimmed: a cut-down entry is a DIFFERENT number to allow.
+      if (numbers.length === 0 || numbers.length > WHATSAPP_NUMBERS_MAX || numbers.some((n) => n.length > 40)) {
+        return NextResponse.json({ error: "invalid_numbers" }, { status: 400 });
+      }
+      payload.numbers = numbers;
+    }
+  }
   if (action === "connect") {
     if (typeof raw.botToken === "string" && raw.botToken.trim()) payload.bot_token = raw.botToken.trim();
     if (typeof raw.appId === "string" && raw.appId.trim()) payload.app_id = raw.appId.trim();
@@ -120,7 +175,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await channelAction(instanceId, payload);
+    const result = await channelAction(instanceId, payload, SETTING_PLATFORM[action] ? SETTING_TIMEOUT_MS : undefined);
     if (result.ok) {
       const data = (result.body as { data?: Record<string, unknown> }).data ?? {};
       return NextResponse.json({ ok: true, ...data });
@@ -134,6 +189,9 @@ export async function POST(request: NextRequest) {
       { status: result.status === 429 ? 429 : result.status >= 500 ? 502 : result.status },
     );
   } catch {
+    // A settings save that ran out of time may still land once the restart
+    // finishes: say so, so the customer saves again rather than assume nothing changed.
+    if (SETTING_PLATFORM[action]) return NextResponse.json({ error: "apply_unconfirmed" }, { status: 504 });
     return NextResponse.json({ error: "upstream_error" }, { status: 502 });
   }
 }

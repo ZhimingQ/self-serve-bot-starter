@@ -62,6 +62,9 @@ interface ChannelsState {
   connectable: ChannelId[];
   disconnectable: ChannelId[];
   pairing: ChannelId[];
+  /** Settings of channels already connected (absent on older platform answers). */
+  telegramGroups?: { mentionOnly: boolean; canReadAll?: boolean | null };
+  whatsappAccess?: { mode: "self" | "allowlist" | "open" | null; numbers: string[] };
 }
 
 type ModalStep = "form" | "applying" | "qr" | "pairing" | "done" | "failed" | "confirm-disconnect";
@@ -85,7 +88,136 @@ const PREVIEW_STATE: ChannelsState = {
   connectable: ["wechat", "telegram", "whatsapp", "discord", "feishu", "slack"],
   disconnectable: ["wechat", "telegram", "whatsapp", "discord", "feishu", "slack"],
   pairing: ["telegram", "discord", "feishu"],
+  telegramGroups: { mentionOnly: true },
+  whatsappAccess: { mode: "self", numbers: [] },
 };
+
+type PostFn = (body: Record<string, unknown>) => Promise<{ ok: boolean; status: number; data: Record<string, unknown> }>;
+
+/** Settings for a connected Telegram or WhatsApp channel: who the assistant
+ *  answers. Each save restarts the assistant, so it is an explicit Save, never
+ *  a change-on-toggle. */
+function ChannelSettings({ id, copy, state, post, preview, onSaved, saving, setSaving }: {
+  id: ChannelId;
+  copy: Messages;
+  state: ChannelsState;
+  post: PostFn;
+  preview: boolean;
+  onSaved: (next: Partial<ChannelsState>) => void;
+  /** One save at a time across the whole panel: each one rewrites the
+   *  assistant's settings and restarts it, so two in flight could undo each other. */
+  saving: boolean;
+  setSaving: (v: boolean) => void;
+}) {
+  const t = copy.channelSettings;
+  const tg = state.telegramGroups;
+  const wa = state.whatsappAccess;
+  const [mentionOnly, setMentionOnly] = useState(tg?.mentionOnly ?? true);
+  const [mode, setMode] = useState<"self" | "allowlist" | "open" | "">(wa?.mode ?? "");
+  const [numbers, setNumbers] = useState((wa?.numbers ?? []).join("\n"));
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  // The last save's outcome is unknown (timed out, or the restart could not be
+  // confirmed): the assistant may be on EITHER value, so any choice may be saved,
+  // including the one it showed before.
+  const [uncertain, setUncertain] = useState(false);
+
+  if (id === "telegram" && !tg) return null;
+  if (id === "whatsapp" && !wa) return null;
+  if (id !== "telegram" && id !== "whatsapp") return null;
+
+  const list = numbers.split(/[\n,]+/).map((n) => n.trim()).filter(Boolean);
+  const unchanged = !uncertain && (id === "telegram"
+    ? mentionOnly === (tg?.mentionOnly ?? true)
+    : mode === (wa?.mode ?? "") && (mode !== "allowlist" || list.join(",") === (wa?.numbers ?? []).join(",")));
+
+  async function save() {
+    setError("");
+    setNote("");
+    if (id === "whatsapp" && mode === "allowlist" && list.length === 0) { setError(t.invalidNumbers); return; }
+    const body = id === "telegram"
+      ? { action: "telegram_group_mention", mentionOnly }
+      : { action: "whatsapp_access", mode, ...(mode === "allowlist" ? { numbers: list } : {}) };
+    if (preview) {
+      onSaved(id === "telegram" ? { telegramGroups: { ...tg, mentionOnly } } : { whatsappAccess: { mode: mode || null, numbers: mode === "allowlist" ? list : [] } as ChannelsState["whatsappAccess"] });
+      setNote(t.saved);
+      return;
+    }
+    if (saving) return;
+    setBusy(true);
+    setSaving(true);
+    let res: Awaited<ReturnType<PostFn>>;
+    try {
+      res = await post(body);
+    } catch {
+      res = { ok: false, status: 0, data: { error: "apply_unconfirmed" } };
+    } finally {
+      setBusy(false);
+      setSaving(false);
+    }
+    if (!res.ok) {
+      const code = res.data.error;
+      // A 5xx (or no answer) can come AFTER the assistant already took the new
+      // value, so it is uncertain too; a 4xx is a refusal that changed nothing.
+      if (code === "apply_unconfirmed" || res.status === 0 || res.status >= 500) setUncertain(true);
+      setError(
+        code === "invalid_numbers" ? t.invalidNumbers
+          : code === "telegram_not_connected" ? t.notConnected
+          : code === "apply_unconfirmed" ? t.unconfirmed
+          : res.status === 429 ? copy.channelErrorRateLimited
+          : code === "not_running" ? copy.channelsBotStopped
+          : copy.channelErrorGeneric,
+      );
+      return;
+    }
+    onSaved(id === "telegram"
+      ? { telegramGroups: { ...tg, mentionOnly } }
+      : { whatsappAccess: { mode: (mode || null) as "self" | "allowlist" | "open" | null, numbers: mode === "allowlist" ? list : [] } });
+    setUncertain(false);
+    setNote(t.saved);
+  }
+
+  return (
+    <div className="channel-settings">
+      {id === "telegram" ? (
+        <label className="channel-setting-row">
+          <input type="checkbox" checked={mentionOnly} disabled={busy} onChange={(e) => { setMentionOnly(e.target.checked); setNote(""); setError(""); }} />
+          <span>{t.tgMentionOnly}<small>{t.tgMentionHint}</small></span>
+        </label>
+      ) : null}
+      {id === "telegram" && !mentionOnly && tg?.canReadAll === false && (
+        <p className="channel-setting-warn" role="note">{t.tgPrivacyWarn}</p>
+      )}
+      {id === "telegram" ? null : (
+        <>
+          <label className="channel-setting-field">
+            <span>{t.waAccessLabel}</span>
+            <select value={mode} disabled={busy} onChange={(e) => { setMode(e.target.value as typeof mode); setNote(""); setError(""); }}>
+              {mode === "" && <option value="" disabled>{t.waUnknown}</option>}
+              <option value="self">{t.waSelf}</option>
+              <option value="allowlist">{t.waAllowlist}</option>
+              <option value="open">{t.waOpen}</option>
+            </select>
+          </label>
+          {mode === "allowlist" && (
+            <label className="channel-setting-field">
+              <span>{t.waNumbersLabel}</span>
+              <textarea rows={3} value={numbers} placeholder={t.waNumbersPlaceholder} disabled={busy} onChange={(e) => { setNumbers(e.target.value); setNote(""); setError(""); }} />
+            </label>
+          )}
+        </>
+      )}
+      <div className="channel-setting-actions">
+        <button type="button" className="btn btn-secondary" disabled={busy || saving || unchanged || (id === "whatsapp" && !mode) || state.status !== "running"} onClick={() => void save()}>
+          {busy ? t.saving : t.save}
+        </button>
+        <small>{busy ? t.restartNote : note}</small>
+      </div>
+      {error && <p className="panel-error" role="alert">{error}</p>}
+    </div>
+  );
+}
 
 export default function ChannelsPanel({ copy, preview }: { copy: Messages; preview: boolean }) {
   const [state, setState] = useState<ChannelsState | null>(preview ? PREVIEW_STATE : null);
@@ -95,6 +227,7 @@ export default function ChannelsPanel({ copy, preview }: { copy: Messages; previ
   const [appId, setAppId] = useState("");
   const [appSecret, setAppSecret] = useState("");
   const [pairingCode, setPairingCode] = useState("");
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   // The QR poll re-arms itself for minutes. Without a generation counter, closing
   // the modal and reopening it for another channel would leave the first chain
@@ -121,7 +254,7 @@ export default function ChannelsPanel({ copy, preview }: { copy: Messages; previ
     if (preview) return;
     setLoadState("loading");
     try {
-      const res = await fetch("/api/channels", { cache: "no-store" });
+      const res = await fetch("/api/channels?privacy=1", { cache: "no-store" });
       if (!res.ok) throw new Error("load failed");
       setState((await res.json()) as ChannelsState);
       setLoadState("ready");
@@ -378,32 +511,47 @@ export default function ChannelsPanel({ copy, preview }: { copy: Messages; previ
                   // needs to undo it, and offering only "Finish pairing" would
                   // leave them holding a channel they cannot finish or remove.
                   <div className="channel-card-actions">
-                    <button type="button" className="btn btn-primary" disabled={state?.status !== "running"} onClick={() => resumePairing(id)}>
+                    <button type="button" className="btn btn-primary" disabled={settingsSaving || state?.status !== "running"} onClick={() => resumePairing(id)}>
                       {copy.channelFinishPairing}
                     </button>
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      disabled={!(state?.disconnectable ?? []).includes(id) || state?.status !== "running"}
+                      disabled={settingsSaving || !(state?.disconnectable ?? []).includes(id) || state?.status !== "running"}
                       onClick={() => { stopPolling(); setModal({ platform: id, step: "confirm-disconnect" }); }}
                     >
                       {copy.channelDisconnect}
                     </button>
                   </div>
                 ) : isConnected ? (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    disabled={!(state?.disconnectable ?? []).includes(id) || state?.status !== "running"}
-                    onClick={() => { stopPolling(); setModal({ platform: id, step: "confirm-disconnect" }); }}
-                  >
-                    {copy.channelDisconnect}
-                  </button>
+                  <div className="channel-card-actions">
+                    {state && (id === "telegram" || id === "whatsapp") && (
+                      <ChannelSettings
+                        id={id}
+                        copy={copy}
+                        state={state}
+                        post={post}
+                        preview={preview}
+                        onSaved={(next) => setState((s) => (s ? { ...s, ...next } : s))}
+                        // A connect/disconnect dialog is also a write in flight.
+                        saving={settingsSaving || modal !== null}
+                        setSaving={setSettingsSaving}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      disabled={settingsSaving || !(state?.disconnectable ?? []).includes(id) || state?.status !== "running"}
+                      onClick={() => { stopPolling(); setModal({ platform: id, step: "confirm-disconnect" }); }}
+                    >
+                      {copy.channelDisconnect}
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
                     className="btn btn-primary"
-                    disabled={state?.status !== "running" || !(state?.connectable ?? []).includes(id)}
+                    disabled={settingsSaving || state?.status !== "running" || !(state?.connectable ?? []).includes(id)}
                     onClick={() => openConnect(id)}
                   >
                     {copy.channelConnect}
