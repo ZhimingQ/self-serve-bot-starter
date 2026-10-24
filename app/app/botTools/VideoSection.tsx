@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SectionState, errorText, toolFetch, type SectionProps } from "./shared";
 
+type KeyProvider = "fal" | "google" | "minimax" | "xai";
+
 interface VideoModel {
   id: string;
   label: string;
-  provider: "fal" | "google" | "openrouter";
+  provider: KeyProvider | "openrouter";
   price: string | null;
 }
 
@@ -18,7 +20,7 @@ interface VideoState {
   applyFailed: boolean;
   /** Why, as an error code the panel can explain. */
   applyError: string | null;
-  keyPreviews: { fal: string | null; google: string | null };
+  keyPreviews: Partial<Record<KeyProvider, string | null>>;
   models: VideoModel[];
   /** Video the seller pays for, when they turned it on for this assistant. */
   included: { models: VideoModel[]; usedPercent: number } | null;
@@ -29,7 +31,7 @@ const PREVIEW_STATE: VideoState = {
   applying: false,
   applyFailed: false,
   applyError: null,
-  keyPreviews: { fal: null, google: null },
+  keyPreviews: {},
   models: [
     { id: "google/veo-3.1-fast-generate-preview", label: "Veo 3.1 Fast", provider: "google", price: null },
     { id: "fal/fal-ai/kling-video/v2.1/master/text-to-video", label: "Kling 2.1 Master", provider: "fal", price: null },
@@ -41,13 +43,18 @@ const PREVIEW_STATE: VideoState = {
 const APPLY_POLL_MS = 5_000;
 const APPLY_POLL_LIMIT_MS = 5 * 60_000;
 
-const KEY_PAGES = {
+const KEY_PAGES: Record<KeyProvider, string> = {
   fal: "https://fal.ai/dashboard/keys",
   google: "https://aistudio.google.com/apikey",
-} as const;
+  minimax: "https://platform.minimax.io/user-center/basic-information/interface-key",
+  xai: "https://console.x.ai",
+};
+
+const PROVIDER_NAMES: Record<KeyProvider, string> = { fal: "fal", google: "Google", minimax: "MiniMax", xai: "xAI" };
 
 /**
- * Video generation with the customer's OWN provider key (fal or Google Veo).
+ * Video generation with the customer's OWN provider key (fal, Google Veo, and
+ * on some assistants MiniMax and xAI: the platform's model list says which).
  * Their key pays for their videos; the platform validates it before the
  * assistant is touched and only ever hands back a masked preview. Only some
  * assistants support this — the platform answers 404 for the rest, which is
@@ -81,6 +88,8 @@ export default function VideoSection({ copy, preview, status, onStatus }: Sectio
         keyPreviews: {
           fal: res.data.keyPreviews?.fal ?? null,
           google: res.data.keyPreviews?.google ?? null,
+          minimax: res.data.keyPreviews?.minimax ?? null,
+          xai: res.data.keyPreviews?.xai ?? null,
         },
         models: Array.isArray(res.data.models) ? res.data.models : [],
         included: res.data.included && Array.isArray(res.data.included.models) ? res.data.included : null,
@@ -156,7 +165,7 @@ export default function VideoSection({ copy, preview, status, onStatus }: Sectio
   const selected = [...(state?.models ?? []), ...(state?.included?.models ?? [])].find((m) => m.id === choice) ?? null;
   // Included models are paid by the seller and take no key.
   const keyProvider = selected && selected.provider !== "openrouter" ? selected.provider : null;
-  const storedKey = keyProvider && state ? state.keyPreviews[keyProvider] : null;
+  const storedKey = keyProvider && state ? state.keyPreviews[keyProvider] ?? null : null;
   const current = state?.model ?? null;
   const unchanged = choice === (current ?? "off") && !key.trim();
   const needsKey = !!keyProvider && !storedKey && !key.trim();
@@ -225,7 +234,7 @@ export default function VideoSection({ copy, preview, status, onStatus }: Sectio
               )}
               {state.models.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.label} — {m.provider === "fal" ? "fal" : "Google"}{m.price ? ` · ${m.price}` : ""}
+                  {m.label} — {m.provider === "openrouter" ? "" : PROVIDER_NAMES[m.provider]}{m.price ? ` · ${m.price}` : ""}
                 </option>
               ))}
             </select>
@@ -237,7 +246,12 @@ export default function VideoSection({ copy, preview, status, onStatus }: Sectio
 
           {keyProvider && (
             <div className="byok-field">
-              <label htmlFor="bt-video-key">{keyProvider === "fal" ? t.falKeyLabel : t.googleKeyLabel}</label>
+              <label htmlFor="bt-video-key">{
+                keyProvider === "fal" ? t.falKeyLabel
+                  : keyProvider === "google" ? t.googleKeyLabel
+                  : keyProvider === "minimax" ? t.minimaxKeyLabel
+                  : t.xaiKeyLabel
+              }</label>
               <input
                 id="bt-video-key"
                 type="password"

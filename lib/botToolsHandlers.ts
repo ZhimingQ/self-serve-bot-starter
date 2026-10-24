@@ -127,6 +127,8 @@ const KNOWN_ERRORS = new Set([
   "video_restart_failed",
   "google_key_conflict",
   "video_off_incomplete",
+  "video_key_conflict",
+  "minimax_china_key",
 ]);
 
 /** Map a failed platform call to a customer-safe status + code. */
@@ -456,6 +458,10 @@ const endpointDisable: ActionSpec = {
 };
 
 // ── Video (the customer's own provider key) ─────────────────────────────────
+
+/** Own-key video providers the panel knows how to show. Which of them a given
+ *  assistant supports comes from the platform's model list. */
+const VIDEO_KEY_PROVIDERS = ["fal", "google", "minimax", "xai"] as const;
 // Hermes and OpenClaw assistants. Included video (paid by the seller) exists on
 // Hermes only: the platform lists no included models for an OpenClaw assistant,
 // so the panel shows just the own-key choices there. The key is the CUSTOMER's: it pays for
@@ -481,8 +487,8 @@ function videoView(data: Record<string, unknown>) {
     applyFailed: data.apply_failed === true,
     // Only codes the panel can explain; anything else reads as video_failed.
     applyError: typeof data.apply_error === "string" && KNOWN_ERRORS.has(data.apply_error) ? data.apply_error : null,
-    keyPreviews: { fal: str(previews.fal), google: str(previews.google) },
-    models: modelList(data.models, ["fal", "google"]),
+    keyPreviews: Object.fromEntries(VIDEO_KEY_PROVIDERS.map((p) => [p, str(previews[p])])),
+    models: modelList(data.models, VIDEO_KEY_PROVIDERS),
     // Included video (paid by the seller): models plus how much of this
     // month's allowance is used, as a percentage. The seller's dollar budget
     // and their cost are not the customer's business, so no amounts here.
