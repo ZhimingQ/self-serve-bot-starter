@@ -22,6 +22,7 @@ import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { botToolCall, botToolRaw, computerDisconnect, type UpstreamResult } from "./buildResell";
 import { enabledBotTools } from "./config";
+import { parseLogTail, toLogLines } from "./botLogs";
 import {
   attachmentDisposition,
   backupCategories,
@@ -100,6 +101,9 @@ const KNOWN_ERRORS = new Set([
   "conflict",
   "endpoint_unavailable",
   "desktop_unavailable",
+  "live_browser_unavailable",
+  "live_browser_failed",
+  "logs_unavailable",
   "hermes_desktop_unavailable",
   "pairing_not_found",
   "invalid_user_code",
@@ -564,6 +568,61 @@ const desktopOpen: ActionSpec = {
   },
 };
 
+// ── Live Browser ────────────────────────────────────────────────────────────
+//
+// The browser the assistant itself uses, shown to the customer so they can watch
+// it work and take over (sign in to a site for it, solve a check). Opening swaps
+// that browser to a watchable one, which can take up to a minute the first time.
+
+const liveBrowserStatus: ActionSpec = {
+  tool: "live-browser",
+  limit: { max: 120, windowSec: 600 },
+  async run({ instanceId }) {
+    const result = await botToolCall(instanceId, "/live-browser", { method: "GET" });
+    if (!result.ok) return upstreamFailure(result);
+    const data = dataOf(result);
+    return json({ available: data.available === true, reason: str(data.reason) });
+  },
+};
+
+const liveBrowserOpen: ActionSpec = {
+  tool: "live-browser",
+  limit: { max: 10, windowSec: 600 },
+  async run({ instanceId }) {
+    const result = await botToolCall(instanceId, "/live-browser", { method: "POST", timeoutMs: 110_000 });
+    if (!result.ok) return upstreamFailure(result);
+    const viewerUrl = str(dataOf(result).viewer_url);
+    // The browser navigates a tab to this, so only an https URL is passed on.
+    let safe: string | null = null;
+    try {
+      if (viewerUrl && new URL(viewerUrl).protocol === "https:") safe = viewerUrl;
+    } catch {
+      safe = null;
+    }
+    if (!safe) return fail("live_browser_failed", 502);
+    return json({ viewerUrl: safe });
+  },
+};
+
+// ── Logs ────────────────────────────────────────────────────────────────────
+//
+// The assistant's recent log lines. The platform already hides keys, hosts,
+// paths and addresses; this also scrubs the platform's and providers' names, so
+// the storefront stays white-label.
+
+// Read-only, so the limit only stops a runaway refresh loop.
+const logsRead: ActionSpec = {
+  tool: "logs",
+  limit: { max: 60, windowSec: 600 },
+  async run({ request, instanceId }) {
+    const tail = parseLogTail(request.nextUrl.searchParams.get("tail"));
+    const result = await botToolCall(instanceId, "/logs", { method: "GET", query: { tail: String(tail) }, timeoutMs: 30_000 });
+    if (!result.ok) return upstreamFailure(result);
+    const data = dataOf(result);
+    return json({ lines: toLogLines(data.lines) });
+  },
+};
+
 // ── Hermes Desktop (the Nous Research app) ──────────────────────────────────
 //
 // Not the Desktop above (the assistant's own screen): this hands the customer
@@ -805,6 +864,9 @@ const importApply: ActionSpec = {
  *   DELETE endpoint        → DELETE /v1/instances/{id}/endpoint
  *   GET    desktop         → GET    /v1/instances/{id}/desktop
  *   POST   desktop         → POST   /v1/instances/{id}/desktop
+ *   GET    live-browser    → GET    /v1/instances/{id}/live-browser
+ *   POST   live-browser    → POST   /v1/instances/{id}/live-browser
+ *   GET    logs?tail=      → GET    /v1/instances/{id}/logs    (brand names scrubbed here)
  *   GET    computer        → GET    /v1/instances/{id}/computer
  *   POST   computer        → POST   /v1/instances/{id}/computer/approve
  *   DELETE computer?id=    → DELETE /v1/instances/{id}/computer/{uuid}
@@ -827,6 +889,8 @@ export const BOT_TOOL_ACTIONS: Record<string, Partial<Record<Method, ActionSpec>
   rename: { POST: filesRename },
   endpoint: { GET: endpointStatus, POST: endpointMutate, DELETE: endpointDisable },
   desktop: { GET: desktopStatus, POST: desktopOpen },
+  "live-browser": { GET: liveBrowserStatus, POST: liveBrowserOpen },
+  logs: { GET: logsRead },
   computer: { GET: computerStatus, POST: computerApprove, DELETE: computerRemove },
   "import-preview": { POST: importPreview },
   "import-apply": { POST: importApply },

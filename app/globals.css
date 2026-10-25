@@ -3518,3 +3518,27 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 .provisioning-wide { justify-content: flex-start; padding-block: 48px; }
 .provisioning-wide .apps-panel { width: min(720px, 100%); margin-top: 24px; text-align: left; }
 .btn-link { border: 0; background: none; color: var(--accent-hover); font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; }
+
+/* Bot tools → Logs: the assistant's recent log lines, newest at the bottom. */
+.bt-logs-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.bt-logs-bar label { display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; }
+.bt-logs-bar select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--paper); color: var(--text); font: inherit; }
+.bt-logs-bar .btn { padding: 8px 14px; }
+.bt-logs-hint { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+.bt-logs {
+  margin: 14px 0 0; max-height: 460px; overflow: auto; padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: 14px; background: #1c1a17; color: #e9e5da;
+  font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.bt-logs:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bt-log-line { display: block; }
+.bt-log-line time { color: #8f8a7c; margin-right: 10px; }
+.bt-log-line.is-stderr { color: #f0b9a3; }
+@media (max-width: 640px) {
+  .bt-logs-hint { margin-left: 0; width: 100%; }
+  .bt-logs { max-height: 360px; font-size: 12px; padding: 12px; }
+}
+
+/* Model → the included-model picker. */
+.hk-included-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.hk-included-row select { flex: 1 1 220px; min-width: 0; padding: 11px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--paper); color: var(--text); font: inherit; }

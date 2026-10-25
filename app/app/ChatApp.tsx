@@ -9,6 +9,7 @@ import { getCustomerPreset, type CustomerPresetId } from "../../lib/customerPres
 import ChannelsPanel from "./ChannelsPanel";
 import ModelKeyPanel from "./ModelKeyPanel";
 import HermesModelKeyPanel from "./HermesModelKeyPanel";
+import IncludedModelPanel from "./IncludedModelPanel";
 import BotToolsPanel from "./BotToolsPanel";
 import AppsPanel from "./AppsPanel";
 import type { BotToolId } from "../../lib/botTools";
@@ -40,7 +41,7 @@ interface ChatMessage {
 class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "channels" | "apps" | "prompts" | "history" | "usage" | "notifications" | "billing" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
+type Panel = "overview" | "assistant" | "channels" | "apps" | "prompts" | "history" | "usage" | "notifications" | "billing" | "model" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
 /** The panels WORKSPACE_MODE=simple offers. Billing is listed but only shown
  *  when payments are on. */
 const SIMPLE_PANELS: ReadonlySet<Panel> = new Set<Panel>(["assistant", "history", "billing", "account", "privacy", "support"]);
@@ -181,6 +182,20 @@ export default function ChatApp({
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>("assistant");
+  // The "Model" panel is offered only when the plan comes with more than one
+  // model to choose from (the platform decides; see /api/included-model).
+  const [includedChoice, setIncludedChoice] = useState(preview);
+  useEffect(() => {
+    if (preview || provisionState !== "ready") return;
+    let cancelled = false;
+    fetch("/api/included-model", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v: { choosable?: boolean; models?: unknown[] } | null) => {
+        if (!cancelled) setIncludedChoice(Boolean(v?.choosable && Array.isArray(v.models) && v.models.length > 1));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [preview, provisionState]);
   const [showLapsedApps, setShowLapsedApps] = useState(false);
   // Every navigation goes through here. In simple mode a link to a panel that
   // mode does not offer (an overview tile, "browse prompts", ...) lands on the
@@ -1027,6 +1042,7 @@ export default function ChatApp({
   ];
   const fullManageNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "billing", label: copy.controlBilling, icon: "$" },
+    ...(includedChoice ? [{ panel: "model" as Panel, label: copy.includedModel.nav, icon: "◎" }] : []),
     ...(byokEnabled ? [{ panel: "modelKey" as Panel, label: copy.controlModelKey, icon: "⚿" }] : []),
     { panel: "security", label: copy.controlSecurity, icon: "◇" },
     { panel: "account", label: copy.controlAccount, icon: "○" },
@@ -1518,6 +1534,10 @@ export default function ChatApp({
 
         {panel === "apps" && appsEnabled && (
           <AppsPanel copy={copy} preview={preview} brandName={brandName} />
+        )}
+
+        {panel === "model" && (includedChoice || preview) && (
+          <IncludedModelPanel copy={copy} preview={preview} />
         )}
 
         {panel === "modelKey" && byokEnabled && (

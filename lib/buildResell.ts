@@ -207,6 +207,28 @@ export function setHermesModel(
   });
 }
 
+/** The included models this bot's customer may pick, and what it runs now.
+ *  OpenClaw answers on /included-model, Hermes on hermes-profile. */
+export function getIncludedModel(instanceId: string, framework: "openclaw" | "hermes") {
+  const path = framework === "hermes" ? "hermes-profile" : "included-model";
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/${path}`, { method: "GET" });
+}
+
+/** Switch the bot onto one of its included models; it restarts onto it. */
+export function setIncludedModel(instanceId: string, framework: "openclaw" | "hermes", model: string) {
+  return framework === "hermes"
+    ? callApi(`/instances/${encodeURIComponent(instanceId)}/hermes-profile`, {
+      method: "PUT",
+      body: { model: "included", included_model: model },
+      timeoutMs: 75_000,
+    })
+    : callApi(`/instances/${encodeURIComponent(instanceId)}/included-model`, {
+      method: "PUT",
+      body: { model },
+      timeoutMs: 75_000,
+    });
+}
+
 /** Which channels are connected, and which ones this bot's framework supports. */
 /** `telegramPrivacy` also asks whether Telegram delivers every group message to
  *  the bot at all (BotFather Group Privacy off). It costs a Telegram API call, so
@@ -268,6 +290,8 @@ export type BotToolPath =
   | "/files/rename"
   | "/endpoint"
   | "/desktop"
+  | "/live-browser"
+  | "/logs"
   | "/hermes-desktop"
   | "/computer"
   | "/computer/approve"

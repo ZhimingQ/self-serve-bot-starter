@@ -16,7 +16,7 @@
 
 // "hermes-desktop" connects the Hermes Desktop app; it is offered on Hermes
 // storefronts only (lib/config.ts drops it elsewhere).
-export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "hermes-desktop", "computer", "video"] as const;
+export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "hermes-desktop", "computer", "video", "logs", "live-browser"] as const;
 export type BotToolId = (typeof knownBotTools)[number];
 
 /**
