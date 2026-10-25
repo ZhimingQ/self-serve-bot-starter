@@ -15,7 +15,8 @@
     "test:reset": "tsx --import ./lib/registerTestHooks.mjs --test lib/passwordReset.test.mjs lib/passwordReset.unconfigured.test.mjs lib/passwordReset.appurl.test.mjs scripts/reset-password.test.mjs",
     "reset-password": "node scripts/reset-password.mjs",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:presets": "tsx --test lib/customerPresets.test.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",

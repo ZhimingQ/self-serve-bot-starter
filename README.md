@@ -81,6 +81,20 @@ BOT_FRAMEWORK=openclaw     # or "hermes" — which framework new bots use
 
 No code changes needed to reskin the app for a new reseller.
 
+Choose an audience with `CUSTOMER_TEMPLATE=general|creator|office|builder|study|business`
+(use one value). The five specialist profiles supply English and Chinese landing
+copy, example conversations, workflow cards, chat greetings, starting prompts
+and default assistant guidance. They use the same account, payment and chat
+implementation. `general` keeps the original experience; unknown values fall
+back to it. Profiles do not enable tools or integrations.
+
+Your branding file and `BRAND_ACCENT` override the profile accent. Your
+`ASSISTANT_INSTRUCTIONS_FILE` or `ASSISTANT_INSTRUCTIONS` override profile guidance,
+including an explicitly empty value. Leave instructions unset to use the profile
+default. `CUSTOMER_TEMPLATE=study` is a general study coach; it does not enable
+`WORKSPACE_MODE=students`. The dedicated student workspace retains its own
+landing, signup checks and tutor rules and ignores audience profiles.
+
 ## Simple mode and assistant instructions
 
 The full customer workspace is a control panel: overview, prompts, history,
@@ -324,6 +338,11 @@ Session figures are intentionally presented as current browser-session activity
 rather than invented billing quotas.
 Set `DEMO_MODE=1` to expose a safe public preview at `/demo`; its sample chat
 uses a local canned response and never provisions a bot or spends model credits.
+In demo mode only, `/?preset=creator&locale=en` previews that landing and links to
+`/demo?preset=creator&locale=en`. Both pages accept the six allowlisted profile
+IDs and `en`/`zh` locales, retaining the selection in preview links. Production
+landing pages ignore the `preset` query; the chat API always uses the configured
+profile and owner instructions.
 
 ## Deploy to Vercel
 
@@ -376,6 +395,7 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | `ALLOW_END_USER_BYOK` | no (defaults off) | Shows the Model key panel, where a customer funds the assistant with their own provider key. See below. |
 | `ALLOW_CHANNEL_CONNECT` | no (defaults **on**) | Set `0` to hide the Channels panel and connect apps for your customers yourself. |
 | `CHANNELS` | no (defaults to all) | Restrict the Channels panel, e.g. `wechat,telegram`. |
+| `CUSTOMER_TEMPLATE` | no (defaults to `general`) | Audience profile: `general`, `creator`, `office`, `builder`, `study` or `business`. Does not change tool permissions or workspace access. |
 | `WORKSPACE_MODE` | no (defaults to `full`) | `simple` = customers only see sign-in and chat; Channels, Model key and Bot tools start off unless set explicitly. See "Simple mode" above. |
 | `ASSISTANT_INSTRUCTIONS_FILE` / `ASSISTANT_INSTRUCTIONS` | no | Standing instructions added to every customer message (up to 2,000 characters). The file wins and is re-read each message. |
 | `BOT_TOOLS` | no (defaults to all) | Bot tools offered to customers: `power,backup,import,files,ssh,endpoint,desktop,computer`, or `none`. See "Bot tools" above. |

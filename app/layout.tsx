@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
-import { brand, studentWorkspace } from "../lib/config";
+import { brand, customerTemplate, studentWorkspace } from "../lib/config";
+import { getCustomerPreset } from "../lib/customerPresets";
 import { messages } from "../lib/i18n";
 import { getLocale } from "../lib/locale";
 import "./globals.css";
@@ -18,7 +19,12 @@ export async function generateMetadata(): Promise<Metadata> {
       description: `${brand.name} helps GCSE and A-level students research their coursework, with sources for every answer.`,
     };
   }
-  const copy = messages[await getLocale()];
+  const locale = await getLocale();
+  const copy = messages[locale];
+  if (customerTemplate !== "general") {
+    const profile = getCustomerPreset(customerTemplate)[locale];
+    return { title: `${brand.name} — ${profile.name}`, description: profile.heroBody };
+  }
   return {
     title: copy.metadataTitle(brand.name),
     description: copy.metadataDescription(brand.name),

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { messages as translations, type Locale } from "../../lib/i18n";
 import LanguageSwitcher from "../LanguageSwitcher";
 import DashboardIcon from "./DashboardIcon";
+import { getCustomerPreset, type CustomerPresetId } from "../../lib/customerPresets";
 import ChannelsPanel from "./ChannelsPanel";
 import ModelKeyPanel from "./ModelKeyPanel";
 import BotToolsPanel from "./BotToolsPanel";
@@ -97,6 +98,8 @@ export default function ChatApp({
   studentMode = false,
   turnsOutliveThePage = false,
   preview = false,
+  customerPresetId = "general",
+  previewHomeHref,
 }: {
   email: string;
   paid: boolean;
@@ -137,8 +140,20 @@ export default function ChatApp({
    *  long-lived process; not a serverless host), so the page may say so. */
   turnsOutliveThePage?: boolean;
   preview?: boolean;
+  customerPresetId?: CustomerPresetId;
+  previewHomeHref?: string;
 }) {
   const copy = translations[locale];
+  const profile = !studentMode && customerPresetId !== "general" ? getCustomerPreset(customerPresetId)[locale] : null;
+  const startingPrompts = profile?.prompts ?? [copy.promptOne, copy.promptTwo, copy.promptThree];
+  const promptLibrary = profile ? profile.workflows.map((job) => [job.prompt, job.result, job.title]) : [
+    [copy.promptOne, copy.promptOneBody, copy.promptCategoryPlan],
+    [copy.promptTwo, copy.promptTwoBody, copy.promptCategoryWrite],
+    [copy.promptThree, copy.promptThreeBody, copy.promptCategoryThink],
+    [copy.promptFour, copy.promptFourBody, copy.promptCategorySummarize],
+    [copy.promptFive, copy.promptFiveBody, copy.promptCategoryCreate],
+    [copy.promptSix, copy.promptSixBody, copy.promptCategoryDecide],
+  ];
   const router = useRouter();
   const needsPayment = paymentsEnabled && !paid;
   const [provisionState, setProvisionState] = useState<ProvisionState>(preview ? "ready" : "checking");
@@ -876,7 +891,7 @@ export default function ChatApp({
   if (needsPayment) {
     return (
       <div className="provisioning">
-        <LanguageSwitcher locale={locale} locked={localeLocked} />
+        <LanguageSwitcher locale={locale} locked={localeLocked} previewPreset={preview && !studentMode ? customerPresetId : undefined} />
         <h2>{copy.activateTitle}</h2>
         <p>{copy.activateBody(email.split("@")[0])}</p>
         {subscribeError && <p style={{ color: "#dc2626" }}>{subscribeError}</p>}
@@ -899,7 +914,7 @@ export default function ChatApp({
     return (
       <div className="provisioning" role="status">
         <div className="spinner" />
-        <LanguageSwitcher locale={locale} locked={localeLocked} />
+        <LanguageSwitcher locale={locale} locked={localeLocked} previewPreset={preview && !studentMode ? customerPresetId : undefined} />
         <p>{studentMode ? "Opening your study desk…" : copy.openingWorkspace}</p>
       </div>
     );
@@ -909,7 +924,7 @@ export default function ChatApp({
     const setupTitle = studentMode ? "Setting up your tutor" : copy.provisioningTitle;
     return (
       <div className="provisioning" role="status" aria-live="polite">
-        <LanguageSwitcher locale={locale} locked={localeLocked} />
+        <LanguageSwitcher locale={locale} locked={localeLocked} previewPreset={preview && !studentMode ? customerPresetId : undefined} />
         <h2>{setupTitle}</h2>
         <p>{copy.provisioningBody(email.split("@")[0])}</p>
         <SetupProgress
@@ -925,7 +940,7 @@ export default function ChatApp({
   if (provisionState === "error") {
     return (
       <div className="provisioning">
-        <LanguageSwitcher locale={locale} locked={localeLocked} />
+        <LanguageSwitcher locale={locale} locked={localeLocked} previewPreset={preview && !studentMode ? customerPresetId : undefined} />
         <h2>{copy.wentWrong}</h2>
         <p>{provisionError}</p>
         <button className="btn btn-primary" onClick={() => provision()}>
@@ -1096,15 +1111,16 @@ export default function ChatApp({
       >
         <header className="control-topbar">
           <div>
-            <span>{studentMode ? brandName : copy.workspace}</span>
+            <span>{studentMode ? brandName : profile?.name ?? copy.workspace}</span>
             {panel === "assistant" && !studentMode ? <h1>{currentPanelTitle}</h1> : <strong>{currentPanelTitle}</strong>}
           </div>
           <div className="control-topbar-actions">
+            {preview && previewHomeHref && <a className="text-link" href={previewHomeHref}>{copy.website}</a>}
             <span className={`control-live ${workspaceLoadStatus === "error" ? "is-error" : ""}`} role="status">
               {workspaceLoadStatus === "loading" ? <span className="mini-spinner" aria-hidden="true" /> : <i />}
               {workspaceLoadStatus === "loading" ? copy.syncingWorkspace : workspaceLoadStatus === "error" ? copy.syncFailed : copy.onlineNow}
             </span>
-            <LanguageSwitcher locale={locale} locked={localeLocked} />
+            <LanguageSwitcher locale={locale} locked={localeLocked} previewPreset={preview && !studentMode ? customerPresetId : undefined} />
             {utilityNav.length > 0 && (
               <details className="dashboard-more" onKeyDown={(event) => {
                 if (event.key === "Escape") {
@@ -1175,8 +1191,8 @@ export default function ChatApp({
                   <div className="assistant-orb" aria-hidden="true">✦</div>
                   <span>{copy.privateAssistant}</span>
                 </div>
-                <h2>{copy.assistantReadyTitle}</h2>
-                <p>{copy.assistantReadyBody}</p>
+                <h2>{profile?.name ?? copy.assistantReadyTitle}</h2>
+                <p>{profile?.description ?? copy.assistantReadyBody}</p>
                 <button className="btn btn-primary" onClick={() => openPanel("assistant")}>{copy.openAssistant} <span aria-hidden="true">→</span></button>
               </article>
 
@@ -1185,7 +1201,7 @@ export default function ChatApp({
                 <h2>{copy.quickStartTitle}</h2>
                 <p>{copy.quickStartBody}</p>
                 <div className="quick-prompts">
-                  {[copy.promptOne, copy.promptTwo, copy.promptThree].map((prompt) => (
+                  {startingPrompts.map((prompt) => (
                     <button key={prompt} onClick={() => openPrompt(prompt)}>{prompt}<span aria-hidden="true">→</span></button>
                   ))}
                 </div>
@@ -1308,7 +1324,10 @@ export default function ChatApp({
               <div className="chat-messages" ref={chatMessagesRef}>
                 {messages.length === 0 && <div className="dashboard-chat-empty">
                   <span className="dashboard-assistant-mark"><DashboardIcon name="assistant" /></span>
-                  <p className="chat-empty">{copy.chatGreeting}</p>
+                  <p className="chat-empty">{profile?.greeting ?? copy.chatGreeting}</p>
+                  {profile && <div className="preset-starters" aria-label={copy.quickStart}>
+                    {profile.workflows.map((job) => <button key={job.kicker} type="button" onClick={() => openPrompt(job.prompt)}>{job.title}<DashboardIcon name="arrow" /></button>)}
+                  </div>}
                   {!simpleMode && <button type="button" className="dashboard-prompt-link" onClick={() => openPanel("prompts")}>{copy.controlPrompts}<DashboardIcon name="arrow" /></button>}
                 </div>}
                 {messages.map((message, index) => (
@@ -1345,17 +1364,10 @@ export default function ChatApp({
             <section className="control-heading">
               <span>{copy.promptsEyebrow}</span>
               <h1>{copy.promptsTitle}</h1>
-              <p>{copy.promptsSubtitle}</p>
+              <p>{profile?.description ?? copy.promptsSubtitle}</p>
             </section>
             <section className="prompt-library-grid">
-              {[
-                [copy.promptOne, copy.promptOneBody, copy.promptCategoryPlan],
-                [copy.promptTwo, copy.promptTwoBody, copy.promptCategoryWrite],
-                [copy.promptThree, copy.promptThreeBody, copy.promptCategoryThink],
-                [copy.promptFour, copy.promptFourBody, copy.promptCategorySummarize],
-                [copy.promptFive, copy.promptFiveBody, copy.promptCategoryCreate],
-                [copy.promptSix, copy.promptSixBody, copy.promptCategoryDecide],
-              ].map(([prompt, body, category]) => (
+              {promptLibrary.map(([prompt, body, category]) => (
                 <button key={prompt} onClick={() => openPrompt(prompt)}>
                   <span>{category}</span>
                   <strong>{prompt}</strong>
@@ -1547,7 +1559,7 @@ export default function ChatApp({
               {logoutStatus === "error" && <p className="panel-error account-action-message" role="alert">{copy.logoutError}</p>}
             </section>
             <section className="account-info-grid">
-              <article><span>{copy.workspacePreferences}</span><h2>{copy.languageAndRegion}</h2><p>{locale === "zh" ? copy.simplifiedChinese : copy.englishLanguage}</p><LanguageSwitcher locale={locale} locked={localeLocked} /></article>
+              <article><span>{copy.workspacePreferences}</span><h2>{copy.languageAndRegion}</h2><p>{locale === "zh" ? copy.simplifiedChinese : copy.englishLanguage}</p><LanguageSwitcher locale={locale} locked={localeLocked} previewPreset={preview && !studentMode ? customerPresetId : undefined} /></article>
               <article><span>{copy.privacyLabel}</span><h2>{copy.privateWorkspaceTitle}</h2><p>{copy.privateWorkspaceBody}</p><button onClick={() => openPanel("support")}>{copy.learnMore}</button></article>
             </section>
           </div>

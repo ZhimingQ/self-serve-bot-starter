@@ -1,14 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { customerPreviewHref, type CustomerPresetId } from "../lib/customerPresets";
 import { LOCALE_COOKIE, messages, type Locale } from "../lib/i18n";
 
 export default function LanguageSwitcher({
   locale,
   locked = false,
+  previewPreset,
 }: {
   locale: Locale;
   locked?: boolean;
+  previewPreset?: CustomerPresetId;
 }) {
   const router = useRouter();
   const nextLocale = locale === "en" ? "zh" : "en";
@@ -22,7 +25,9 @@ export default function LanguageSwitcher({
       aria-label={locale === "en" ? "切换到中文" : "Switch to English"}
       onClick={() => {
         document.cookie = `${LOCALE_COOKIE}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
-        router.refresh();
+        if (previewPreset) {
+          router.push(customerPreviewHref(window.location.pathname === "/demo" ? "/demo" : "/", previewPreset, nextLocale));
+        } else router.refresh();
       }}
     >
       {messages[locale].language}

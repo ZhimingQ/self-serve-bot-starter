@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { brand, workspaceMode } from "../../../lib/config";
+import { brand, customerTemplate, workspaceMode } from "../../../lib/config";
 import { linkProxyFields } from "../../../lib/linkProxy";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export function GET() {
     // assistant endpoint and the connect scripts through (lib/linkProxy.ts), so
     // the platform may hand customers links on this domain; linkProxyKey proves
     // which reseller key it runs with.
-    { ok: true, brandingRevision: brand.revision, brandName: brand.name, workspaceMode, workspaceModes: ["full", "simple", "students"], ...linkProxyFields() },
+    { ok: true, customerTemplate, brandingRevision: brand.revision, brandName: brand.name, workspaceMode, workspaceModes: ["full", "simple", "students"], ...linkProxyFields() },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

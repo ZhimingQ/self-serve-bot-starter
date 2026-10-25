@@ -3481,3 +3481,10 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
   .customer-dashboard .msg-md { max-width: 100%; }
   .dashboard-chat-empty { gap: 16px; padding: 20px 4px; }
 }
+
+/* Audience-specific starting points retain the shared chat layout. */
+.preset-starters { display: grid; gap: 8px; width: min(100%, 480px); margin: 20px auto 4px; text-align: left; }
+.preset-starters button { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 16px; color: var(--text); background: var(--surface, #fff); border: 1px solid var(--border); border-radius: 6px; text-align: left; font: inherit; font-size: 13px; line-height: 1.5; cursor: pointer; }
+.preset-starters button:hover { border-color: var(--accent); color: var(--accent-hover); }
+.preset-starters button:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 3px; }
+.preset-starters svg { width: 16px; height: 16px; flex-shrink: 0; }

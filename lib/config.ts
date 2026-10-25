@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { parseBotTools, type BotToolId } from "./botTools";
 import { parseWorkspaceMode, type WorkspaceMode } from "./workspaceMode";
 import { normalizeAssistantInstructions } from "./customerWorkspace";
+import { getCustomerPreset, resolveCustomerPreset } from "./customerPresets";
 
 export interface BrandConfig {
   revision: number;
@@ -60,7 +61,7 @@ function fileString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function accentColors(hex: string): { readableAccent: string; onAccent: "#000000" | "#ffffff" } {
+export function accentColors(hex: string): { readableAccent: string; onAccent: "#000000" | "#ffffff" } {
   const valid = /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : "#777e69";
   const rgb = [1, 3, 5].map((offset) => Number.parseInt(valid.slice(offset, offset + 2), 16));
   const channel = (value: number) => {
@@ -87,10 +88,16 @@ function isBotFramework(value: string): value is BotFramework {
   return value === "openclaw" || value === "hermes";
 }
 
+// The dedicated student workspace keeps its own copy, theme and tutor rules.
+export const customerTemplate = resolveCustomerPreset(
+  parseWorkspaceMode(process.env.WORKSPACE_MODE) === "students" ? "general" : process.env.CUSTOMER_TEMPLATE,
+);
+const customerPreset = getCustomerPreset(customerTemplate);
+
 const rawFramework = process.env.BOT_FRAMEWORK ?? "openclaw";
 const brandingFile = readBrandingFile();
 const configuredBrandName = fileString(brandingFile.brandName) || process.env.BRAND_NAME?.trim() || "YourBrand";
-const configuredAccent = fileString(brandingFile.accent) || process.env.BRAND_ACCENT || "#777e69";
+const configuredAccent = fileString(brandingFile.accent) || process.env.BRAND_ACCENT || customerPreset.accent;
 const derivedAccent = accentColors(configuredAccent);
 
 // Keep infrastructure/business-model language out of the customer-facing brand.
@@ -251,7 +258,8 @@ export const studentWorkspace = workspaceMode === "students";
 // never write the essay for them."). Read from ASSISTANT_INSTRUCTIONS_FILE when
 // set — a plain text file, re-read on each turn so an edit applies without a
 // restart — otherwise from ASSISTANT_INSTRUCTIONS. Capped at 2,000 characters.
-// A missing or unreadable file means no instructions, never a failed chat.
+// A missing or unreadable file falls back to the env value, then preset defaults.
+// An explicitly empty file/env value is an owner override and stays empty.
 export function assistantInstructions(): string {
   const filename = process.env.ASSISTANT_INSTRUCTIONS_FILE?.trim();
   if (filename) {
@@ -262,7 +270,9 @@ export function assistantInstructions(): string {
       // Fall through to the env value.
     }
   }
-  return normalizeAssistantInstructions(process.env.ASSISTANT_INSTRUCTIONS);
+  return process.env.ASSISTANT_INSTRUCTIONS !== undefined
+    ? normalizeAssistantInstructions(process.env.ASSISTANT_INSTRUCTIONS)
+    : customerPreset.instructions;
 }
 
 export const allowEndUserByok =

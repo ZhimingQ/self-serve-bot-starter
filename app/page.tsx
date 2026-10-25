@@ -1,8 +1,12 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
+import { customerPreviewHref, getCustomerPreset, resolveCustomerPreset } from "../lib/customerPresets";
 import {
   allowChannelConnect,
   allowEndUserByok,
   brand,
+  accentColors,
+  customerTemplate,
   demoMode,
   demoSignupUrl,
   enabledBotTools,
@@ -18,15 +22,23 @@ import { getLocaleState } from "../lib/locale";
 import { getOfferKind } from "../lib/offer";
 import LanguageSwitcher from "./LanguageSwitcher";
 
-export default async function LandingPage() {
+export default async function LandingPage({ searchParams }: { searchParams: Promise<{ preset?: string; locale?: string }> }) {
   // WORKSPACE_MODE=students has its own landing page.
   if (studentWorkspace) return <StudentLanding />;
-  const { locale, locked } = await getLocaleState();
+  const state = await getLocaleState();
+  const query = await searchParams;
+  const locale = demoMode && (query.locale === "en" || query.locale === "zh") ? query.locale : state.locale;
+  const locked = state.locked;
+  const presetId = resolveCustomerPreset(customerTemplate, query.preset, demoMode);
+  const preset = getCustomerPreset(presetId);
+  const profile = presetId === "general" ? null : preset[locale];
+  const previewStyle = demoMode && profile ? { "--accent": preset.accent, "--accent-hover": accentColors(preset.accent).readableAccent, "--accent-on": accentColors(preset.accent).onAccent } as CSSProperties : undefined;
+  const homeHref = demoMode ? customerPreviewHref("/", presetId, locale) : "/";
   const copy = messages[locale];
   // Demo mode blocks public signup/provisioning. Keep login available for
   // existing demo users, while the primary marketing path takes new visitors
   // to the template instead of dropping them onto a login dead end.
-  const primaryHref = demoMode ? "/demo" : "/signup";
+  const primaryHref = demoMode ? customerPreviewHref("/demo", presetId, locale) : "/signup";
   const primaryLabel = demoMode
     ? copy.demoPrimary
     : paymentsEnabled
@@ -53,8 +65,8 @@ export default async function LandingPage() {
   const channelNames = channels.map((id) => copy.channelName[id]);
   const firstChannel = channelNames[0] ?? "";
   const tools = landingTools({ tools: enabledBotTools, byok: allowEndUserByok });
-  const demo = firstChannel ? l.scheduled : l.draft;
-  const jobs = [
+  const demo = profile?.example ?? (firstChannel ? l.scheduled : l.draft);
+  const jobs = profile?.workflows ?? [
     l.write,
     l.research,
     firstChannel ? { ...l.automate, result: l.automate.result(firstChannel) } : l.remember,
@@ -78,7 +90,7 @@ export default async function LandingPage() {
   }
 
   return (
-    <div className="landing">
+    <div className="landing" lang={locale === "zh" ? "zh-CN" : "en"} style={previewStyle} data-customer-template={presetId}>
       {demoMode && (
         <div className="demo-banner">
           {copy.demo}{" "}
@@ -93,7 +105,7 @@ export default async function LandingPage() {
       )}
 
       <nav className="nav">
-        <Link href="/" className="brand">
+        <Link href={homeHref} className="brand">
           {brand.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={brand.logoUrl} alt="" className="brand-logo" />
@@ -107,7 +119,7 @@ export default async function LandingPage() {
           <a href="#faq">{l.nav.faq}</a>
         </div>
         <div className="nav-actions">
-          <LanguageSwitcher locale={locale} locked={locked} />
+          <LanguageSwitcher locale={locale} locked={locked} previewPreset={demoMode ? presetId : undefined} />
           <Link href="/login" className="btn btn-secondary">
             {copy.login}
           </Link>
@@ -118,10 +130,10 @@ export default async function LandingPage() {
       <main className="landing-main">
         <section className="hero">
           <div className="hero-inner">
-            <span className="eyebrow">{copy.heroEyebrow}</span>
-            <h1>{copy.heroTitle}</h1>
+            <span className="eyebrow">{profile?.name ?? copy.heroEyebrow}</span>
+            <h1>{profile?.heroTitle ?? copy.heroTitle}</h1>
             <p className="subtitle">
-              {copy.heroBody(brand.name, joinNames(channelNames, l.list, 2))}
+              {profile?.heroBody ?? copy.heroBody(brand.name, joinNames(channelNames, l.list, 2))}
             </p>
             <div className="hero-ctas">
               <PrimaryAction className="btn btn-primary" />
@@ -145,7 +157,7 @@ export default async function LandingPage() {
                 <span className="preview-kicker">{copy.privateAssistant}</span>
                 <strong>{brand.name}</strong>
               </div>
-              <span className="online-status">{firstChannel ? l.via(firstChannel) : copy.online}</span>
+              <span className="online-status">{!profile && firstChannel ? l.via(firstChannel) : copy.online}</span>
             </div>
             <div className="preview-messages">
               <div className="preview-message preview-user">
@@ -189,7 +201,7 @@ export default async function LandingPage() {
           <div className="section-heading">
             <span className="eyebrow">{l.doesEyebrow}</span>
             <h2>{l.doesTitle}</h2>
-            <p>{l.doesBody}</p>
+            <p>{profile?.description ?? l.doesBody}</p>
           </div>
           <div className="use-case-grid">
             {jobs.map((job) => (
@@ -273,7 +285,7 @@ export default async function LandingPage() {
       </main>
 
       <footer className="site-footer">
-        <Link href="/" className="footer-brand">
+        <Link href={homeHref} className="footer-brand">
           {brand.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={brand.logoUrl} alt="" className="brand-logo" />
