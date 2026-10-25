@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { messages as translations, type Locale } from "../../lib/i18n";
 import LanguageSwitcher from "../LanguageSwitcher";
+import DashboardIcon from "./DashboardIcon";
 import ChannelsPanel from "./ChannelsPanel";
 import ModelKeyPanel from "./ModelKeyPanel";
 import BotToolsPanel from "./BotToolsPanel";
@@ -156,7 +157,7 @@ export default function ChatApp({
   const [sending, setSending] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
-  const [panel, setPanel] = useState<Panel>(simpleMode ? "assistant" : "overview");
+  const [panel, setPanel] = useState<Panel>("assistant");
   // Every navigation goes through here. In simple mode a link to a panel that
   // mode does not offer (an overview tile, "browse prompts", ...) lands on the
   // chat instead of opening a page the reseller chose to hide. A feature the
@@ -984,19 +985,15 @@ export default function ChatApp({
   // entirely when the reseller has not enabled them — an item that 404s on click
   // is worse than no item.
   const fullPrimaryNav: { panel: Panel; label: string; icon: string }[] = [
-    { panel: "overview", label: copy.controlOverview, icon: "⌂" },
     { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
     ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
-    { panel: "prompts", label: copy.controlPrompts, icon: "⌘" },
+    ...(botTools.length > 0 ? [{ panel: "botTools" as Panel, label: copy.botTools.navLabel, icon: "▤" }] : []),
     { panel: "history", label: copy.controlHistory, icon: "↻" },
     { panel: "usage", label: copy.controlUsage, icon: "◫" },
-    { panel: "notifications", label: copy.controlNotifications, icon: "◉" },
   ];
   const fullManageNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "billing", label: copy.controlBilling, icon: "$" },
     ...(byokEnabled ? [{ panel: "modelKey" as Panel, label: copy.controlModelKey, icon: "⚿" }] : []),
-    ...(botTools.length > 0 ? [{ panel: "botTools" as Panel, label: copy.botTools.navLabel, icon: "▤" }] : []),
-    { panel: "settings", label: copy.controlSettings, icon: "⚙" },
     { panel: "security", label: copy.controlSecurity, icon: "◇" },
     { panel: "account", label: copy.controlAccount, icon: "○" },
     { panel: "privacy", label: copy.controlPrivacy, icon: "⌁" },
@@ -1023,7 +1020,13 @@ export default function ChatApp({
         { panel: "support", label: copy.controlSupport, icon: "?" },
       ]
     : fullManageNav;
-  const allNav = [...primaryNav, ...manageNav];
+  const utilityNav: { panel: Panel; label: string }[] = simpleMode ? [] : [
+    { panel: "overview", label: copy.controlOverview },
+    { panel: "prompts", label: copy.controlPrompts },
+    { panel: "notifications", label: copy.controlNotifications },
+    { panel: "settings", label: copy.controlSettings },
+  ];
+  const allNav = [...primaryNav, ...manageNav, ...utilityNav];
   const currentPanelTitle = allNav.find(
     (item) => item.panel === panel
   )?.label;
@@ -1032,7 +1035,7 @@ export default function ChatApp({
     : "";
 
   return (
-    <div className="control-shell">
+    <div className={`control-shell${studentMode ? "" : " customer-dashboard"}${panel === "assistant" && !studentMode ? " is-chat" : ""}`}>
       <a className="skip-link" href="#control-content">{copy.skipToContent}</a>
       <aside className="control-sidebar">
         {brandWebsiteUrl ? <a className="control-brand" href={brandWebsiteUrl} target="_blank" rel="noopener noreferrer">
@@ -1058,7 +1061,7 @@ export default function ChatApp({
               aria-current={panel === item.panel ? "page" : undefined}
               onClick={() => openPanel(item.panel)}
             >
-              <span aria-hidden="true">{item.icon}</span>{item.label}
+              <span aria-hidden="true">{studentMode ? item.icon : <DashboardIcon name={item.panel} />}</span>{item.label}
               {item.panel === "history" && savedTurns > 0 && <b>{savedTurns}</b>}
               {item.panel === "notifications" && unreadNotifications > 0 && <b aria-label={copy.unreadCount(unreadNotifications)}>{unreadNotifications}</b>}
             </button>
@@ -1071,7 +1074,7 @@ export default function ChatApp({
               aria-current={panel === item.panel ? "page" : undefined}
               onClick={() => openPanel(item.panel)}
             >
-              <span aria-hidden="true">{item.icon}</span>{item.label}
+              <span aria-hidden="true">{studentMode ? item.icon : <DashboardIcon name={item.panel} />}</span>{item.label}
             </button>
           ))}
         </nav>
@@ -1079,6 +1082,7 @@ export default function ChatApp({
         <div className="control-sidebar-account">
           <span>{copy.signedInAs}</span>
           <strong>{displayName}</strong>
+          {!studentMode && <small>{billingStateLabel}</small>}
           {preview && <em>{copy.previewMode}</em>}
         </div>
       </aside>
@@ -1093,7 +1097,7 @@ export default function ChatApp({
         <header className="control-topbar">
           <div>
             <span>{studentMode ? brandName : copy.workspace}</span>
-            <strong>{currentPanelTitle}</strong>
+            {panel === "assistant" && !studentMode ? <h1>{currentPanelTitle}</h1> : <strong>{currentPanelTitle}</strong>}
           </div>
           <div className="control-topbar-actions">
             <span className={`control-live ${workspaceLoadStatus === "error" ? "is-error" : ""}`} role="status">
@@ -1101,6 +1105,28 @@ export default function ChatApp({
               {workspaceLoadStatus === "loading" ? copy.syncingWorkspace : workspaceLoadStatus === "error" ? copy.syncFailed : copy.onlineNow}
             </span>
             <LanguageSwitcher locale={locale} locked={localeLocked} />
+            {utilityNav.length > 0 && (
+              <details className="dashboard-more" onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.currentTarget.open = false;
+                  event.currentTarget.querySelector("summary")?.focus();
+                }
+              }}>
+                <summary><DashboardIcon name="more" /><span>{copy.moreTools}</span></summary>
+                <div className="dashboard-more-items">
+                  {utilityNav.map((item) => (
+                    <button key={item.panel} type="button" aria-current={panel === item.panel ? "page" : undefined}
+                      onClick={(event) => {
+                        event.currentTarget.closest("details")?.removeAttribute("open");
+                        openPanel(item.panel);
+                      }}>
+                      <DashboardIcon name={item.panel} /><span>{item.label}</span>
+                      {item.panel === "notifications" && unreadNotifications > 0 && <b aria-label={copy.unreadCount(unreadNotifications)}>{unreadNotifications}</b>}
+                    </button>
+                  ))}
+                </div>
+              </details>
+            )}
           </div>
         </header>
 
@@ -1277,13 +1303,14 @@ export default function ChatApp({
 
         {panel === "assistant" && !studentMode && (
           <div className="control-content control-chat-content">
-            <section className="control-heading control-heading-row">
-              <div><span>{copy.privateAssistant}</span><h1>{copy.chatTitle}</h1><p>{copy.chatSubtitle}</p></div>
-              {!simpleMode && <button className="btn btn-secondary" onClick={() => openPanel("overview")}>{copy.backToOverview}</button>}
-            </section>
+
             <div className="chat-window">
               <div className="chat-messages" ref={chatMessagesRef}>
-                {messages.length === 0 && <p className="chat-empty">{copy.chatGreeting}</p>}
+                {messages.length === 0 && <div className="dashboard-chat-empty">
+                  <span className="dashboard-assistant-mark"><DashboardIcon name="assistant" /></span>
+                  <p className="chat-empty">{copy.chatGreeting}</p>
+                  {!simpleMode && <button type="button" className="dashboard-prompt-link" onClick={() => openPanel("prompts")}>{copy.controlPrompts}<DashboardIcon name="arrow" /></button>}
+                </div>}
                 {messages.map((message, index) => (
                   <div
                     key={index}
@@ -1307,7 +1334,7 @@ export default function ChatApp({
               <form className="chat-input-row" onSubmit={handleSend}>
                 <label className="sr-only" htmlFor="assistant-message">{copy.messageLabel}</label>
                 <textarea id="assistant-message" ref={assistantInputRef} rows={1} placeholder={copy.messagePlaceholder} value={input} onChange={(event) => { setInput(event.target.value); fitComposer(event.currentTarget); }} onKeyDown={sendOnEnter} disabled={sending} />
-                <button type="submit" className="btn btn-primary" disabled={sending || !input.trim()}>{copy.send}</button>
+                <button type="submit" className="btn btn-primary dashboard-send" aria-label={copy.send} title={copy.send} disabled={sending || !input.trim()}><DashboardIcon name="send" /></button>
               </form>
             </div>
           </div>

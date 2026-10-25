@@ -3408,3 +3408,76 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
     border: 0;
   }
 }
+
+/* ReadyHermes-inspired customer workspace. Scoped away from the study desk. */
+.customer-dashboard {
+  background: #faf8f3;
+  --dashboard-paper: #faf8f3;
+}
+.customer-dashboard .control-sidebar {
+  background: radial-gradient(420px 300px at 0 0, color-mix(in srgb, var(--accent) 22%, transparent), transparent 65%), #16150f;
+}
+.customer-dashboard .control-brand { font-family: var(--font-sans); font-size: 17px; }
+.customer-dashboard .control-nav button { border-radius: 12px; font-weight: 550; }
+.customer-dashboard .control-nav button.active { background: rgb(255 255 255 / 9%); }
+.customer-dashboard .control-nav button.active > span { color: color-mix(in srgb, var(--accent) 55%, white); }
+.customer-dashboard .control-sidebar-account small { color: #aaa69d; font-size: 12px; }
+.customer-dashboard .control-topbar { background: rgb(250 248 243 / 96%); }
+.customer-dashboard .control-topbar > div:first-child strong,
+.customer-dashboard .control-topbar h1 { margin: 0; font-family: var(--font-sans); font-size: 18px; font-weight: 650; }
+.customer-dashboard .control-topbar-actions { gap: 16px; }
+.customer-dashboard .control-heading h1 { font-family: var(--font-sans); font-size: clamp(28px, 3vw, 38px); letter-spacing: -.035em; }
+.dashboard-more { position: relative; }
+.dashboard-more summary { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; font-size: 13px; list-style: none; }
+.dashboard-more summary::-webkit-details-marker { display: none; }
+.dashboard-more summary:hover, .dashboard-more[open] summary { background: #eeeae1; }
+.dashboard-more-items { position: absolute; z-index: 10; top: calc(100% + 8px); right: 0; display: grid; width: 250px; max-width: calc(100vw - 36px); padding: 6px; border: 1px solid var(--border); border-radius: 14px; background: #fff; box-shadow: 0 12px 32px rgb(42 40 34 / 12%); }
+.dashboard-more-items button { display: flex; align-items: center; gap: 12px; padding: 10px; border: 0; border-radius: 8px; background: none; color: var(--text); text-align: left; font: inherit; font-size: 13px; cursor: pointer; }
+.dashboard-more-items button:hover, .dashboard-more-items button[aria-current] { background: var(--cream); }
+.dashboard-more-items svg { flex-shrink: 0; }
+.dashboard-more-items b { margin-left: auto; font-size: 11px; }
+.customer-dashboard :is(button, summary, select):focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 3px; }
+.customer-dashboard.is-chat { flex: none; height: 100dvh; min-height: 0; overflow: hidden; }
+.customer-dashboard.is-chat .control-main { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.customer-dashboard.is-chat :is(.control-topbar, .control-mobile-nav, .workspace-notice) { flex-shrink: 0; }
+.customer-dashboard .control-chat-content { display: flex; flex: 1; min-height: 0; width: 100%; max-width: 960px; margin: 0 auto; padding: 0 32px 24px; }
+.customer-dashboard .control-chat-content .chat-window { width: 100%; min-height: 0; margin: 0; padding: 0; border: 0; background: transparent; }
+.customer-dashboard .control-chat-content .chat-messages { min-height: 0; padding: 28px 4px; gap: 24px; scrollbar-gutter: stable; }
+.dashboard-chat-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px 0; }
+.dashboard-assistant-mark { display: grid; width: 52px; height: 52px; place-items: center; border: 1px solid var(--border); border-radius: 16px; background: #fff; color: var(--accent-hover); }
+.dashboard-assistant-mark svg { width: 26px; height: 26px; }
+.customer-dashboard .chat-empty { margin: 0; font-family: var(--font-sans); font-size: clamp(24px, 3vw, 34px); line-height: 1.35; letter-spacing: -.035em; }
+.dashboard-prompt-link { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--text-muted); font: inherit; font-size: 13px; cursor: pointer; }
+.dashboard-prompt-link:hover { background: #fff; }
+.customer-dashboard .msg { max-width: 85%; padding: 16px 18px; border: 1px solid #e4dfd4; border-radius: 18px; font-size: 15px; line-height: 1.75; }
+.customer-dashboard .msg-user { background: #eeeae1; text-align: left; border-bottom-right-radius: 5px; }
+.customer-dashboard .msg-assistant { background: #fff; border-bottom-left-radius: 5px; }
+.customer-dashboard .control-chat-content .chat-input-row { flex-shrink: 0; gap: 10px; padding: 7px 7px 7px 20px; border: 1px solid #ded8cc; border-radius: 26px; background: #fff; box-shadow: 0 2px 6px rgb(42 40 34 / 3%); }
+.customer-dashboard .chat-input-row:focus-within { border-color: var(--accent-hover); box-shadow: 0 0 0 2px var(--accent-soft); }
+.customer-dashboard .chat-input-row textarea { padding: 10px 0; font-size: 16px; max-height: min(180px, 25dvh); }
+.customer-dashboard .chat-input-row textarea:focus { outline: none; }
+.customer-dashboard .dashboard-send { display: grid; flex: 0 0 44px; width: 44px; min-width: 44px; height: 44px; padding: 0; place-items: center; border-radius: 50%; }
+.customer-dashboard .dashboard-send:disabled { background: #e4dfd4; color: #817b70; opacity: 1; }
+@media (max-width: 900px) {
+  .customer-dashboard.is-chat { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+}
+@media (max-width: 900px) and (min-width: 701px) {
+  .customer-dashboard .control-chat-content { padding-inline: 24px; }
+  .customer-dashboard .control-topbar { padding-inline: 24px; }
+  .customer-dashboard .control-live { display: none; }
+}
+@media (max-width: 700px) {
+  .customer-dashboard.is-chat { grid-template-rows: auto minmax(0, 1fr); }
+  .customer-dashboard .control-sidebar { height: auto; }
+  .customer-dashboard .control-brand { font-size: 16px; }
+  .customer-dashboard .control-topbar { min-height: 58px; }
+  .customer-dashboard .control-topbar-actions { gap: 10px; }
+  .customer-dashboard .dashboard-more { display: none; }
+  .customer-dashboard .control-mobile-nav { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 14px; padding: 8px 18px; background: var(--dashboard-paper); }
+  .customer-dashboard .control-mobile-nav select { min-width: 0; border-radius: 10px; background: #fff; font-size: 16px; }
+  .customer-dashboard .control-chat-content { padding: 0 14px max(12px, env(safe-area-inset-bottom)); }
+  .customer-dashboard .control-chat-content .chat-messages { padding: 18px 2px; }
+  .customer-dashboard .msg { max-width: 94%; padding: 12px 14px; }
+  .customer-dashboard .msg-md { max-width: 100%; }
+  .dashboard-chat-empty { gap: 16px; padding: 20px 4px; }
+}
