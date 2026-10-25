@@ -162,7 +162,7 @@ export interface UpstreamResult<T = Record<string, unknown>> {
 
 async function callApi<T = Record<string, unknown>>(
   path: string,
-  init: { method: "GET" | "POST" | "PUT"; body?: unknown; timeoutMs?: number },
+  init: { method: "GET" | "POST" | "PUT" | "DELETE"; body?: unknown; timeoutMs?: number },
 ): Promise<UpstreamResult<T>> {
   const res = await fetch(`${brand.apiBase}${path}`, {
     method: init.method,
@@ -204,6 +204,28 @@ export function getChannels(instanceId: string, opts: { telegramPrivacy?: boolea
  *  restarted to apply them, which can take longer than a control call's 20s. */
 export function channelAction(instanceId: string, body: Record<string, unknown>, timeoutMs?: number) {
   return callApi(`/instances/${encodeURIComponent(instanceId)}/channels`, { method: "POST", body, timeoutMs });
+}
+
+// ── Customer self-service: connected apps ────────────────────────────────────
+// Gmail, Calendar, Notion... through the platform's /apps endpoint, which keeps
+// each bot's connections in that bot's own pool (the same one the bot uses in
+// chat). Same contract: the caller resolved `instanceId` from the session.
+
+/** `{ enabled, connections: [{id, app, status, created_at}], managed_apps }`. */
+export function getApps(instanceId: string) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/apps`, { method: "GET" });
+}
+
+/** Start connecting one app; answers `{ redirect_url, notice }`. */
+export function connectApp(instanceId: string, app: string) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/apps`, { method: "POST", body: { app } });
+}
+
+/** Disconnect one of the bot's connections. The id reaches only the query string. */
+export function disconnectApp(instanceId: string, connectionId: string): Promise<UpstreamResult> | UpstreamResult {
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(connectionId)) return { ok: false, status: 400, body: { error: "invalid_connection_id" } };
+  const qs = new URLSearchParams({ connection_id: connectionId }).toString();
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/apps?${qs}`, { method: "DELETE" });
 }
 
 // ── Customer self-service: bot tools ─────────────────────────────────────────

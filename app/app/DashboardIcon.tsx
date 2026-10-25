@@ -2,6 +2,7 @@
 const paths: Record<string, string> = {
   assistant: "m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z",
   channels: "M9 3v4m6-4v4M7 7h10v4a5 5 0 0 1-10 0Zm5 9v5",
+  apps: "M4 4h6v6H4Zm10 0h6v6h-6ZM4 14h6v6H4Zm10 0h6v6h-6Z",
   botTools: "m14 6 4 4m-8 3-7 7 1 1 7-7M14 3a6 6 0 0 0-5 9l3 3a6 6 0 0 0 9-5l-4 2-5-5Z",
   history: "M3 11a9 9 0 1 1 2 7M3 5v6h6m3-5v6l4 2",
   usage: "M4 20V10m6 10V4m6 16v-7m4 7H2",

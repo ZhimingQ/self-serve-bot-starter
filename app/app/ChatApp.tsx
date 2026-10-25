@@ -9,6 +9,7 @@ import { getCustomerPreset, type CustomerPresetId } from "../../lib/customerPres
 import ChannelsPanel from "./ChannelsPanel";
 import ModelKeyPanel from "./ModelKeyPanel";
 import BotToolsPanel from "./BotToolsPanel";
+import AppsPanel from "./AppsPanel";
 import type { BotToolId } from "../../lib/botTools";
 import {
   defaultAssistantPreferences,
@@ -38,7 +39,7 @@ interface ChatMessage {
 class ChatDisplayError extends Error {}
 
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "channels" | "prompts" | "history" | "usage" | "notifications" | "billing" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
+type Panel = "overview" | "assistant" | "channels" | "apps" | "prompts" | "history" | "usage" | "notifications" | "billing" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
 /** The panels WORKSPACE_MODE=simple offers. Billing is listed but only shown
  *  when payments are on. */
 const SIMPLE_PANELS: ReadonlySet<Panel> = new Set<Panel>(["assistant", "history", "billing", "account", "privacy", "support"]);
@@ -93,6 +94,7 @@ export default function ChatApp({
   termsUrl,
   byokEnabled = false,
   channelsEnabled = true,
+  appsEnabled = false,
   botTools = [],
   simpleMode = false,
   studentMode = false,
@@ -124,6 +126,8 @@ export default function ChatApp({
   byokEnabled?: boolean;
   /** ALLOW_CHANNEL_CONNECT — the customer may connect messaging apps themselves. */
   channelsEnabled?: boolean;
+  /** ALLOW_APP_CONNECT — the customer may connect Gmail, Calendar, Notion... */
+  appsEnabled?: boolean;
   /** BOT_TOOLS — the per-assistant tools (power, backup, files, ...) this
    *  storefront offers its customers. Empty hides the Bot tools panel. */
   botTools?: BotToolId[];
@@ -173,6 +177,7 @@ export default function ChatApp({
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>("assistant");
+  const [showLapsedApps, setShowLapsedApps] = useState(false);
   // Every navigation goes through here. In simple mode a link to a panel that
   // mode does not offer (an overview tile, "browse prompts", ...) lands on the
   // chat instead of opening a page the reseller chose to hide. A feature the
@@ -181,11 +186,12 @@ export default function ChatApp({
     (next: Panel) => {
       const switchedOn =
         (next === "channels" && channelsEnabled) ||
+        (next === "apps" && appsEnabled) ||
         (next === "modelKey" && byokEnabled) ||
         (next === "botTools" && botTools.length > 0);
       setPanel(simpleMode && !SIMPLE_PANELS.has(next) && !switchedOn ? "assistant" : next);
     },
-    [simpleMode, channelsEnabled, byokEnabled, botTools.length]
+    [simpleMode, channelsEnabled, appsEnabled, byokEnabled, botTools.length]
   );
   const [sessionUserTurns, setSessionUserTurns] = useState(0);
   const [sessionAssistantReplies, setSessionAssistantReplies] = useState(0);
@@ -890,7 +896,7 @@ export default function ChatApp({
 
   if (needsPayment) {
     return (
-      <div className="provisioning">
+      <div className={showLapsedApps ? "provisioning provisioning-wide" : "provisioning"}>
         <LanguageSwitcher locale={locale} locked={localeLocked} previewPreset={preview && !studentMode ? customerPresetId : undefined} />
         <h2>{copy.activateTitle}</h2>
         <p>{copy.activateBody(email.split("@")[0])}</p>
@@ -905,6 +911,14 @@ export default function ChatApp({
         >
           {copy.logout}
         </button>
+        {/* A paused customer must still be able to take back access they gave
+            (the route allows listing and disconnecting without a plan). */}
+        {appsEnabled && !showLapsedApps && (
+          <button type="button" className="btn btn-link" onClick={() => setShowLapsedApps(true)} style={{ marginTop: 10 }}>
+            {copy.apps.manageLapsed}
+          </button>
+        )}
+        {appsEnabled && showLapsedApps && <AppsPanel copy={copy} preview={preview} brandName={brandName} manageOnly />}
       </div>
     );
   }
@@ -1002,6 +1016,7 @@ export default function ChatApp({
   const fullPrimaryNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
     ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
+    ...(appsEnabled ? [{ panel: "apps" as Panel, label: copy.controlApps, icon: "▦" }] : []),
     ...(botTools.length > 0 ? [{ panel: "botTools" as Panel, label: copy.botTools.navLabel, icon: "▤" }] : []),
     { panel: "history", label: copy.controlHistory, icon: "↻" },
     { panel: "usage", label: copy.controlUsage, icon: "◫" },
@@ -1022,6 +1037,7 @@ export default function ChatApp({
     ? [
         { panel: "assistant", label: studentMode ? "Study desk" : copy.controlAssistant, icon: "✦" },
         ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
+        ...(appsEnabled ? [{ panel: "apps" as Panel, label: copy.controlApps, icon: "▦" }] : []),
         { panel: "history", label: copy.controlHistory, icon: "↻" },
       ]
     : fullPrimaryNav;
@@ -1494,6 +1510,10 @@ export default function ChatApp({
 
         {panel === "channels" && channelsEnabled && (
           <ChannelsPanel copy={copy} preview={preview} />
+        )}
+
+        {panel === "apps" && appsEnabled && (
+          <AppsPanel copy={copy} preview={preview} brandName={brandName} />
         )}
 
         {panel === "modelKey" && byokEnabled && (

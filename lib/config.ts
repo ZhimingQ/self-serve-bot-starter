@@ -284,6 +284,11 @@ export const allowEndUserByok =
 // On by default in full mode; in simple/students mode only when set to 1.
 export const allowChannelConnect = envFlag(process.env.ALLOW_CHANNEL_CONNECT, !simpleWorkspace);
 
+// Connected apps (Gmail, Calendar, Notion...), the customer signs in to each.
+// Same default as channels. Needs your Composio key in your platform account;
+// without it the panel says apps are not available yet.
+export const allowAppConnect = envFlag(process.env.ALLOW_APP_CONNECT, !simpleWorkspace);
+
 /** The channels this storefront offers, in display order. An empty CHANNELS var
  *  (the default) means "all of them" — the panel then filters again against what
  *  the bot's own framework reports as connectable.

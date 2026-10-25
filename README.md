@@ -394,6 +394,7 @@ it installs this template onto your running OpenClaw bot and serves it on an
 | `LOCALE_HOST_ZH` | no | Comma-separated hostnames that always render Simplified Chinese and hide the switcher. |
 | `ALLOW_END_USER_BYOK` | no (defaults off) | Shows the Model key panel, where a customer funds the assistant with their own provider key. See below. |
 | `ALLOW_CHANNEL_CONNECT` | no (defaults **on**) | Set `0` to hide the Channels panel and connect apps for your customers yourself. |
+| `ALLOW_APP_CONNECT` | no (defaults **on**) | The Apps panel: the customer connects Gmail, Calendar, Notion and more. Needs your Composio key in your platform account. Set `0` to hide. |
 | `CHANNELS` | no (defaults to all) | Restrict the Channels panel, e.g. `wechat,telegram`. |
 | `CUSTOMER_TEMPLATE` | no (defaults to `general`) | Audience profile: `general`, `creator`, `office`, `builder`, `study` or `business`. Does not change tool permissions or workspace access. |
 | `WORKSPACE_MODE` | no (defaults to `full`) | `simple` = customers only see sign-in and chat; Channels, Model key and Bot tools start off unless set explicitly. See "Simple mode" above. |
