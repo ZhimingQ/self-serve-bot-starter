@@ -11,6 +11,7 @@ import FilesSection from "./botTools/FilesSection";
 import EndpointSection from "./botTools/EndpointSection";
 import ImportSection from "./botTools/ImportSection";
 import DesktopSection from "./botTools/DesktopSection";
+import DesktopAppSection from "./botTools/DesktopAppSection";
 import ComputerSection from "./botTools/ComputerSection";
 import VideoSection from "./botTools/VideoSection";
 
@@ -37,6 +38,7 @@ const SECTIONS: { id: BotToolId; Component: ComponentType<SectionProps> }[] = [
   { id: "ssh", Component: SshSection },
   { id: "endpoint", Component: EndpointSection },
   { id: "desktop", Component: DesktopSection },
+  { id: "hermes-desktop", Component: DesktopAppSection },
   { id: "computer", Component: ComputerSection },
   { id: "video", Component: VideoSection },
 ];

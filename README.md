@@ -192,6 +192,7 @@ you would otherwise run for them, one tab each:
 | `ssh` | Join the assistant to the customer's own Tailscale network with an auth key they generate, then `ssh` in from their own devices. The panel walks them through creating the key. |
 | `endpoint` | Turn on an OpenAI-compatible API endpoint for their own apps. The key is shown once; it can be replaced or the endpoint turned off. |
 | `desktop` | Open a live view of the assistant's own desktop in a new tab. |
+| `hermes-desktop` | Hermes storefronts only: get a remote URL and a 30-day sign-in to use the assistant from the free Hermes Desktop app on Mac, Windows or Linux. |
 | `computer` | Let the assistant use chosen folders on the customer's computer: they run a one-line command, type the code it prints into the panel, and pick folders and access level. |
 
 All tools are on by default. `BOT_TOOLS=power,backup,files` offers just those,

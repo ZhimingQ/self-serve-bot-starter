@@ -14,7 +14,9 @@
  * always the signed-in customer's own bot, resolved from the session.
  */
 
-export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "computer", "video"] as const;
+// "hermes-desktop" connects the Hermes Desktop app; it is offered on Hermes
+// storefronts only (lib/config.ts drops it elsewhere).
+export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "hermes-desktop", "computer", "video"] as const;
 export type BotToolId = (typeof knownBotTools)[number];
 
 /**

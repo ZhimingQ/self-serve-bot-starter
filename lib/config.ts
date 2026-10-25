@@ -327,8 +327,11 @@ export const offeredChannels: ChannelId[] = (() => {
 export { knownBotTools, type BotToolId } from "./botTools";
 // Simple/students mode offers none unless BOT_TOOLS names some explicitly
 // (unset means "all" only in full mode; see WORKSPACE_MODE above).
-export const enabledBotTools: BotToolId[] =
-  simpleWorkspace && !process.env.BOT_TOOLS?.trim() ? [] : parseBotTools(process.env.BOT_TOOLS);
+// Hermes Desktop only works with a Hermes bot, so an OpenClaw storefront never
+// offers it, whatever BOT_TOOLS says (the route then answers 404 for it too).
+export const enabledBotTools: BotToolId[] = (
+  simpleWorkspace && !process.env.BOT_TOOLS?.trim() ? [] : parseBotTools(process.env.BOT_TOOLS)
+).filter((id) => id !== "hermes-desktop" || brand.framework === "hermes");
 export const botToolEnabled = (id: BotToolId): boolean => enabledBotTools.includes(id);
 
 // ── Startup validation ────────────────────────────────────────────────────

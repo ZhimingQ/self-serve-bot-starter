@@ -51,7 +51,9 @@ export default async function DemoControlPanel({
         // deployment sells, so a prospective reseller can see what they get.
         byokEnabled
         channelsEnabled
-        botTools={[...knownBotTools]}
+        appsEnabled
+        // Every tool this deployment's framework can run (Hermes Desktop needs a Hermes bot).
+        botTools={knownBotTools.filter((id) => id !== "hermes-desktop" || brand.framework === "hermes")}
         termsUrl={brand.termsUrl}
         // A student storefront's demo shows the study desk its students get.
         simpleMode={studentWorkspace}

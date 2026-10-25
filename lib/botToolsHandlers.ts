@@ -100,6 +100,7 @@ const KNOWN_ERRORS = new Set([
   "conflict",
   "endpoint_unavailable",
   "desktop_unavailable",
+  "hermes_desktop_unavailable",
   "pairing_not_found",
   "invalid_user_code",
   "invalid_folders",
@@ -563,6 +564,46 @@ const desktopOpen: ActionSpec = {
   },
 };
 
+// ── Hermes Desktop (the Nous Research app) ──────────────────────────────────
+//
+// Not the Desktop above (the assistant's own screen): this hands the customer
+// the remote-gateway URL and a 30-day sign-in so the Hermes Desktop app on
+// their computer talks to their hosted assistant.
+
+const hermesDesktopStatus: ActionSpec = {
+  tool: "hermes-desktop",
+  limit: { max: 120, windowSec: 600 },
+  async run({ instanceId }) {
+    const result = await botToolCall(instanceId, "/hermes-desktop", { method: "GET" });
+    if (!result.ok) return upstreamFailure(result);
+    const data = dataOf(result);
+    return json({ available: data.available === true, reason: str(data.reason) });
+  },
+};
+
+const hermesDesktopConnect: ActionSpec = {
+  tool: "hermes-desktop",
+  limit: { max: 10, windowSec: 600 },
+  async run({ instanceId }) {
+    // Provisioning the sign-in key can take a container exec on first use.
+    const result = await botToolCall(instanceId, "/hermes-desktop", { method: "POST", timeoutMs: 60_000 });
+    if (!result.ok) return upstreamFailure(result);
+    const data = dataOf(result);
+    const remoteUrl = str(data.remote_url);
+    const username = str(data.username);
+    const password = str(data.password);
+    // The customer pastes this into an app, so only a well-formed https URL is passed on.
+    let safe: string | null = null;
+    try {
+      if (remoteUrl && new URL(remoteUrl).protocol === "https:") safe = remoteUrl;
+    } catch {
+      safe = null;
+    }
+    if (!safe || !username || !password) return fail("hermes_desktop_unavailable", 502);
+    return json({ remoteUrl: safe, username, password, expiresAt: str(data.expires_at) });
+  },
+};
+
 // ── My computer ─────────────────────────────────────────────────────────────
 
 const computerStatus: ActionSpec = {
@@ -789,5 +830,6 @@ export const BOT_TOOL_ACTIONS: Record<string, Partial<Record<Method, ActionSpec>
   computer: { GET: computerStatus, POST: computerApprove, DELETE: computerRemove },
   "import-preview": { POST: importPreview },
   "import-apply": { POST: importApply },
+  "hermes-desktop": { GET: hermesDesktopStatus, POST: hermesDesktopConnect },
   video: { GET: videoStatus, PUT: videoSet },
 };

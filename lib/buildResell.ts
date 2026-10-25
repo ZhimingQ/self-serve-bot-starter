@@ -251,6 +251,7 @@ export type BotToolPath =
   | "/files/rename"
   | "/endpoint"
   | "/desktop"
+  | "/hermes-desktop"
   | "/computer"
   | "/computer/approve"
   | "/import/preview"
