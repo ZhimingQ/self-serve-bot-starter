@@ -219,7 +219,9 @@ export function setIncludedModel(instanceId: string, framework: "openclaw" | "he
   return framework === "hermes"
     ? callApi(`/instances/${encodeURIComponent(instanceId)}/hermes-profile`, {
       method: "PUT",
-      body: { model: "included", included_model: model },
+      // Applied only if the bot is still on its included AI when the platform
+      // holds its lock, so a key the customer saved meanwhile is kept.
+      body: { model: "included", included_model: model, require_included: true },
       timeoutMs: 75_000,
     })
     : callApi(`/instances/${encodeURIComponent(instanceId)}/included-model`, {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { rateLimit } from "../../../lib/rateLimit";
-import { brand } from "../../../lib/config";
+import { brand, paymentsEnabled } from "../../../lib/config";
 import { getIncludedModel, setIncludedModel } from "../../../lib/buildResell";
 
 /**
@@ -47,9 +47,14 @@ function viewOf(body: unknown): View {
 async function context() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const instanceId = await getStore().getUserInstance(session.userId);
+  const store = getStore();
+  const instanceId = await store.getUserInstance(session.userId);
   if (!instanceId) return NextResponse.json({ error: "no_instance" }, { status: 409 });
-  return { userId: session.userId, instanceId, framework: brand.framework === "hermes" ? "hermes" as const : "openclaw" as const };
+  // The dashboard's rule (app/app/page.tsx): with payments on, only an active
+  // plan may change the assistant; with payments off every customer may.
+  const user = await store.getUserById(session.userId);
+  const allowed = !paymentsEnabled || user?.billingStatus === "active";
+  return { userId: session.userId, instanceId, allowed, framework: brand.framework === "hermes" ? "hermes" as const : "openclaw" as const };
 }
 
 export async function GET() {
@@ -58,7 +63,9 @@ export async function GET() {
   try {
     const result = await getIncludedModel(ctx.instanceId, ctx.framework);
     if (!result.ok) return NextResponse.json({ choosable: false, models: [], current: null }, { headers: NO_STORE });
-    return NextResponse.json(viewOf(result.body), { headers: NO_STORE });
+    const view = viewOf(result.body);
+    // Without an active plan there is nothing to choose; the panel stays hidden.
+    return NextResponse.json(ctx.allowed ? view : { ...view, choosable: false }, { headers: NO_STORE });
   } catch {
     return NextResponse.json({ error: "upstream_error" }, { status: 502 });
   }
@@ -67,6 +74,7 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   const ctx = await context();
   if (ctx instanceof NextResponse) return ctx;
+  if (!ctx.allowed) return NextResponse.json({ error: "plan_required" }, { status: 402 });
   // Each switch restarts the assistant.
   const rl = await rateLimit("included-model", ctx.userId, 10, 3600);
   if (!rl.ok) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
@@ -87,7 +95,7 @@ export async function PUT(request: NextRequest) {
     if (result.ok) return NextResponse.json({ ok: true, model });
     const code = (result.body as { error?: unknown }).error;
     if (result.status === 429) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
-    if (code === "included_model_not_offered" || code === "included_model_not_allowed") {
+    if (code === "included_model_not_offered" || code === "included_model_not_allowed" || code === "not_on_included_route") {
       return NextResponse.json({ error: "included_model_unavailable" }, { status: 409 });
     }
     return NextResponse.json({ error: "upstream_error" }, { status: 502 });
