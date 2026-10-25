@@ -3631,3 +3631,10 @@ button.control-live:not(:disabled):hover { color: var(--ink); }
   .bot-modal-tiles strong { font-size: 13px; }
   .bot-modal-tiles small { display: none; }
 }
+/* Phones and tablets: the pill is the way into the assistant dialog, so it stays (compact). */
+@media (max-width: 900px) {
+  .control-topbar-actions button.control-live { display: inline-flex; flex: none; gap: 6px; font-size: 12px; white-space: nowrap; }
+  .control-topbar > div:first-child { min-width: 0; }
+  .control-topbar > div:first-child strong,
+  .control-topbar > div:first-child h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
