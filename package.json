@@ -17,7 +17,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:presets": "tsx --test lib/customerPresets.test.mjs",
-    "test:hermes-byok": "tsx --import ./lib/registerTestHooks.mjs --test lib/hermesByok.test.mjs"
+    "test:hermes-byok": "tsx --import ./lib/registerTestHooks.mjs --test lib/hermesByok.test.mjs",
+    "test:bot": "node --experimental-strip-types --test lib/botInfo.test.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",

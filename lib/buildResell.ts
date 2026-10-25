@@ -415,3 +415,18 @@ export async function streamResponse({
 
   return res;
 }
+
+// ── Customer self-service: the assistant itself ──────────────────────────────
+// Same rule as above: the caller resolves the instance id from the session.
+
+/** The bot card's facts: status, version, plan size, storage, model, when it
+ *  came online. Never the server, port or container (lib/botInfo.ts maps it). */
+export function getBotInfo(instanceId: string) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/info`, { method: "GET" });
+}
+
+/** Restart the customer's assistant, or start it when stopped/asleep. The
+ *  platform holds the call until the container is back, hence the long budget. */
+export function botLifecycle(instanceId: string, action: "restart" | "start") {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/${action}`, { method: "POST", timeoutMs: CREATE_TIMEOUT_MS });
+}

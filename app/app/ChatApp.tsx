@@ -11,6 +11,7 @@ import ModelKeyPanel from "./ModelKeyPanel";
 import HermesModelKeyPanel from "./HermesModelKeyPanel";
 import IncludedModelPanel from "./IncludedModelPanel";
 import BotToolsPanel from "./BotToolsPanel";
+import MyAssistantPanel, { BotSummaryCard, pillLabel, useBotInfo } from "./MyAssistantPanel";
 import AppsPanel from "./AppsPanel";
 import type { BotToolId } from "../../lib/botTools";
 import {
@@ -40,11 +41,12 @@ interface ChatMessage {
 // generic line instead, so implementation details never reach the end-user.
 class ChatDisplayError extends Error {}
 
+const OFFLINE_STATUSES = new Set(["stopped", "sleeping", "error"]);
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "channels" | "apps" | "prompts" | "history" | "usage" | "notifications" | "billing" | "model" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
+type Panel = "overview" | "assistant" | "myAssistant" | "channels" | "apps" | "prompts" | "history" | "usage" | "notifications" | "billing" | "model" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
 /** The panels WORKSPACE_MODE=simple offers. Billing is listed but only shown
  *  when payments are on. */
-const SIMPLE_PANELS: ReadonlySet<Panel> = new Set<Panel>(["assistant", "history", "billing", "account", "privacy", "support"]);
+const SIMPLE_PANELS: ReadonlySet<Panel> = new Set<Panel>(["assistant", "myAssistant", "history", "billing", "account", "privacy", "support"]);
 type AsyncStatus = "idle" | "working" | "done" | "error";
 type WorkspaceLoadStatus = "loading" | "ready" | "error";
 
@@ -166,6 +168,9 @@ export default function ChatApp({
   const router = useRouter();
   const needsPayment = paymentsEnabled && !paid;
   const [provisionState, setProvisionState] = useState<ProvisionState>(preview ? "ready" : "checking");
+  // The assistant itself: one poll for the top-bar pill, My assistant and the Usage card.
+  // Also while a plan is needed: a lapsed account still sees its (stopped) assistant.
+  const botInfo = useBotInfo(!preview && (provisionState === "ready" || needsPayment), copy.bot);
   const [provisionError, setProvisionError] = useState<string | null>(null);
   // A FLAG, not the localized string: provisioning can outlast a language
   // switch, and storing the text would leave the note in the old language.
@@ -499,6 +504,15 @@ export default function ChatApp({
         if (data.status === "running") {
           setProvisionSlow(false);
           setProvisionState("ready");
+          return;
+        }
+        // An assistant that is stopped or asleep will not come up by waiting
+        // (a new one is "creating"/"starting", never these): open the dashboard
+        // on My assistant, where Start is.
+        if (OFFLINE_STATUSES.has(data.status)) {
+          setProvisionSlow(false);
+          setProvisionState("ready");
+          setPanel("myAssistant");
           return;
         }
 
@@ -984,6 +998,9 @@ export default function ChatApp({
   }
 
   const displayName = preview ? copy.demoAccount : email.split("@")[0];
+  // Before the first answer the pill keeps its familiar "Online now".
+  // A failed check is "Checking", never a stale "Online now".
+  const botState = botInfo.loadError ? "unknown" : botInfo.noInstance ? "stopped" : botInfo.bot?.state ?? null;
   const planName = preview
     ? copy.demoPlan
     : paymentsEnabled
@@ -1032,8 +1049,10 @@ export default function ChatApp({
   // model key sits in MANAGE because it is account plumbing. Both are omitted
   // entirely when the reseller has not enabled them — an item that 404s on click
   // is worse than no item.
+  const myAssistantNav = !preview ? [{ panel: "myAssistant" as Panel, label: copy.bot.navLabel, icon: "◉" }] : [];
   const fullPrimaryNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
+    ...myAssistantNav,
     ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
     ...(appsEnabled ? [{ panel: "apps" as Panel, label: copy.controlApps, icon: "▦" }] : []),
     ...(botTools.length > 0 ? [{ panel: "botTools" as Panel, label: copy.botTools.navLabel, icon: "▤" }] : []),
@@ -1056,6 +1075,7 @@ export default function ChatApp({
   const primaryNav: { panel: Panel; label: string; icon: string }[] = simpleMode
     ? [
         { panel: "assistant", label: studentMode ? "Study desk" : copy.controlAssistant, icon: "✦" },
+        ...myAssistantNav,
         ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
         ...(appsEnabled ? [{ panel: "apps" as Panel, label: copy.controlApps, icon: "▦" }] : []),
         { panel: "history", label: copy.controlHistory, icon: "↻" },
@@ -1152,10 +1172,16 @@ export default function ChatApp({
           </div>
           <div className="control-topbar-actions">
             {preview && previewHomeHref && <a className="text-link" href={previewHomeHref}>{copy.website}</a>}
-            <span className={`control-live ${workspaceLoadStatus === "error" ? "is-error" : ""}`} role="status">
-              {workspaceLoadStatus === "loading" ? <span className="mini-spinner" aria-hidden="true" /> : <i />}
-              {workspaceLoadStatus === "loading" ? copy.syncingWorkspace : workspaceLoadStatus === "error" ? copy.syncFailed : copy.onlineNow}
-            </span>
+            <button
+              type="button"
+              className={`control-live ${workspaceLoadStatus === "error" || (workspaceLoadStatus === "ready" && botState && botState !== "running" && botState !== "unknown") ? `is-${workspaceLoadStatus === "error" ? "error" : botState}` : ""}`}
+              role="status"
+              onClick={preview ? undefined : () => setPanel("myAssistant")}
+              disabled={preview}
+            >
+              {workspaceLoadStatus === "loading" || (workspaceLoadStatus === "ready" && (botState === "starting" || botInfo.action.kind === "working")) ? <span className="mini-spinner" aria-hidden="true" /> : <i />}
+              {workspaceLoadStatus === "loading" ? copy.syncingWorkspace : workspaceLoadStatus === "error" ? copy.syncFailed : pillLabel(botState, copy.bot, copy.onlineNow)}
+            </button>
             <LanguageSwitcher locale={locale} locked={localeLocked} previewPreset={preview && !studentMode ? customerPresetId : undefined} />
             {utilityNav.length > 0 && (
               <details className="dashboard-more" onKeyDown={(event) => {
@@ -1415,6 +1441,23 @@ export default function ChatApp({
           </div>
         )}
 
+        {panel === "myAssistant" && !preview && (
+          <MyAssistantPanel
+            info={botInfo}
+            copy={copy}
+            planName={planName}
+            planNote={null}
+            assistantName={botInfo.bot?.assistantName ?? copy.bot.eyebrow}
+            needsPayment={needsPayment}
+            channelsEnabled={channelsEnabled}
+            byokEnabled={byokEnabled}
+            latestActivityAt={latestActivityAt}
+            formatDate={(iso) => formatDate(iso, locale)}
+            formatDateTime={(iso) => formatDateTime(iso, locale)}
+            onOpen={(p) => setPanel(p)}
+          />
+        )}
+
         {panel === "history" && (
           <div className="control-content">
             <section className="control-heading">
@@ -1456,6 +1499,7 @@ export default function ChatApp({
               <h1>{copy.usageTitle}</h1>
               <p>{copy.usageSubtitle}</p>
             </section>
+            {!preview && <BotSummaryCard info={botInfo} copy={copy} planName={planName} needsPayment={needsPayment} onOpen={() => setPanel("myAssistant")} />}
             <section className="usage-grid">
               <article className="usage-metric-card"><span>{copy.savedMessages}</span><strong>{savedTurns}</strong><p>{copy.savedMessagesBody}</p></article>
               <article className="usage-metric-card"><span>{copy.savedReplies}</span><strong>{savedReplies}</strong><p>{copy.savedRepliesBody}</p></article>
