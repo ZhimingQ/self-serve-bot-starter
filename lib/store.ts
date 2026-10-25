@@ -83,6 +83,20 @@ export interface ChatWriteFence {
   turnSequence: number;
 }
 
+/** What the Hermes "your own AI provider" panel switched a bot to. A record,
+ *  never the key: the key itself lives only in the bot's own config.
+ *  `instanceId` pins it to the bot it was written for, so a re-provisioned bot
+ *  is never reported as running on a key it has never seen. */
+export interface StoredModelKey {
+  instanceId: string;
+  provider: string;
+  model: string;
+  keyPreview: string;
+  /** Host of a custom endpoint, shown back to the customer. */
+  host?: string;
+  setAt: string;
+}
+
 export interface Store {
   getUserByEmail(email: string): Promise<StoredUser | null>;
   getUserById(userId: string): Promise<StoredUser | null>;
@@ -139,6 +153,9 @@ export interface Store {
   clearUserConversation(userId: string): Promise<void>;
   getUserPreferences(userId: string): Promise<AssistantPreferences>;
   setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void>;
+  /** Hermes storefronts: the customer's own-provider choice (null = included AI). */
+  getUserModelKey(userId: string): Promise<StoredModelKey | null>;
+  setUserModelKey(userId: string, record: StoredModelKey | null): Promise<void>;
   /** Remove the local storefront account and all customer-owned workspace data.
    *  The history generation fence is retained/incremented so an in-flight chat
    *  cannot recreate history after deletion. */
@@ -411,6 +428,16 @@ export class UpstashStore implements Store {
     await this.command(["SET", `preferences:${userId}`, JSON.stringify(preferences)]);
   }
 
+  async getUserModelKey(userId: string): Promise<StoredModelKey | null> {
+    const raw = await this.command<string | null>(["GET", `modelkey:${userId}`]);
+    return raw ? (JSON.parse(raw) as StoredModelKey) : null;
+  }
+
+  async setUserModelKey(userId: string, record: StoredModelKey | null): Promise<void> {
+    if (record) await this.command(["SET", `modelkey:${userId}`, JSON.stringify(record)]);
+    else await this.command(["DEL", `modelkey:${userId}`]);
+  }
+
   async deleteUserData(userId: string): Promise<void> {
     const user = await this.getUserById(userId);
     if (!user) return;
@@ -422,6 +449,7 @@ export class UpstashStore implements Store {
       `history:${userId}`,
       `historyseq:${userId}`,
       `preferences:${userId}`,
+      `modelkey:${userId}`,
       `authversion:${userId}`,
     ];
     if (user.stripeCustomerId) keys.push(`user:by-customer:${user.stripeCustomerId}`);
@@ -448,6 +476,7 @@ export class MemoryStore implements Store {
   private historyGenerationByUserId = new Map<string, number>();
   private historySequenceByUserId = new Map<string, number>();
   private preferencesByUserId = new Map<string, AssistantPreferences>();
+  private modelKeyByUserId = new Map<string, StoredModelKey>();
 
   private userIdByCustomer = new Map<string, string>();
   private userIdByResetToken = new Map<string, string>();
@@ -575,6 +604,13 @@ export class MemoryStore implements Store {
   async setUserPreferences(userId: string, preferences: AssistantPreferences): Promise<void> {
     this.preferencesByUserId.set(userId, preferences);
   }
+  async getUserModelKey(userId: string): Promise<StoredModelKey | null> {
+    return this.modelKeyByUserId.get(userId) ?? null;
+  }
+  async setUserModelKey(userId: string, record: StoredModelKey | null): Promise<void> {
+    if (record) this.modelKeyByUserId.set(userId, record);
+    else this.modelKeyByUserId.delete(userId);
+  }
   async deleteUserData(userId: string): Promise<void> {
     const user = this.usersById.get(userId);
     if (!user) return;
@@ -588,6 +624,7 @@ export class MemoryStore implements Store {
     this.historyByUserId.delete(userId);
     this.historySequenceByUserId.delete(userId);
     this.preferencesByUserId.delete(userId);
+    this.modelKeyByUserId.delete(userId);
     this.historyGenerationByUserId.set(userId, (this.historyGenerationByUserId.get(userId) ?? 0) + 1);
   }
 }
@@ -614,6 +651,8 @@ interface FileSnapshot {
   historyGenerationByUserId: Record<string, number>;
   historySequenceByUserId: Record<string, number>;
   preferencesByUserId: Record<string, AssistantPreferences>;
+  /** Optional so a snapshot written before this field existed still loads. */
+  modelKeyByUserId?: Record<string, StoredModelKey>;
 }
 
 function emptySnapshot(): FileSnapshot {
@@ -993,6 +1032,18 @@ export class FileStore implements Store {
     await this.mutate((snap) => { snap.preferencesByUserId[userId] = preferences; });
   }
 
+  async getUserModelKey(userId: string): Promise<StoredModelKey | null> {
+    const snap = await this.load();
+    return snap.modelKeyByUserId?.[userId] ?? null;
+  }
+
+  async setUserModelKey(userId: string, record: StoredModelKey | null): Promise<void> {
+    await this.mutate((snap) => {
+      if (record) (snap.modelKeyByUserId ??= {})[userId] = record;
+      else delete snap.modelKeyByUserId?.[userId];
+    });
+  }
+
   async deleteUserData(userId: string): Promise<void> {
     await this.mutate((snap) => {
       const user = snap.usersById[userId];
@@ -1007,6 +1058,7 @@ export class FileStore implements Store {
       delete snap.historyByUserId[userId];
       delete snap.historySequenceByUserId[userId];
       delete snap.preferencesByUserId[userId];
+      delete snap.modelKeyByUserId?.[userId];
       snap.historyGenerationByUserId[userId] =
         (snap.historyGenerationByUserId[userId] ?? 0) + 1;
     });

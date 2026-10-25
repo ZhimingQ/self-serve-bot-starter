@@ -190,6 +190,23 @@ export function setModelKey(instanceId: string, modelKey: string, provider?: str
   });
 }
 
+/** Hermes only: route the bot to the customer's own OpenAI-compatible endpoint,
+ *  or (`"included"`) back to the model that comes with the plan. The platform
+ *  writes it and restarts the bot; it does NOT test the endpoint, so the caller
+ *  must have proven it first (lib/hermesByok.ts). */
+export function setHermesModel(
+  instanceId: string,
+  model: { base_url: string; api_key: string; model: string } | "included",
+) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/hermes-profile`, {
+    method: "PUT",
+    body: { model },
+    // The platform holds the call until Docker has provably restarted the bot,
+    // up to 60s, so the usual 20s control timeout would cut a working switch off.
+    timeoutMs: 75_000,
+  });
+}
+
 /** Which channels are connected, and which ones this bot's framework supports. */
 /** `telegramPrivacy` also asks whether Telegram delivers every group message to
  *  the bot at all (BotFather Group Privacy off). It costs a Telegram API call, so
