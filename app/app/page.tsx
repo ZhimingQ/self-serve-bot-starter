@@ -61,6 +61,7 @@ export default async function AppPage({
       privacyUrl={brand.privacyUrl}
       termsUrl={brand.termsUrl}
       byokEnabled={allowEndUserByok}
+      byokFramework={brand.framework}
       channelsEnabled={allowChannelConnect}
       appsEnabled={allowAppConnect}
       botTools={enabledBotTools}

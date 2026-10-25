@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "../../../lib/session";
 import { getStore } from "../../../lib/store";
 import { rateLimit } from "../../../lib/rateLimit";
-import { allowEndUserByok } from "../../../lib/config";
+import { allowEndUserByok, brand } from "../../../lib/config";
+import { hermesDelete, hermesGet, hermesPut } from "../../../lib/hermesModelKeyApi";
 import { getModelKey, setModelKey } from "../../../lib/buildResell";
 
 /**
@@ -30,6 +31,9 @@ const disabled = () => NextResponse.json({ error: "not_found" }, { status: 404 }
 
 export async function GET() {
   if (!allowEndUserByok) return disabled();
+  // Hermes: lib/hermesModelKeyApi.ts (the customer's own OpenAI-compatible
+  // endpoint, proven with one test message before the bot is switched).
+  if (brand.framework === "hermes") return hermesGet();
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
@@ -57,6 +61,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   if (!allowEndUserByok) return disabled();
+  if (brand.framework === "hermes") return hermesPut(request);
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
@@ -103,4 +108,11 @@ export async function PUT(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "upstream_error" }, { status: 502 });
   }
+}
+
+/** Hermes only: switch back to the AI that comes with the plan. OpenClaw has no
+ *  DELETE (see the top of this file). */
+export async function DELETE() {
+  if (!allowEndUserByok || brand.framework !== "hermes") return disabled();
+  return hermesDelete();
 }

@@ -218,8 +218,8 @@ export const resetEmail = {
 //    if you resell credits at a markup, this panel gives that margin away. Turn it
 //    on when you charge for the product rather than for the tokens, or when a
 //    customer would rather pay their provider directly.
-//    OpenClaw only — the platform refuses end-user BYOK on Hermes bots, so the
-//    panel stays hidden on a Hermes storefront whatever this is set to.
+//    On Hermes the customer points the bot at their own OpenAI-compatible
+//    provider instead (lib/hermesModelKeyApi.ts) and can switch back.
 //
 //  ALLOW_CHANNEL_CONNECT=0  hides the "Channels" panel, where a customer connects
 //    the bot to WeChat, Telegram, WhatsApp, Discord, Lark or Slack. ON by default:
@@ -275,11 +275,10 @@ export function assistantInstructions(): string {
     : customerPreset.instructions;
 }
 
-export const allowEndUserByok =
-  envFlag(process.env.ALLOW_END_USER_BYOK, false) &&
-  // Hermes has no end-user BYOK path on the platform side; showing the panel
-  // would only produce a 400 the customer cannot act on.
-  (isBotFramework(rawFramework) ? rawFramework : "openclaw") === "openclaw";
+// Both frameworks: OpenClaw through the platform's model-key endpoint, Hermes by
+// pointing the bot at the customer's own OpenAI-compatible endpoint
+// (lib/hermesModelKeyApi.ts, the platform's hermes-profile endpoint).
+export const allowEndUserByok = envFlag(process.env.ALLOW_END_USER_BYOK, false);
 
 // On by default in full mode; in simple/students mode only when set to 1.
 export const allowChannelConnect = envFlag(process.env.ALLOW_CHANNEL_CONNECT, !simpleWorkspace);

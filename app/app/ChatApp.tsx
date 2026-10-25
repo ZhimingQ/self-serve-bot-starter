@@ -8,6 +8,7 @@ import DashboardIcon from "./DashboardIcon";
 import { getCustomerPreset, type CustomerPresetId } from "../../lib/customerPresets";
 import ChannelsPanel from "./ChannelsPanel";
 import ModelKeyPanel from "./ModelKeyPanel";
+import HermesModelKeyPanel from "./HermesModelKeyPanel";
 import BotToolsPanel from "./BotToolsPanel";
 import AppsPanel from "./AppsPanel";
 import type { BotToolId } from "../../lib/botTools";
@@ -95,6 +96,7 @@ export default function ChatApp({
   byokEnabled = false,
   channelsEnabled = true,
   appsEnabled = false,
+  byokFramework = "openclaw",
   botTools = [],
   simpleMode = false,
   studentMode = false,
@@ -128,6 +130,8 @@ export default function ChatApp({
   channelsEnabled?: boolean;
   /** ALLOW_APP_CONNECT — the customer may connect Gmail, Calendar, Notion... */
   appsEnabled?: boolean;
+  /** Which model-key panel to show: Hermes switches to the customer's own endpoint. */
+  byokFramework?: "openclaw" | "hermes";
   /** BOT_TOOLS — the per-assistant tools (power, backup, files, ...) this
    *  storefront offers its customers. Empty hides the Bot tools panel. */
   botTools?: BotToolId[];
@@ -1517,7 +1521,9 @@ export default function ChatApp({
         )}
 
         {panel === "modelKey" && byokEnabled && (
-          <ModelKeyPanel copy={copy} brandName={brandName} preview={preview} />
+          byokFramework === "hermes"
+            ? <HermesModelKeyPanel copy={copy} preview={preview} />
+            : <ModelKeyPanel copy={copy} brandName={brandName} preview={preview} />
         )}
 
         {panel === "botTools" && botTools.length > 0 && (

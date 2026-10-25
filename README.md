@@ -155,8 +155,14 @@ the product, or when a customer would rather pay their provider directly — whi
 is common for customers who already hold a key, and for customers who cannot get
 one of the international providers at all.
 
-Requires an OpenClaw storefront (`BOT_FRAMEWORK=openclaw`); the platform does not
-offer end-user BYOK on Hermes, so the panel stays hidden there.
+On a Hermes storefront (`BOT_FRAMEWORK=hermes`) the panel works differently: the
+customer picks a provider (OpenRouter, OpenAI, Anthropic, Gemini, DeepSeek, Groq,
+Qwen, Z.AI, Moonshot, MiniMax) or any OpenAI-compatible https endpoint, loads the
+models their key can use, and switches. One small test message proves the key
+and model first, so a typo cannot leave the assistant silent; the switch restarts
+it (about a minute). "Use included AI" switches it back. The storefront keeps
+only a masked preview of the key; the key itself lives in the assistant's own
+settings.
 
 ### Channels — the customer connects their own apps
 

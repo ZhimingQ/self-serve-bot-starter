@@ -50,6 +50,7 @@ export default async function DemoControlPanel({
         // The showcase always renders every self-service panel, whatever this
         // deployment sells, so a prospective reseller can see what they get.
         byokEnabled
+        byokFramework={brand.framework}
         channelsEnabled
         appsEnabled
         // Every tool this deployment's framework can run (Hermes Desktop needs a Hermes bot).
