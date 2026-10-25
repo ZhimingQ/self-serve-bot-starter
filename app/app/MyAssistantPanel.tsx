@@ -7,7 +7,7 @@ import { formatBytes, type BotState, type BotView } from "../../lib/botInfo";
 /**
  * The customer's own assistant: status, what it runs on, and Restart/Start.
  * One poll (useBotInfo, in ChatApp) feeds the top-bar status pill, the
- * "My assistant" page and the card at the top of Usage, so they always agree.
+ * assistant dialog and the card at the top of Usage, so they always agree.
  */
 
 const POLL_MS = 30_000;
@@ -285,133 +285,180 @@ function useNow(fast: boolean): number {
   return now;
 }
 
-interface PanelProps {
+interface ModalProps {
+  open: boolean;
+  onClose: () => void;
   info: BotInfoState;
   copy: Messages;
   planName: string;
   /** "Renews on …" / "Set to cancel…" line, when the plan is paid. */
   planNote: string | null;
-  assistantName: string;
   needsPayment: boolean;
   channelsEnabled: boolean;
   byokEnabled: boolean;
   latestActivityAt: string | null;
   formatDate: (iso: string) => string;
   formatDateTime: (iso: string) => string;
+  /** Close the dialog and open that section. */
   onOpen: (panel: "channels" | "modelKey" | "billing") => void;
 }
 
 interface ChannelRow { platform: string; paired: boolean }
 
-export default function MyAssistantPanel(props: PanelProps) {
-  const { info, copy, planName, planNote, assistantName, needsPayment, channelsEnabled, byokEnabled, latestActivityAt, formatDate, formatDateTime, onOpen } = props;
+/** The assistant's details in one dialog (a bottom sheet on phones), opened
+ *  from the top-bar status pill and the Usage card. */
+export default function AssistantModal(props: ModalProps) {
+  const { open, onClose, info, copy, planName, planNote, needsPayment, channelsEnabled, byokEnabled, latestActivityAt, formatDate, formatDateTime, onOpen } = props;
   const b = copy.bot;
   const { bot, loadError } = info;
-  const now = useNow(info.action.kind === "working");
+  const now = useNow(open && info.action.kind === "working");
   // A failed check shows "Checking", never a stale "Running".
   const state: BotState = info.loadError ? "unknown" : bot?.state ?? "unknown";
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
+  // Esc closes; Tab stays inside the dialog; focus moves in on open and back to
+  // where it came from on close.
+  useEffect(() => {
+    if (!open) return;
+    const before = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const items = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'),
+      );
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      const inside = active ? dialogRef.current.contains(active) : false;
+      if (e.shiftKey && (!inside || active === first)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (!inside || active === last)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      before?.focus?.();
+    };
+  }, [open]);
+
+  // Chat apps are read when the dialog opens, not on every poll.
   const [channels, setChannels] = useState<ChannelRow[] | null>(null);
   useEffect(() => {
-    if (!channelsEnabled) return;
+    if (!open || !channelsEnabled) return;
     let alive = true;
     fetch("/api/channels", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { channels?: ChannelRow[] } | null) => { if (alive) setChannels(Array.isArray(d?.channels) ? d!.channels : []); })
       .catch(() => { if (alive) setChannels([]); });
     return () => { alive = false; };
-  }, [channelsEnabled]);
+  }, [open, channelsEnabled]);
 
+  if (!open) return null;
+  const go = (panel: "channels" | "modelKey" | "billing") => { onClose(); onOpen(panel); };
   const channelName = (id: string) => (copy.channelName as Record<string, string>)[id] ?? id;
   const used = formatBytes(bot?.diskUsedBytes ?? null);
   const limit = formatBytes(bot?.diskLimitBytes ?? null);
   const pct = bot?.diskUsedBytes != null && bot?.diskLimitBytes ? Math.min(100, Math.max(1, (bot.diskUsedBytes / bot.diskLimitBytes) * 100)) : 0;
   const memory = formatBytes(bot?.memoryBytes ?? null);
+  const running = state === "running" && bot?.startedAt;
+  const meta = [bot?.version ? b.versionLabel(bot.version) : null, bot?.createdAt ? b.createdOn(formatDate(bot.createdAt)) : null].filter(Boolean).join(" · ");
 
   return (
-    <div className="control-content">
-      <section className="control-heading">
-        <span>{b.eyebrow}</span>
-        <h1>{b.title}</h1>
-        <p>{b.subtitle}</p>
-      </section>
-
-      {loadError && <p className="panel-error" role="alert">{b.loadError}</p>}
-      {info.noInstance && (
-        <section className="bot-hero">
-          <div className="bot-hero-main">
-            <p className="bot-state is-stopped"><i aria-hidden="true" />{b.notSetUp}</p>
-          </div>
-          {needsPayment && <button className="btn btn-primary" onClick={() => onOpen("billing")}>{b.choosePlan}</button>}
-        </section>
-      )}
-
-      {!info.noInstance && (<>
-      <section className="bot-hero">
-        <div className="bot-hero-main">
-          <p className={`bot-state is-${state}`}><i aria-hidden="true" />{b.state[state]}<span>· {b.stateHint[state]}</span></p>
-          <h2>{assistantName}</h2>
-          <p className="bot-meta">
-            {[bot?.createdAt ? b.createdOn(formatDate(bot.createdAt)) : null, bot?.version ? b.versionLabel(bot.version) : null].filter(Boolean).join(" · ")}
-          </p>
-          <ActionLine info={info} copy={b} now={now} />
-        </div>
-        <ActionButtons info={info} copy={b} disabled={needsPayment} />
-      </section>
-
-      <section className="bot-tiles">
-        <article>
-          <span>{copy.planLabel}</span>
-          <strong>{planName}</strong>
-          {planNote ? <p>{planNote}</p> : needsPayment ? <button className="bot-link" onClick={() => onOpen("billing")}>{b.choosePlan}</button> : null}
-        </article>
-        <article>
-          <span>{b.computerLabel}</span>
-          <strong>{bot?.cpu && memory ? b.computerValue(bot.cpu, memory) : "—"}</strong>
-          <p>{b.computerHint}</p>
-        </article>
-        <article>
-          <span>{b.storageLabel}</span>
-          <strong>{used ? (limit ? b.storageOf(used, limit) : used) : b.measuring}</strong>
-          <div className="bot-meter" aria-hidden="true"><b style={{ width: `${pct}%` }} /></div>
-        </article>
-      </section>
-
-      <section className="bot-details">
-        <div>
-          <span>{b.modelLabel}</span>
-          <strong>{bot?.model ?? (state === "running" ? b.modelIncluded : b.modelWhenRunning)}</strong>
-          {byokEnabled && <button className="bot-link" onClick={() => onOpen("modelKey")}>{b.changeModel}</button>}
-        </div>
-        {channelsEnabled && (
+    <div className="bot-modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={dialogRef} className="bot-modal" role="dialog" aria-modal="true" aria-labelledby="bot-modal-title">
+        <header className="bot-modal-head">
           <div>
-            <span>{b.channelsLabel}</span>
-            {channels === null ? (
-              <strong className="is-muted">{b.checking}</strong>
-            ) : channels.length === 0 ? (
-              <strong className="is-muted">{b.noChannels}</strong>
+            <span id="bot-modal-title" className="bot-modal-eyebrow">{bot?.assistantName ?? b.eyebrow}</span>
+            {info.noInstance ? (
+              <p className="bot-state is-stopped"><i aria-hidden="true" />{b.notSetUp}</p>
             ) : (
-              <p className="bot-chips">
-                {channels.map((c) => (
-                  <span key={c.platform} className={c.paired ? "" : "is-off"}><i aria-hidden="true" />{channelName(c.platform)}</span>
-                ))}
-              </p>
+              <p className={`bot-state is-${state}`}><i aria-hidden="true" />{b.state[state]}<span>· {b.stateHint[state]}</span></p>
             )}
-            <button className="bot-link" onClick={() => onOpen("channels")}>{b.connect}</button>
+            {meta && <p className="bot-meta">{meta}</p>}
           </div>
+          <div className="bot-modal-head-actions">
+            {info.noInstance
+              ? needsPayment && <button className="btn btn-primary" onClick={() => go("billing")}>{b.choosePlan}</button>
+              : <ActionButtons info={info} copy={b} disabled={needsPayment} />}
+            <button ref={closeRef} type="button" className="bot-modal-close" onClick={onClose} aria-label={copy.channelClose}>✕</button>
+          </div>
+        </header>
+        <ActionLine info={info} copy={b} now={now} />
+        {loadError && <p className="panel-error" role="alert">{b.loadError}</p>}
+
+        {!info.noInstance && (
+          <>
+            <div className="bot-modal-tiles">
+              <div>
+                <span>{copy.planLabel}</span>
+                <strong>{planName}</strong>
+                {planNote ? <small>{planNote}</small> : needsPayment ? <button className="bot-link" onClick={() => go("billing")}>{b.choosePlan}</button> : null}
+              </div>
+              <div>
+                <span>{b.computerLabel}</span>
+                <strong>{bot?.cpu && memory ? b.computerValue(bot.cpu, memory) : "—"}</strong>
+                <small>{b.computerHint}</small>
+              </div>
+              <div>
+                <span>{b.storageLabel}</span>
+                <strong>{used ? (limit ? b.storageOf(used, limit) : used) : b.measuring}</strong>
+                <div className="bot-meter" aria-hidden="true"><b style={{ width: `${pct}%` }} /></div>
+              </div>
+            </div>
+
+            <dl className="bot-modal-rows">
+              <div>
+                <dt>{b.modelLabel}</dt>
+                <dd>
+                  {bot?.model ?? (state === "running" ? b.modelIncluded : b.modelWhenRunning)}
+                  {byokEnabled && <button className="bot-link" onClick={() => go("modelKey")}>{b.changeModel}</button>}
+                </dd>
+              </div>
+              {channelsEnabled && (
+                <div>
+                  <dt>{b.channelsLabel}</dt>
+                  <dd>
+                    {channels === null ? (
+                      <span className="is-muted">{b.checking}</span>
+                    ) : channels.length === 0 ? (
+                      <span className="is-muted">{b.noChannels}</span>
+                    ) : (
+                      <span className="bot-chips">
+                        {channels.map((c) => (
+                          <span key={c.platform} className={c.paired ? "" : "is-off"}><i aria-hidden="true" />{channelName(c.platform)}</span>
+                        ))}
+                      </span>
+                    )}
+                    <button className="bot-link" onClick={() => go("channels")}>{b.connect}</button>
+                  </dd>
+                </div>
+              )}
+              <div>
+                <dt>{b.onlineSinceLabel}</dt>
+                <dd>{running ? <>{formatDateTime(bot!.startedAt!)} <span className="is-muted">· {b.upFor(ago(bot!.startedAt!, now, b))}</span></> : <span className="is-muted">{b.notOnline}</span>}</dd>
+              </div>
+              <div>
+                <dt>{copy.latestActivity}</dt>
+                <dd>{latestActivityAt ? formatDateTime(latestActivityAt) : <span className="is-muted">{copy.noActivityYet}</span>}</dd>
+              </div>
+            </dl>
+            <p className="bot-footnote">{b.footnote}</p>
+          </>
         )}
-        <div>
-          <span>{b.onlineSinceLabel}</span>
-          <strong>{bot?.startedAt && state === "running" ? formatDateTime(bot.startedAt) : b.notOnline}</strong>
-          {bot?.startedAt && state === "running" && <p>{b.upFor(ago(bot.startedAt, now, b))}</p>}
-        </div>
-        <div>
-          <span>{copy.latestActivity}</span>
-          <strong>{latestActivityAt ? formatDateTime(latestActivityAt) : copy.noActivityYet}</strong>
-        </div>
-      </section>
-      <p className="bot-footnote">{b.footnote}</p>
-      </>)}
+      </div>
     </div>
   );
 }

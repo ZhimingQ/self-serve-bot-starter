@@ -11,7 +11,7 @@ import ModelKeyPanel from "./ModelKeyPanel";
 import HermesModelKeyPanel from "./HermesModelKeyPanel";
 import IncludedModelPanel from "./IncludedModelPanel";
 import BotToolsPanel from "./BotToolsPanel";
-import MyAssistantPanel, { BotSummaryCard, pillLabel, useBotInfo } from "./MyAssistantPanel";
+import AssistantModal, { BotSummaryCard, pillLabel, useBotInfo } from "./MyAssistantPanel";
 import AppsPanel from "./AppsPanel";
 import type { BotToolId } from "../../lib/botTools";
 import {
@@ -43,10 +43,10 @@ class ChatDisplayError extends Error {}
 
 const OFFLINE_STATUSES = new Set(["stopped", "sleeping", "error"]);
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "myAssistant" | "channels" | "apps" | "prompts" | "history" | "usage" | "notifications" | "billing" | "model" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
+type Panel = "overview" | "assistant" | "channels" | "apps" | "prompts" | "history" | "usage" | "notifications" | "billing" | "model" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
 /** The panels WORKSPACE_MODE=simple offers. Billing is listed but only shown
  *  when payments are on. */
-const SIMPLE_PANELS: ReadonlySet<Panel> = new Set<Panel>(["assistant", "myAssistant", "history", "billing", "account", "privacy", "support"]);
+const SIMPLE_PANELS: ReadonlySet<Panel> = new Set<Panel>(["assistant", "history", "billing", "account", "privacy", "support"]);
 type AsyncStatus = "idle" | "working" | "done" | "error";
 type WorkspaceLoadStatus = "loading" | "ready" | "error";
 
@@ -170,6 +170,8 @@ export default function ChatApp({
   const [provisionState, setProvisionState] = useState<ProvisionState>(preview ? "ready" : "checking");
   // The assistant itself: one poll for the top-bar pill, My assistant and the Usage card.
   // Also while a plan is needed: a lapsed account still sees its (stopped) assistant.
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const closeAssistant = useCallback(() => setAssistantOpen(false), []);
   const botInfo = useBotInfo(!preview && (provisionState === "ready" || needsPayment), copy.bot);
   const [provisionError, setProvisionError] = useState<string | null>(null);
   // A FLAG, not the localized string: provisioning can outlast a language
@@ -508,11 +510,11 @@ export default function ChatApp({
         }
         // An assistant that is stopped or asleep will not come up by waiting
         // (a new one is "creating"/"starting", never these): open the dashboard
-        // on My assistant, where Start is.
+        // with the assistant dialog, where Start is.
         if (OFFLINE_STATUSES.has(data.status)) {
           setProvisionSlow(false);
           setProvisionState("ready");
-          setPanel("myAssistant");
+          setAssistantOpen(true);
           return;
         }
 
@@ -1049,10 +1051,8 @@ export default function ChatApp({
   // model key sits in MANAGE because it is account plumbing. Both are omitted
   // entirely when the reseller has not enabled them — an item that 404s on click
   // is worse than no item.
-  const myAssistantNav = !preview ? [{ panel: "myAssistant" as Panel, label: copy.bot.navLabel, icon: "◉" }] : [];
   const fullPrimaryNav: { panel: Panel; label: string; icon: string }[] = [
     { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
-    ...myAssistantNav,
     ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
     ...(appsEnabled ? [{ panel: "apps" as Panel, label: copy.controlApps, icon: "▦" }] : []),
     ...(botTools.length > 0 ? [{ panel: "botTools" as Panel, label: copy.botTools.navLabel, icon: "▤" }] : []),
@@ -1075,7 +1075,6 @@ export default function ChatApp({
   const primaryNav: { panel: Panel; label: string; icon: string }[] = simpleMode
     ? [
         { panel: "assistant", label: studentMode ? "Study desk" : copy.controlAssistant, icon: "✦" },
-        ...myAssistantNav,
         ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
         ...(appsEnabled ? [{ panel: "apps" as Panel, label: copy.controlApps, icon: "▦" }] : []),
         { panel: "history", label: copy.controlHistory, icon: "↻" },
@@ -1176,7 +1175,8 @@ export default function ChatApp({
               type="button"
               className={`control-live ${workspaceLoadStatus === "error" || (workspaceLoadStatus === "ready" && botState && botState !== "running" && botState !== "unknown") ? `is-${workspaceLoadStatus === "error" ? "error" : botState}` : ""}`}
               role="status"
-              onClick={preview ? undefined : () => setPanel("myAssistant")}
+              onClick={preview ? undefined : () => setAssistantOpen(true)}
+              aria-haspopup="dialog"
               disabled={preview}
             >
               {workspaceLoadStatus === "loading" || (workspaceLoadStatus === "ready" && (botState === "starting" || botInfo.action.kind === "working")) ? <span className="mini-spinner" aria-hidden="true" /> : <i />}
@@ -1441,23 +1441,6 @@ export default function ChatApp({
           </div>
         )}
 
-        {panel === "myAssistant" && !preview && (
-          <MyAssistantPanel
-            info={botInfo}
-            copy={copy}
-            planName={planName}
-            planNote={null}
-            assistantName={botInfo.bot?.assistantName ?? copy.bot.eyebrow}
-            needsPayment={needsPayment}
-            channelsEnabled={channelsEnabled}
-            byokEnabled={byokEnabled}
-            latestActivityAt={latestActivityAt}
-            formatDate={(iso) => formatDate(iso, locale)}
-            formatDateTime={(iso) => formatDateTime(iso, locale)}
-            onOpen={(p) => setPanel(p)}
-          />
-        )}
-
         {panel === "history" && (
           <div className="control-content">
             <section className="control-heading">
@@ -1499,7 +1482,7 @@ export default function ChatApp({
               <h1>{copy.usageTitle}</h1>
               <p>{copy.usageSubtitle}</p>
             </section>
-            {!preview && <BotSummaryCard info={botInfo} copy={copy} planName={planName} needsPayment={needsPayment} onOpen={() => setPanel("myAssistant")} />}
+            {!preview && <BotSummaryCard info={botInfo} copy={copy} planName={planName} needsPayment={needsPayment} onOpen={() => setAssistantOpen(true)} />}
             <section className="usage-grid">
               <article className="usage-metric-card"><span>{copy.savedMessages}</span><strong>{savedTurns}</strong><p>{copy.savedMessagesBody}</p></article>
               <article className="usage-metric-card"><span>{copy.savedReplies}</span><strong>{savedReplies}</strong><p>{copy.savedRepliesBody}</p></article>
@@ -1696,6 +1679,23 @@ export default function ChatApp({
           </div>
         )}
       </main>
+      {!preview && (
+        <AssistantModal
+          open={assistantOpen}
+          onClose={closeAssistant}
+          info={botInfo}
+          copy={copy}
+          planName={planName}
+          planNote={null}
+          needsPayment={needsPayment}
+          channelsEnabled={channelsEnabled}
+          byokEnabled={byokEnabled}
+          latestActivityAt={latestActivityAt}
+          formatDate={(iso) => formatDate(iso, locale)}
+          formatDateTime={(iso) => formatDateTime(iso, locale)}
+          onOpen={(p) => setPanel(p)}
+        />
+      )}
     </div>
   );
 }
