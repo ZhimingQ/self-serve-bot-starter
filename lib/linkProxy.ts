@@ -148,8 +148,17 @@ export async function platformFetch(path: string, init: RequestInit & { duplex?:
   }
 }
 
+/**
+ * Pass-through paths added after the original set. The platform only hands out
+ * a link of one of these kinds when /api/health lists it, so an older build
+ * keeps platform links for that kind. `vaultPrompt` = /v/<token>, the one-time
+ * page where a customer types a login or a verification code for their
+ * assistant (app/v/[token], app/api/vault-prompt/[token]).
+ */
+export const LINK_PROXY_FEATURES = ["vaultPrompt"] as const;
+
 /** What /api/health says about the pass-through: nothing when it is not usable here. */
-export function linkProxyFields(): { linkProxy?: number; linkProxyKey?: string } {
+export function linkProxyFields(): { linkProxy?: number; linkProxyKey?: string; linkProxyFeatures?: string[] } {
   const linkProxyKey = linkProxyKeyFingerprint();
-  return linkProxyKey ? { linkProxy: LINK_PROXY_VERSION, linkProxyKey } : {};
+  return linkProxyKey ? { linkProxy: LINK_PROXY_VERSION, linkProxyKey, linkProxyFeatures: [...LINK_PROXY_FEATURES] } : {};
 }
