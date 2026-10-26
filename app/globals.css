@@ -2717,6 +2717,11 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 .bt-dot { width: 8px; height: 8px; border-radius: 999px; background: #a8a296; }
 .bt-dot.is-on { background: #4f8656; }
 
+/* Bot tools → Plugins: catalog search and the "official" tag. */
+.bt-plugin-search { flex: 1 1 220px; min-width: 0; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--paper); color: var(--text); font: inherit; font-size: 13px; }
+.bt-plugin-tag { padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); font-size: 10.5px; font-weight: 600; }
+.bt-connections code a { color: var(--accent-hover); }
+
 .bt-found p { margin: 6px 0 0; color: var(--text-muted); font-size: 12.5px; overflow-wrap: anywhere; }
 
 @media (max-width: 900px) {

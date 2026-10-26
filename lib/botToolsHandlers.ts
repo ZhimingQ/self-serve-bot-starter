@@ -22,7 +22,8 @@ import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { botToolCall, botToolRaw, computerDisconnect, type UpstreamResult } from "./buildResell";
 import { enabledBotTools } from "./config";
-import { parseLogTail, toLogLines } from "./botLogs";
+import { parseLogTail, scrubLogText, toLogLines } from "./botLogs";
+import { cleanPluginEnv, isPluginName, toInstalledPlugins, toPluginCatalog, toPluginJob } from "./botPlugins";
 import {
   attachmentDisposition,
   backupCategories,
@@ -134,6 +135,17 @@ const KNOWN_ERRORS = new Set([
   "video_off_incomplete",
   "video_key_conflict",
   "minimax_china_key",
+  "unreachable",
+  "catalog_unavailable",
+  "invalid_plugin",
+  "unknown_plugin",
+  "needs_update",
+  "not_on_server",
+  "invalid_env_key",
+  "invalid_env_value",
+  "missing_env",
+  "already_installed",
+  "not_installed",
 ]);
 
 /** Map a failed platform call to a customer-safe status + code. */
@@ -623,6 +635,68 @@ const logsRead: ActionSpec = {
   },
 };
 
+// ── Plugins (Hermes storefronts) ────────────────────────────────────────────
+//
+// Add-ons from a public plugin catalog. Installing or removing one runs in the
+// background on the platform and restarts the assistant once; the panel polls
+// the GET until the job is done. The catalog is only fetched when asked for
+// (?catalog=1), so the poll stays cheap.
+
+function pluginFailure(result: UpstreamResult): Response {
+  const code = (result.body as { error?: unknown }).error;
+  // The platform says not_running; the panel already explains bot_not_running.
+  if (code === "not_running") return fail("bot_not_running", 409);
+  if (code === "busy") return fail("busy", 409, { job: toPluginJob((result.body as { job?: unknown }).job) });
+  return upstreamFailure(result);
+}
+
+const pluginsRead: ActionSpec = {
+  tool: "plugins",
+  limit: { max: 240, windowSec: 600 },
+  async run({ request, instanceId }) {
+    const withCatalog = request.nextUrl.searchParams.get("catalog") === "1";
+    const result = await botToolCall(instanceId, "/plugins", {
+      method: "GET",
+      query: withCatalog ? { catalog: "1" } : undefined,
+      timeoutMs: 45_000,
+    });
+    if (!result.ok) return pluginFailure(result);
+    const data = dataOf(result);
+    return json({
+      status: str(data.status) ?? "unknown",
+      installed: toInstalledPlugins(data.installed),
+      job: toPluginJob(data.job),
+      ...(withCatalog ? { catalog: toPluginCatalog(data.catalog, scrubLogText) } : {}),
+    });
+  },
+};
+
+const pluginsInstall: ActionSpec = {
+  tool: "plugins",
+  limit: { max: 10, windowSec: 3600 },
+  async run({ request, instanceId }) {
+    const body = await readJson(request);
+    if (!body || !isPluginName(body.plugin)) return fail("invalid_plugin", 400);
+    const env = cleanPluginEnv(body.env);
+    if (!env) return fail("invalid_env_value", 400);
+    const result = await botToolCall(instanceId, "/plugins", { method: "POST", json: { plugin: body.plugin, env }, timeoutMs: 60_000 });
+    if (!result.ok) return pluginFailure(result);
+    return json({ job: toPluginJob(dataOf(result).job) }, 202);
+  },
+};
+
+const pluginsRemove: ActionSpec = {
+  tool: "plugins",
+  limit: { max: 10, windowSec: 3600 },
+  async run({ request, instanceId }) {
+    const plugin = request.nextUrl.searchParams.get("plugin");
+    if (!isPluginName(plugin)) return fail("invalid_plugin", 400);
+    const result = await botToolCall(instanceId, "/plugins", { method: "DELETE", query: { plugin }, timeoutMs: 60_000 });
+    if (!result.ok) return pluginFailure(result);
+    return json({ job: toPluginJob(dataOf(result).job) }, 202);
+  },
+};
+
 // ── Hermes Desktop (the Nous Research app) ──────────────────────────────────
 //
 // Not the Desktop above (the assistant's own screen): this hands the customer
@@ -867,6 +941,9 @@ const importApply: ActionSpec = {
  *   GET    live-browser    → GET    /v1/instances/{id}/live-browser
  *   POST   live-browser    → POST   /v1/instances/{id}/live-browser
  *   GET    logs?tail=      → GET    /v1/instances/{id}/logs    (brand names scrubbed here)
+ *   GET    plugins[?catalog=1] → GET /v1/instances/{id}/plugins (Hermes only)
+ *   POST   plugins         → POST   /v1/instances/{id}/plugins   ({plugin, env})
+ *   DELETE plugins?plugin= → DELETE /v1/instances/{id}/plugins
  *   GET    computer        → GET    /v1/instances/{id}/computer
  *   POST   computer        → POST   /v1/instances/{id}/computer/approve
  *   DELETE computer?id=    → DELETE /v1/instances/{id}/computer/{uuid}
@@ -895,5 +972,6 @@ export const BOT_TOOL_ACTIONS: Record<string, Partial<Record<Method, ActionSpec>
   "import-preview": { POST: importPreview },
   "import-apply": { POST: importApply },
   "hermes-desktop": { GET: hermesDesktopStatus, POST: hermesDesktopConnect },
+  plugins: { GET: pluginsRead, POST: pluginsInstall, DELETE: pluginsRemove },
   video: { GET: videoStatus, PUT: videoSet },
 };

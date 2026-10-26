@@ -16,10 +16,11 @@ import LogsSection from "./botTools/LogsSection";
 import DesktopAppSection from "./botTools/DesktopAppSection";
 import ComputerSection from "./botTools/ComputerSection";
 import VideoSection from "./botTools/VideoSection";
+import PluginsSection from "./botTools/PluginsSection";
 
 /**
  * "Bot tools" — power, backup, SSH, files, API endpoint, restore, desktop,
- * "my computer" and video for the customer's OWN assistant.
+ * "my computer", plugins and video for the customer's OWN assistant.
  *
  * Rendered only when BOT_TOOLS leaves at least one tool on; `tools` is that
  * list, and a section is shown only when its tool is in it. The server enforces
@@ -42,6 +43,7 @@ const SECTIONS: { id: BotToolId; Component: ComponentType<SectionProps> }[] = [
   { id: "desktop", Component: DesktopSection },
   { id: "live-browser", Component: LiveBrowserSection },
   { id: "hermes-desktop", Component: DesktopAppSection },
+  { id: "plugins", Component: PluginsSection },
   { id: "computer", Component: ComputerSection },
   { id: "video", Component: VideoSection },
   { id: "logs", Component: LogsSection },

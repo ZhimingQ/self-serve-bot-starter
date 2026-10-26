@@ -8,7 +8,7 @@
 export type BotFramework = "openclaw" | "hermes";
 
 import { readFileSync } from "node:fs";
-import { parseBotTools, type BotToolId } from "./botTools";
+import { parseBotTools, toolFitsFramework, type BotToolId } from "./botTools";
 import { parseWorkspaceMode, type WorkspaceMode } from "./workspaceMode";
 import { normalizeAssistantInstructions } from "./customerWorkspace";
 import { getCustomerPreset, resolveCustomerPreset } from "./customerPresets";
@@ -326,11 +326,12 @@ export const offeredChannels: ChannelId[] = (() => {
 export { knownBotTools, type BotToolId } from "./botTools";
 // Simple/students mode offers none unless BOT_TOOLS names some explicitly
 // (unset means "all" only in full mode; see WORKSPACE_MODE above).
-// Hermes Desktop only works with a Hermes bot, so an OpenClaw storefront never
-// offers it, whatever BOT_TOOLS says (the route then answers 404 for it too).
+// Hermes Desktop and Plugins only work with a Hermes bot, so an OpenClaw
+// storefront never offers them, whatever BOT_TOOLS says (the route then answers
+// 404 for them too).
 export const enabledBotTools: BotToolId[] = (
   simpleWorkspace && !process.env.BOT_TOOLS?.trim() ? [] : parseBotTools(process.env.BOT_TOOLS)
-).filter((id) => id !== "hermes-desktop" || brand.framework === "hermes");
+).filter((id) => toolFitsFramework(id, brand.framework));
 export const botToolEnabled = (id: BotToolId): boolean => enabledBotTools.includes(id);
 
 // ── Startup validation ────────────────────────────────────────────────────

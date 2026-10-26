@@ -295,6 +295,7 @@ export type BotToolPath =
   | "/live-browser"
   | "/logs"
   | "/hermes-desktop"
+  | "/plugins"
   | "/computer"
   | "/computer/approve"
   | "/import/preview"

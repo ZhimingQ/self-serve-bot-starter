@@ -14,10 +14,18 @@
  * always the signed-in customer's own bot, resolved from the session.
  */
 
-// "hermes-desktop" connects the Hermes Desktop app; it is offered on Hermes
-// storefronts only (lib/config.ts drops it elsewhere).
-export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "hermes-desktop", "computer", "video", "logs", "live-browser"] as const;
+// "hermes-desktop" connects the Hermes Desktop app and "plugins" installs
+// add-ons from the Hermes plugin catalog; both are offered on Hermes
+// storefronts only (lib/config.ts drops them elsewhere).
+export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "hermes-desktop", "computer", "video", "logs", "live-browser", "plugins"] as const;
 export type BotToolId = (typeof knownBotTools)[number];
+
+const HERMES_ONLY_TOOLS: ReadonlySet<BotToolId> = new Set<BotToolId>(["hermes-desktop", "plugins"]);
+
+/** Can a storefront of this framework offer the tool at all? */
+export function toolFitsFramework(id: BotToolId, framework: string): boolean {
+  return !HERMES_ONLY_TOOLS.has(id) || framework === "hermes";
+}
 
 /**
  * Parse BOT_TOOLS.

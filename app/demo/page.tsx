@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { customerPreviewHref, getCustomerPreset, resolveCustomerPreset } from "../../lib/customerPresets";
 import { notFound } from "next/navigation";
 import { brand, accentColors, customerTemplate, demoMode, demoSignupUrl, knownBotTools, studentWorkspace } from "../../lib/config";
+import { toolFitsFramework } from "../../lib/botTools";
 import { getLocaleState } from "../../lib/locale";
 import ChatApp from "../app/ChatApp";
 
@@ -54,7 +55,7 @@ export default async function DemoControlPanel({
         channelsEnabled
         appsEnabled
         // Every tool this deployment's framework can run (Hermes Desktop needs a Hermes bot).
-        botTools={knownBotTools.filter((id) => id !== "hermes-desktop" || brand.framework === "hermes")}
+        botTools={knownBotTools.filter((id) => toolFitsFramework(id, brand.framework))}
         termsUrl={brand.termsUrl}
         // A student storefront's demo shows the study desk its students get.
         simpleMode={studentWorkspace}
