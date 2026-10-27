@@ -1,0 +1,1424 @@
+{
+ "_note": "Curated business skills offered in /app (vetted 2026-10-26: no API key, runs on the bot as shipped, no identity/memory rewrites, no outside installs). Names and blurbs are ours.",
+ "groups": [
+  "documents",
+  "writing",
+  "marketing",
+  "research",
+  "sales",
+  "money",
+  "planning"
+ ],
+ "skills": [
+  {
+   "s": "weekly-report-generator",
+   "g": "documents",
+   "t": {
+    "en": [
+     "Weekly report",
+     "Turn your week's numbers and notes into a clear report for you, your staff or partners."
+    ],
+    "zh": [
+     "周报",
+     "把这一周的数据和笔记整理成一份清楚的报告，给自己、员工或合作伙伴看。"
+    ],
+    "es": [
+     "Informe semanal",
+     "Convierte los números y notas de tu semana en un informe claro para ti, tu equipo o tus socios."
+    ],
+    "fr": [
+     "Rapport hebdomadaire",
+     "Transformez les chiffres et les notes de la semaine en un rapport clair pour vous, votre équipe ou vos partenaires."
+    ],
+    "pt": [
+     "Relatório semanal",
+     "Transforme os números e anotações da semana em um relatório claro para você, sua equipe ou seus parceiros."
+    ],
+    "de": [
+     "Wochenbericht",
+     "Macht aus den Zahlen und Notizen Ihrer Woche einen klaren Bericht für Sie, Ihr Team oder Partner."
+    ]
+   }
+  },
+  {
+   "s": "presentation-outline",
+   "g": "documents",
+   "t": {
+    "en": [
+     "Presentation outline",
+     "Plan a talk or slide deck with timing, talking points and a clear closing ask."
+    ],
+    "zh": [
+     "演讲提纲",
+     "规划一场演讲或一套幻灯片：时间安排、要点和最后的明确请求。"
+    ],
+    "es": [
+     "Guion de presentación",
+     "Planifica una charla o unas diapositivas con tiempos, puntos clave y una petición final clara."
+    ],
+    "fr": [
+     "Plan de présentation",
+     "Préparez une intervention ou des diapositives avec le minutage, les points clés et une demande finale claire."
+    ],
+    "pt": [
+     "Roteiro de apresentação",
+     "Planeje uma palestra ou slides com tempo, pontos principais e um pedido final claro."
+    ],
+    "de": [
+     "Präsentationsgliederung",
+     "Plant einen Vortrag oder Foliensatz mit Zeitplan, Kernpunkten und einer klaren Bitte am Schluss."
+    ]
+   }
+  },
+  {
+   "s": "pitch-deck",
+   "g": "documents",
+   "t": {
+    "en": [
+     "Pitch deck",
+     "Lay out a pitch for an investor, lender or partner, slide by slide."
+    ],
+    "zh": [
+     "融资路演稿",
+     "为投资人、贷款方或合作伙伴逐页搭好一份路演稿。"
+    ],
+    "es": [
+     "Presentación para inversores",
+     "Estructura, diapositiva a diapositiva, una propuesta para un inversor, un banco o un socio."
+    ],
+    "fr": [
+     "Pitch deck",
+     "Construisez, diapositive par diapositive, un pitch pour un investisseur, un prêteur ou un partenaire."
+    ],
+    "pt": [
+     "Pitch deck",
+     "Monte, slide a slide, uma apresentação para um investidor, banco ou parceiro."
+    ],
+    "de": [
+     "Pitch-Deck",
+     "Baut Folie für Folie einen Pitch für Investoren, Kreditgeber oder Partner auf."
+    ]
+   }
+  },
+  {
+   "s": "office",
+   "g": "documents",
+   "t": {
+    "en": [
+     "Office helper",
+     "Get help with spreadsheet formulas, document formatting and slide basics."
+    ],
+    "zh": [
+     "办公助手",
+     "帮你解决表格公式、文档排版和幻灯片的基本问题。"
+    ],
+    "es": [
+     "Ayuda de ofimática",
+     "Ayuda con fórmulas de hojas de cálculo, formato de documentos y lo básico de las diapositivas."
+    ],
+    "fr": [
+     "Aide bureautique",
+     "De l'aide pour les formules de tableur, la mise en forme des documents et les bases des diapositives."
+    ],
+    "pt": [
+     "Ajuda com escritório",
+     "Ajuda com fórmulas de planilha, formatação de documentos e o básico de slides."
+    ],
+    "de": [
+     "Office-Hilfe",
+     "Hilft bei Tabellenformeln, Dokumentformatierung und den Grundlagen von Folien."
+    ]
+   }
+  },
+  {
+   "s": "excel-weekly-dashboard",
+   "g": "documents",
+   "t": {
+    "en": [
+     "Excel weekly dashboard",
+     "Design an Excel workbook that updates your weekly figures with little manual work."
+    ],
+    "zh": [
+     "Excel 周报看板",
+     "设计一个 Excel 工作簿，每周数字几乎不用手动更新。"
+    ],
+    "es": [
+     "Panel semanal en Excel",
+     "Diseña un libro de Excel que actualice tus cifras semanales con poco trabajo manual."
+    ],
+    "fr": [
+     "Tableau de bord Excel",
+     "Concevez un classeur Excel qui met à jour vos chiffres de la semaine avec peu de travail manuel."
+    ],
+    "pt": [
+     "Painel semanal no Excel",
+     "Crie uma pasta de trabalho do Excel que atualiza seus números semanais com pouco trabalho manual."
+    ],
+    "de": [
+     "Excel-Wochen-Dashboard",
+     "Entwirft eine Excel-Arbeitsmappe, die Ihre Wochenzahlen mit wenig Handarbeit aktualisiert."
+    ]
+   }
+  },
+  {
+   "s": "contract-reviewer",
+   "g": "documents",
+   "t": {
+    "en": [
+     "Contract check",
+     "Read a contract and flag the terms, risks and gaps worth asking about. Not legal advice."
+    ],
+    "zh": [
+     "合同检查",
+     "通读合同，标出值得追问的条款、风险和遗漏。不构成法律意见。"
+    ],
+    "es": [
+     "Revisión de contratos",
+     "Lee un contrato y señala las cláusulas, riesgos y huecos sobre los que conviene preguntar. No es asesoría legal."
+    ],
+    "fr": [
+     "Relecture de contrat",
+     "Lit un contrat et signale les clauses, les risques et les manques à éclaircir. Ce n'est pas un conseil juridique."
+    ],
+    "pt": [
+     "Revisão de contrato",
+     "Lê um contrato e aponta cláusulas, riscos e lacunas que vale a pena perguntar. Não é aconselhamento jurídico."
+    ],
+    "de": [
+     "Vertragsprüfung",
+     "Liest einen Vertrag und markiert Klauseln, Risiken und Lücken, die Sie nachfragen sollten. Keine Rechtsberatung."
+    ]
+   }
+  },
+  {
+   "s": "privacy-policy-generator",
+   "g": "documents",
+   "t": {
+    "en": [
+     "Privacy policy draft",
+     "Draft a privacy policy for your website, ready for you to have checked."
+    ],
+    "zh": [
+     "隐私政策草稿",
+     "为你的网站起草一份隐私政策，再交给专业人士审核。"
+    ],
+    "es": [
+     "Borrador de política de privacidad",
+     "Redacta una política de privacidad para tu web, lista para que la revise un profesional."
+    ],
+    "fr": [
+     "Brouillon de politique de confidentialité",
+     "Rédige une politique de confidentialité pour votre site, à faire vérifier ensuite."
+    ],
+    "pt": [
+     "Rascunho de política de privacidade",
+     "Redige uma política de privacidade para o seu site, pronta para você mandar revisar."
+    ],
+    "de": [
+     "Entwurf Datenschutzerklärung",
+     "Entwirft eine Datenschutzerklärung für Ihre Website, die Sie anschließend prüfen lassen."
+    ]
+   }
+  },
+  {
+   "s": "humanizer",
+   "g": "writing",
+   "t": {
+    "en": [
+     "Make it sound human",
+     "Rewrite stiff, robotic text so it reads like a person wrote it."
+    ],
+    "zh": [
+     "去掉机器味",
+     "把生硬、像机器写的文字改写得像真人写的一样。"
+    ],
+    "es": [
+     "Que suene humano",
+     "Reescribe textos rígidos y robóticos para que parezcan escritos por una persona."
+    ],
+    "fr": [
+     "Ton plus humain",
+     "Réécrit un texte raide et robotique pour qu'il sonne comme écrit par une personne."
+    ],
+    "pt": [
+     "Soar mais humano",
+     "Reescreve textos duros e robóticos para que pareçam escritos por uma pessoa."
+    ],
+    "de": [
+     "Menschlicher klingen",
+     "Schreibt steife, roboterhafte Texte so um, dass sie wie von einem Menschen klingen."
+    ]
+   }
+  },
+  {
+   "s": "editor",
+   "g": "writing",
+   "t": {
+    "en": [
+     "Editor",
+     "Proofread and tighten any draft, from a short email to a long report."
+    ],
+    "zh": [
+     "文字编辑",
+     "校对并精简任何草稿，从一封短邮件到一份长报告。"
+    ],
+    "es": [
+     "Corrector",
+     "Corrige y pule cualquier borrador, desde un correo corto hasta un informe largo."
+    ],
+    "fr": [
+     "Correcteur",
+     "Relit et resserre n'importe quel brouillon, du court e-mail au long rapport."
+    ],
+    "pt": [
+     "Revisor",
+     "Revisa e enxuga qualquer rascunho, de um e-mail curto a um relatório longo."
+    ],
+    "de": [
+     "Lektorat",
+     "Korrigiert und strafft jeden Entwurf, von der kurzen E-Mail bis zum langen Bericht."
+    ]
+   }
+  },
+  {
+   "s": "copywriter",
+   "g": "writing",
+   "t": {
+    "en": [
+     "Copywriter",
+     "Write clear product blurbs, emails, button text and calls to action."
+    ],
+    "zh": [
+     "文案",
+     "写清楚的产品介绍、邮件、按钮文字和行动号召。"
+    ],
+    "es": [
+     "Redactor publicitario",
+     "Escribe descripciones de producto, correos, textos de botones y llamadas a la acción claros."
+    ],
+    "fr": [
+     "Rédacteur",
+     "Écrit des descriptions de produits, des e-mails, des textes de boutons et des appels à l'action clairs."
+    ],
+    "pt": [
+     "Redator",
+     "Escreve descrições de produto, e-mails, textos de botão e chamadas para ação claros."
+    ],
+    "de": [
+     "Texter",
+     "Schreibt klare Produkttexte, E-Mails, Button-Texte und Handlungsaufforderungen."
+    ]
+   }
+  },
+  {
+   "s": "professional-communication",
+   "g": "writing",
+   "t": {
+    "en": [
+     "Work messages",
+     "Structure work emails, team messages and status updates so the point lands."
+    ],
+    "zh": [
+     "职场沟通",
+     "理清工作邮件、团队消息和进度汇报的结构，让重点一眼可见。"
+    ],
+    "es": [
+     "Mensajes de trabajo",
+     "Estructura correos de trabajo, mensajes al equipo y actualizaciones para que se entienda lo importante."
+    ],
+    "fr": [
+     "Messages professionnels",
+     "Structure les e-mails, messages d'équipe et points d'avancement pour que l'essentiel passe."
+    ],
+    "pt": [
+     "Mensagens de trabalho",
+     "Organiza e-mails de trabalho, mensagens para a equipe e atualizações para que o principal fique claro."
+    ],
+    "de": [
+     "Berufliche Nachrichten",
+     "Gliedert Arbeits-E-Mails, Teamnachrichten und Statusupdates so, dass die Botschaft ankommt."
+    ]
+   }
+  },
+  {
+   "s": "content-research-writer",
+   "g": "writing",
+   "t": {
+    "en": [
+     "Researched articles",
+     "Research, outline and write an article or newsletter with sources cited."
+    ],
+    "zh": [
+     "调研写作",
+     "调研、列提纲，写出一篇注明来源的文章或简报。"
+    ],
+    "es": [
+     "Artículos documentados",
+     "Investiga, esquematiza y escribe un artículo o boletín citando las fuentes."
+    ],
+    "fr": [
+     "Articles documentés",
+     "Recherche, structure et rédige un article ou une newsletter avec les sources citées."
+    ],
+    "pt": [
+     "Artigos com pesquisa",
+     "Pesquisa, esboça e escreve um artigo ou newsletter com as fontes citadas."
+    ],
+    "de": [
+     "Recherchierte Artikel",
+     "Recherchiert, gliedert und schreibt einen Artikel oder Newsletter mit Quellenangaben."
+    ]
+   }
+  },
+  {
+   "s": "social-media-scheduler",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "Social media planner",
+     "Plan a month of social posts with drafts, hashtags and posting times."
+    ],
+    "zh": [
+     "社媒内容规划",
+     "规划一个月的社交媒体内容：草稿、话题标签和发布时间。"
+    ],
+    "es": [
+     "Planificador de redes",
+     "Planifica un mes de publicaciones con borradores, hashtags y horarios."
+    ],
+    "fr": [
+     "Planning réseaux sociaux",
+     "Planifie un mois de publications avec brouillons, hashtags et horaires."
+    ],
+    "pt": [
+     "Planejador de redes sociais",
+     "Planeja um mês de posts com rascunhos, hashtags e horários de publicação."
+    ],
+    "de": [
+     "Social-Media-Planer",
+     "Plant einen Monat Beiträge mit Entwürfen, Hashtags und Veröffentlichungszeiten."
+    ]
+   }
+  },
+  {
+   "s": "linkedin-post",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "LinkedIn posts",
+     "Write LinkedIn posts that tell a story and invite comments."
+    ],
+    "zh": [
+     "领英帖子",
+     "写有故事、能引来评论的领英帖子。"
+    ],
+    "es": [
+     "Publicaciones de LinkedIn",
+     "Escribe publicaciones de LinkedIn que cuentan una historia e invitan a comentar."
+    ],
+    "fr": [
+     "Posts LinkedIn",
+     "Rédige des posts LinkedIn qui racontent une histoire et invitent aux commentaires."
+    ],
+    "pt": [
+     "Posts no LinkedIn",
+     "Escreve posts no LinkedIn que contam uma história e convidam a comentar."
+    ],
+    "de": [
+     "LinkedIn-Beiträge",
+     "Schreibt LinkedIn-Beiträge, die eine Geschichte erzählen und zum Kommentieren einladen."
+    ]
+   }
+  },
+  {
+   "s": "seo-audit",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "SEO check-up",
+     "Find out why your website isn't showing up in Google and what to fix first."
+    ],
+    "zh": [
+     "SEO 体检",
+     "找出网站为什么在 Google 上搜不到，以及先修什么。"
+    ],
+    "es": [
+     "Revisión SEO",
+     "Descubre por qué tu web no aparece en Google y qué arreglar primero."
+    ],
+    "fr": [
+     "Bilan SEO",
+     "Comprenez pourquoi votre site n'apparaît pas dans Google et ce qu'il faut corriger d'abord."
+    ],
+    "pt": [
+     "Checkup de SEO",
+     "Descubra por que seu site não aparece no Google e o que corrigir primeiro."
+    ],
+    "de": [
+     "SEO-Check",
+     "Findet heraus, warum Ihre Website nicht bei Google erscheint und was Sie zuerst beheben sollten."
+    ]
+   }
+  },
+  {
+   "s": "ai-seo",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "Get found by AI assistants",
+     "Make your site more likely to be quoted when people ask AI assistants."
+    ],
+    "zh": [
+     "让 AI 助手推荐你",
+     "让你的网站在别人问 AI 助手时更容易被引用。"
+    ],
+    "es": [
+     "Aparecer en asistentes de IA",
+     "Haz que tu web tenga más posibilidades de ser citada cuando la gente pregunta a asistentes de IA."
+    ],
+    "fr": [
+     "Être cité par les IA",
+     "Augmente les chances que votre site soit cité quand on interroge des assistants IA."
+    ],
+    "pt": [
+     "Ser citado por assistentes de IA",
+     "Aumenta a chance de o seu site ser citado quando as pessoas perguntam a assistentes de IA."
+    ],
+    "de": [
+     "Von KI-Assistenten gefunden werden",
+     "Erhöht die Chance, dass Ihre Website zitiert wird, wenn Menschen KI-Assistenten fragen."
+    ]
+   }
+  },
+  {
+   "s": "content-strategy",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "Content plan",
+     "Decide which topics and content to make so customers find you."
+    ],
+    "zh": [
+     "内容规划",
+     "决定写哪些主题、做哪些内容，让客户能找到你。"
+    ],
+    "es": [
+     "Plan de contenidos",
+     "Decide qué temas y contenidos crear para que los clientes te encuentren."
+    ],
+    "fr": [
+     "Plan de contenu",
+     "Choisissez les sujets et contenus à produire pour que les clients vous trouvent."
+    ],
+    "pt": [
+     "Plano de conteúdo",
+     "Decida quais temas e conteúdos criar para que os clientes encontrem você."
+    ],
+    "de": [
+     "Content-Plan",
+     "Entscheidet, welche Themen und Inhalte Sie erstellen, damit Kunden Sie finden."
+    ]
+   }
+  },
+  {
+   "s": "marketing-ideas",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "Marketing ideas",
+     "Brainstorm marketing ideas that fit your budget, time and stage."
+    ],
+    "zh": [
+     "营销点子",
+     "结合你的预算、时间和阶段，头脑风暴营销点子。"
+    ],
+    "es": [
+     "Ideas de marketing",
+     "Genera ideas de marketing que encajen con tu presupuesto, tu tiempo y tu etapa."
+    ],
+    "fr": [
+     "Idées marketing",
+     "Trouvez des idées marketing adaptées à votre budget, votre temps et votre stade."
+    ],
+    "pt": [
+     "Ideias de marketing",
+     "Gera ideias de marketing que cabem no seu orçamento, tempo e momento."
+    ],
+    "de": [
+     "Marketing-Ideen",
+     "Sammelt Marketing-Ideen, die zu Budget, Zeit und Phase Ihres Geschäfts passen."
+    ]
+   }
+  },
+  {
+   "s": "master-marketing",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "One post, every platform",
+     "Turn one piece of content into posts for each platform."
+    ],
+    "zh": [
+     "一稿多发",
+     "把一篇内容改写成适合各个平台的帖子。"
+    ],
+    "es": [
+     "Un contenido, todas las redes",
+     "Convierte un contenido en publicaciones para cada plataforma."
+    ],
+    "fr": [
+     "Un contenu, toutes les plateformes",
+     "Décline un contenu en publications adaptées à chaque plateforme."
+    ],
+    "pt": [
+     "Um conteúdo, todas as redes",
+     "Transforma um conteúdo em posts para cada plataforma."
+    ],
+    "de": [
+     "Ein Inhalt, alle Plattformen",
+     "Macht aus einem Inhalt passende Beiträge für jede Plattform."
+    ]
+   }
+  },
+  {
+   "s": "launch-strategy",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "Launch plan",
+     "Plan the launch of a new product or service across your channels."
+    ],
+    "zh": [
+     "上新计划",
+     "在你的各个渠道规划一次新产品或新服务的发布。"
+    ],
+    "es": [
+     "Plan de lanzamiento",
+     "Planifica el lanzamiento de un producto o servicio nuevo en todos tus canales."
+    ],
+    "fr": [
+     "Plan de lancement",
+     "Planifie le lancement d'un nouveau produit ou service sur vos canaux."
+    ],
+    "pt": [
+     "Plano de lançamento",
+     "Planeja o lançamento de um novo produto ou serviço em todos os seus canais."
+    ],
+    "de": [
+     "Launch-Plan",
+     "Plant die Einführung eines neuen Produkts oder Angebots über Ihre Kanäle."
+    ]
+   }
+  },
+  {
+   "s": "paid-ads",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "Paid ads",
+     "Choose where to advertise, set up campaigns and read the results."
+    ],
+    "zh": [
+     "付费广告",
+     "选择在哪里投放、搭建广告活动并解读结果。"
+    ],
+    "es": [
+     "Anuncios de pago",
+     "Elige dónde anunciarte, organiza campañas y entiende los resultados."
+    ],
+    "fr": [
+     "Publicité payante",
+     "Choisissez où faire de la publicité, structurez les campagnes et lisez les résultats."
+    ],
+    "pt": [
+     "Anúncios pagos",
+     "Escolha onde anunciar, estruture campanhas e entenda os resultados."
+    ],
+    "de": [
+     "Bezahlte Anzeigen",
+     "Wählt Werbekanäle, baut Kampagnen auf und wertet die Ergebnisse aus."
+    ]
+   }
+  },
+  {
+   "s": "landing-page-copy",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "Landing page text",
+     "Write a web page that explains your offer and gets visitors to act."
+    ],
+    "zh": [
+     "落地页文案",
+     "写一个讲清楚你的产品、让访客行动的网页。"
+    ],
+    "es": [
+     "Texto de página de aterrizaje",
+     "Escribe una página web que explique tu oferta y haga que los visitantes actúen."
+    ],
+    "fr": [
+     "Texte de page d'accueil",
+     "Rédige une page web qui explique votre offre et pousse les visiteurs à agir."
+    ],
+    "pt": [
+     "Texto de landing page",
+     "Escreve uma página que explica sua oferta e leva o visitante a agir."
+    ],
+    "de": [
+     "Landingpage-Text",
+     "Schreibt eine Webseite, die Ihr Angebot erklärt und Besucher zum Handeln bringt."
+    ]
+   }
+  },
+  {
+   "s": "persona-generator",
+   "g": "marketing",
+   "t": {
+    "en": [
+     "Customer profiles",
+     "Describe your typical customers so your marketing speaks to them."
+    ],
+    "zh": [
+     "客户画像",
+     "描绘你的典型客户，让营销说到他们心里。"
+    ],
+    "es": [
+     "Perfiles de cliente",
+     "Describe a tus clientes típicos para que tu marketing les hable a ellos."
+    ],
+    "fr": [
+     "Profils clients",
+     "Décrit vos clients types pour que votre marketing leur parle."
+    ],
+    "pt": [
+     "Perfis de cliente",
+     "Descreve seus clientes típicos para que seu marketing fale com eles."
+    ],
+    "de": [
+     "Kundenprofile",
+     "Beschreibt Ihre typischen Kunden, damit Ihr Marketing sie anspricht."
+    ]
+   }
+  },
+  {
+   "s": "deep-research",
+   "g": "research",
+   "t": {
+    "en": [
+     "Deep research",
+     "Research a question across many sources and get a report with citations."
+    ],
+    "zh": [
+     "深度调研",
+     "围绕一个问题查阅大量来源，给你一份附引用的报告。"
+    ],
+    "es": [
+     "Investigación a fondo",
+     "Investiga una pregunta en muchas fuentes y te entrega un informe con citas."
+    ],
+    "fr": [
+     "Recherche approfondie",
+     "Explore une question dans de nombreuses sources et livre un rapport avec citations."
+    ],
+    "pt": [
+     "Pesquisa aprofundada",
+     "Pesquisa uma pergunta em várias fontes e entrega um relatório com citações."
+    ],
+    "de": [
+     "Tiefenrecherche",
+     "Recherchiert eine Frage in vielen Quellen und liefert einen Bericht mit Belegen."
+    ]
+   }
+  },
+  {
+   "s": "competitive-analysis",
+   "g": "research",
+   "t": {
+    "en": [
+     "Competitor comparison",
+     "Compare your business with competitors on price, features and positioning."
+    ],
+    "zh": [
+     "竞品对比",
+     "从价格、功能和定位上把你和竞争对手做对比。"
+    ],
+    "es": [
+     "Comparativa de competidores",
+     "Compara tu negocio con la competencia en precio, prestaciones y posicionamiento."
+    ],
+    "fr": [
+     "Analyse concurrentielle",
+     "Compare votre activité aux concurrents sur le prix, l'offre et le positionnement."
+    ],
+    "pt": [
+     "Comparação com concorrentes",
+     "Compara seu negócio com concorrentes em preço, recursos e posicionamento."
+    ],
+    "de": [
+     "Wettbewerbsvergleich",
+     "Vergleicht Ihr Geschäft mit Wettbewerbern nach Preis, Leistung und Positionierung."
+    ]
+   }
+  },
+  {
+   "s": "market-sizing-analysis",
+   "g": "research",
+   "t": {
+    "en": [
+     "Market size",
+     "Estimate how big your market is and how much of it you could win."
+    ],
+    "zh": [
+     "市场规模",
+     "估算你的市场有多大，以及你能拿下多少。"
+    ],
+    "es": [
+     "Tamaño de mercado",
+     "Estima el tamaño de tu mercado y qué parte podrías ganar."
+    ],
+    "fr": [
+     "Taille de marché",
+     "Estime la taille de votre marché et la part que vous pourriez gagner."
+    ],
+    "pt": [
+     "Tamanho de mercado",
+     "Estima o tamanho do seu mercado e quanto dele você poderia conquistar."
+    ],
+    "de": [
+     "Marktgröße",
+     "Schätzt, wie groß Ihr Markt ist und welchen Anteil Sie gewinnen könnten."
+    ]
+   }
+  },
+  {
+   "s": "find",
+   "g": "research",
+   "t": {
+    "en": [
+     "Find and check",
+     "Track down a supplier, product, document or fact, and check that it's right."
+    ],
+    "zh": [
+     "查找核实",
+     "帮你找供应商、产品、文件或事实，并核实是否准确。"
+    ],
+    "es": [
+     "Buscar y comprobar",
+     "Encuentra un proveedor, producto, documento o dato y comprueba que es correcto."
+    ],
+    "fr": [
+     "Trouver et vérifier",
+     "Trouve un fournisseur, un produit, un document ou un fait, et vérifie qu'il est juste."
+    ],
+    "pt": [
+     "Encontrar e conferir",
+     "Encontra um fornecedor, produto, documento ou fato e confere se está certo."
+    ],
+    "de": [
+     "Finden und prüfen",
+     "Spürt Lieferanten, Produkte, Dokumente oder Fakten auf und prüft, ob sie stimmen."
+    ]
+   }
+  },
+  {
+   "s": "news-search",
+   "g": "research",
+   "t": {
+    "en": [
+     "News watch",
+     "Pull the latest headlines on your industry, competitors or any topic."
+    ],
+    "zh": [
+     "新闻追踪",
+     "获取你的行业、竞争对手或任何话题的最新新闻标题。"
+    ],
+    "es": [
+     "Noticias al día",
+     "Reúne los últimos titulares sobre tu sector, tus competidores o cualquier tema."
+    ],
+    "fr": [
+     "Veille d'actualité",
+     "Récupère les derniers titres sur votre secteur, vos concurrents ou n'importe quel sujet."
+    ],
+    "pt": [
+     "Notícias do setor",
+     "Traz as manchetes mais recentes sobre seu setor, concorrentes ou qualquer tema."
+    ],
+    "de": [
+     "Nachrichten-Radar",
+     "Holt die neuesten Schlagzeilen zu Ihrer Branche, Wettbewerbern oder jedem Thema."
+    ]
+   }
+  },
+  {
+   "s": "summarize-pro",
+   "g": "research",
+   "t": {
+    "en": [
+     "Summaries",
+     "Shrink long articles, reports, emails or meeting notes into the key points."
+    ],
+    "zh": [
+     "摘要",
+     "把长文章、报告、邮件或会议记录浓缩成要点。"
+    ],
+    "es": [
+     "Resúmenes",
+     "Reduce artículos, informes, correos o notas de reunión largos a lo esencial."
+    ],
+    "fr": [
+     "Résumés",
+     "Condense les longs articles, rapports, e-mails ou comptes rendus en points clés."
+    ],
+    "pt": [
+     "Resumos",
+     "Resume artigos, relatórios, e-mails ou atas longos nos pontos principais."
+    ],
+    "de": [
+     "Zusammenfassungen",
+     "Fasst lange Artikel, Berichte, E-Mails oder Besprechungsnotizen auf das Wesentliche zusammen."
+    ]
+   }
+  },
+  {
+   "s": "email-drafter",
+   "g": "sales",
+   "t": {
+    "en": [
+     "Customer emails",
+     "Draft a customer email in the right tone, from a follow-up to an apology."
+    ],
+    "zh": [
+     "客户邮件",
+     "用合适的语气起草客户邮件，从跟进到致歉都行。"
+    ],
+    "es": [
+     "Correos a clientes",
+     "Redacta un correo a un cliente con el tono adecuado, desde un seguimiento hasta una disculpa."
+    ],
+    "fr": [
+     "E-mails clients",
+     "Rédige un e-mail client sur le bon ton, de la relance aux excuses."
+    ],
+    "pt": [
+     "E-mails para clientes",
+     "Redige um e-mail para cliente no tom certo, de um acompanhamento a um pedido de desculpas."
+    ],
+    "de": [
+     "Kunden-E-Mails",
+     "Entwirft Kunden-E-Mails im richtigen Ton, vom Nachfassen bis zur Entschuldigung."
+    ]
+   }
+  },
+  {
+   "s": "project-proposal-template",
+   "g": "sales",
+   "t": {
+    "en": [
+     "Client proposal",
+     "Write a proposal for a client job with scope, timeline, budget and risks."
+    ],
+    "zh": [
+     "项目方案",
+     "为客户项目写一份方案：范围、时间、预算和风险。"
+    ],
+    "es": [
+     "Propuesta para clientes",
+     "Escribe una propuesta para un trabajo con alcance, plazos, presupuesto y riesgos."
+    ],
+    "fr": [
+     "Proposition commerciale",
+     "Rédige une proposition pour une mission client avec périmètre, calendrier, budget et risques."
+    ],
+    "pt": [
+     "Proposta para cliente",
+     "Escreve uma proposta de trabalho com escopo, prazo, orçamento e riscos."
+    ],
+    "de": [
+     "Kundenangebot",
+     "Schreibt ein Angebot für einen Kundenauftrag mit Umfang, Zeitplan, Budget und Risiken."
+    ]
+   }
+  },
+  {
+   "s": "scope-document",
+   "g": "sales",
+   "t": {
+    "en": [
+     "Scope of work",
+     "Spell out what a client job includes and excludes so it doesn't creep."
+    ],
+    "zh": [
+     "工作范围说明",
+     "写清客户项目包括什么、不包括什么，防止范围蔓延。"
+    ],
+    "es": [
+     "Alcance del trabajo",
+     "Deja claro qué incluye y qué no un trabajo para que no crezca sin control."
+    ],
+    "fr": [
+     "Périmètre de la mission",
+     "Précise ce qu'une mission inclut et exclut pour éviter qu'elle déborde."
+    ],
+    "pt": [
+     "Escopo do trabalho",
+     "Deixa claro o que um trabalho inclui e exclui para ele não crescer sem controle."
+    ],
+    "de": [
+     "Leistungsumfang",
+     "Legt fest, was ein Auftrag enthält und was nicht, damit er nicht ausufert."
+    ]
+   }
+  },
+  {
+   "s": "difficult-conversation-prep",
+   "g": "sales",
+   "t": {
+    "en": [
+     "Tough conversation prep",
+     "Prepare what to say before a hard talk with a client, staff member or supplier."
+    ],
+    "zh": [
+     "难谈话准备",
+     "在和客户、员工或供应商进行艰难谈话前，准备好要说的话。"
+    ],
+    "es": [
+     "Preparar una conversación difícil",
+     "Prepara qué decir antes de una charla complicada con un cliente, empleado o proveedor."
+    ],
+    "fr": [
+     "Préparer une conversation difficile",
+     "Préparez quoi dire avant un échange délicat avec un client, un salarié ou un fournisseur."
+    ],
+    "pt": [
+     "Preparar uma conversa difícil",
+     "Prepare o que dizer antes de uma conversa difícil com cliente, funcionário ou fornecedor."
+    ],
+    "de": [
+     "Schwieriges Gespräch vorbereiten",
+     "Bereitet vor, was Sie in einem schwierigen Gespräch mit Kunden, Mitarbeitern oder Lieferanten sagen."
+    ]
+   }
+  },
+  {
+   "s": "invoice-generator",
+   "g": "money",
+   "t": {
+    "en": [
+     "Invoices",
+     "Lay out a tidy invoice with line items, tax, totals and payment terms."
+    ],
+    "zh": [
+     "发票",
+     "排出一张整齐的发票：明细、税费、合计和付款条件。"
+    ],
+    "es": [
+     "Facturas",
+     "Prepara una factura ordenada con conceptos, impuestos, totales y condiciones de pago."
+    ],
+    "fr": [
+     "Factures",
+     "Met en forme une facture propre avec lignes, taxes, totaux et conditions de paiement."
+    ],
+    "pt": [
+     "Faturas",
+     "Monta uma fatura organizada com itens, impostos, totais e condições de pagamento."
+    ],
+    "de": [
+     "Rechnungen",
+     "Erstellt eine saubere Rechnung mit Positionen, Steuer, Summen und Zahlungsbedingungen."
+    ]
+   }
+  },
+  {
+   "s": "budget-tracker",
+   "g": "money",
+   "t": {
+    "en": [
+     "Expense tracker",
+     "Log business expenses by category and see where the money goes."
+    ],
+    "zh": [
+     "支出记录",
+     "按类别记录经营支出，看清钱花到哪里了。"
+    ],
+    "es": [
+     "Control de gastos",
+     "Registra los gastos del negocio por categoría y mira a dónde va el dinero."
+    ],
+    "fr": [
+     "Suivi des dépenses",
+     "Note les dépenses par catégorie et voyez où part l'argent."
+    ],
+    "pt": [
+     "Controle de despesas",
+     "Registra as despesas por categoria e mostra para onde vai o dinheiro."
+    ],
+    "de": [
+     "Ausgaben-Tracker",
+     "Erfasst Geschäftsausgaben nach Kategorie und zeigt, wohin das Geld geht."
+    ]
+   }
+  },
+  {
+   "s": "accounting",
+   "g": "money",
+   "t": {
+    "en": [
+     "Bookkeeping basics",
+     "Understand your books, statements and tax basics in plain words."
+    ],
+    "zh": [
+     "记账入门",
+     "用大白话看懂你的账本、报表和税务基础。"
+    ],
+    "es": [
+     "Contabilidad básica",
+     "Entiende tus cuentas, estados financieros y lo básico de impuestos con palabras sencillas."
+    ],
+    "fr": [
+     "Bases de la comptabilité",
+     "Comprenez vos comptes, vos états financiers et les bases fiscales en termes simples."
+    ],
+    "pt": [
+     "Contabilidade básica",
+     "Entenda seus livros, demonstrativos e o básico de impostos em palavras simples."
+    ],
+    "de": [
+     "Buchhaltungsgrundlagen",
+     "Erklärt Ihre Bücher, Abschlüsse und Steuergrundlagen in einfachen Worten."
+    ]
+   }
+  },
+  {
+   "s": "break-even-analysis",
+   "g": "money",
+   "t": {
+    "en": [
+     "Break-even",
+     "Work out how many sales you need to cover your costs."
+    ],
+    "zh": [
+     "保本点",
+     "算出要卖多少才能覆盖成本。"
+    ],
+    "es": [
+     "Punto de equilibrio",
+     "Calcula cuántas ventas necesitas para cubrir tus costes."
+    ],
+    "fr": [
+     "Seuil de rentabilité",
+     "Calcule combien de ventes il vous faut pour couvrir vos coûts."
+    ],
+    "pt": [
+     "Ponto de equilíbrio",
+     "Calcula quantas vendas você precisa para cobrir seus custos."
+    ],
+    "de": [
+     "Break-even",
+     "Rechnet aus, wie viele Verkäufe Sie brauchen, um Ihre Kosten zu decken."
+    ]
+   }
+  },
+  {
+   "s": "pricing-strategy",
+   "g": "money",
+   "t": {
+    "en": [
+     "Pricing",
+     "Set prices and packages for your products or services."
+    ],
+    "zh": [
+     "定价",
+     "为你的产品或服务定价、设计套餐。"
+    ],
+    "es": [
+     "Precios",
+     "Fija precios y paquetes para tus productos o servicios."
+    ],
+    "fr": [
+     "Tarification",
+     "Fixe les prix et les formules de vos produits ou services."
+    ],
+    "pt": [
+     "Preços",
+     "Define preços e pacotes para seus produtos ou serviços."
+    ],
+    "de": [
+     "Preisgestaltung",
+     "Legt Preise und Pakete für Ihre Produkte oder Leistungen fest."
+    ]
+   }
+  },
+  {
+   "s": "currency-converter",
+   "g": "money",
+   "t": {
+    "en": [
+     "Currency converter",
+     "Convert prices between currencies at today's rate for quotes and invoices."
+    ],
+    "zh": [
+     "汇率换算",
+     "按今天的汇率换算价格，用于报价和发票。"
+    ],
+    "es": [
+     "Conversor de divisas",
+     "Convierte precios entre monedas al cambio de hoy para presupuestos y facturas."
+    ],
+    "fr": [
+     "Convertisseur de devises",
+     "Convertit les prix entre devises au taux du jour pour devis et factures."
+    ],
+    "pt": [
+     "Conversor de moedas",
+     "Converte preços entre moedas pela cotação de hoje para orçamentos e faturas."
+    ],
+    "de": [
+     "Währungsrechner",
+     "Rechnet Preise zum heutigen Kurs um, für Angebote und Rechnungen."
+    ]
+   }
+  },
+  {
+   "s": "meeting-to-action",
+   "g": "planning",
+   "t": {
+    "en": [
+     "Meeting follow-up",
+     "Turn meeting notes into decisions, owners, due dates and a recap email."
+    ],
+    "zh": [
+     "会议跟进",
+     "把会议记录变成决定、负责人、截止日期和一封总结邮件。"
+    ],
+    "es": [
+     "Seguimiento de reuniones",
+     "Convierte notas de reunión en decisiones, responsables, fechas y un correo de resumen."
+    ],
+    "fr": [
+     "Suite de réunion",
+     "Transforme les notes de réunion en décisions, responsables, échéances et e-mail récapitulatif."
+    ],
+    "pt": [
+     "Pós-reunião",
+     "Transforma anotações de reunião em decisões, responsáveis, prazos e um e-mail de resumo."
+    ],
+    "de": [
+     "Besprechungs-Nachbereitung",
+     "Macht aus Notizen Entscheidungen, Verantwortliche, Fristen und eine Zusammenfassungs-Mail."
+    ]
+   }
+  },
+  {
+   "s": "project-planner",
+   "g": "planning",
+   "t": {
+    "en": [
+     "Project planner",
+     "Break a project into tasks, milestones and a realistic timeline."
+    ],
+    "zh": [
+     "项目规划",
+     "把一个项目拆成任务、里程碑和切实可行的时间表。"
+    ],
+    "es": [
+     "Planificador de proyectos",
+     "Divide un proyecto en tareas, hitos y un calendario realista."
+    ],
+    "fr": [
+     "Planificateur de projet",
+     "Découpe un projet en tâches, jalons et calendrier réaliste."
+    ],
+    "pt": [
+     "Planejador de projetos",
+     "Divide um projeto em tarefas, marcos e um cronograma realista."
+    ],
+    "de": [
+     "Projektplaner",
+     "Zerlegt ein Projekt in Aufgaben, Meilensteine und einen realistischen Zeitplan."
+    ]
+   }
+  },
+  {
+   "s": "daily-planner",
+   "g": "planning",
+   "t": {
+    "en": [
+     "Daily planner",
+     "Plan your workday in time blocks around your top three priorities."
+    ],
+    "zh": [
+     "每日计划",
+     "围绕当天最重要的三件事，用时间块安排工作日。"
+    ],
+    "es": [
+     "Agenda diaria",
+     "Organiza tu jornada en bloques de tiempo alrededor de tus tres prioridades."
+    ],
+    "fr": [
+     "Planning du jour",
+     "Organise votre journée en créneaux autour de vos trois priorités."
+    ],
+    "pt": [
+     "Agenda do dia",
+     "Organiza seu dia em blocos de tempo em torno das suas três prioridades."
+    ],
+    "de": [
+     "Tagesplaner",
+     "Plant Ihren Arbeitstag in Zeitblöcken rund um Ihre drei wichtigsten Aufgaben."
+    ]
+   }
+  },
+  {
+   "s": "task-manager",
+   "g": "planning",
+   "t": {
+    "en": [
+     "To-do list",
+     "Keep a running to-do list with priorities that carries over between chats."
+    ],
+    "zh": [
+     "待办清单",
+     "维护一份带优先级的待办清单，跨对话保留。"
+    ],
+    "es": [
+     "Lista de tareas",
+     "Mantén una lista de tareas con prioridades que se conserva entre conversaciones."
+    ],
+    "fr": [
+     "Liste de tâches",
+     "Tient une liste de tâches avec priorités, conservée d'une conversation à l'autre."
+    ],
+    "pt": [
+     "Lista de tarefas",
+     "Mantém uma lista de tarefas com prioridades que continua entre conversas."
+    ],
+    "de": [
+     "Aufgabenliste",
+     "Führt eine Aufgabenliste mit Prioritäten, die über Chats hinweg erhalten bleibt."
+    ]
+   }
+  },
+  {
+   "s": "note-taker",
+   "g": "planning",
+   "t": {
+    "en": [
+     "Notes",
+     "Save notes and find them again later by keyword."
+    ],
+    "zh": [
+     "笔记",
+     "记下笔记，之后用关键词找回来。"
+    ],
+    "es": [
+     "Notas",
+     "Guarda notas y encuéntralas después por palabra clave."
+    ],
+    "fr": [
+     "Notes",
+     "Enregistre des notes et les retrouve plus tard par mot-clé."
+    ],
+    "pt": [
+     "Notas",
+     "Guarda anotações e encontra de novo depois por palavra-chave."
+    ],
+    "de": [
+     "Notizen",
+     "Speichert Notizen und findet sie später per Stichwort wieder."
+    ]
+   }
+  },
+  {
+   "s": "thinking-partner",
+   "g": "planning",
+   "t": {
+    "en": [
+     "Thinking partner",
+     "Talk a business problem through, question by question, before you pick a plan."
+    ],
+    "zh": [
+     "思考伙伴",
+     "在定方案前，一问一答地把经营问题想清楚。"
+    ],
+    "es": [
+     "Compañero de reflexión",
+     "Analiza un problema del negocio pregunta a pregunta antes de elegir un plan."
+    ],
+    "fr": [
+     "Partenaire de réflexion",
+     "Réfléchit avec vous à un problème, question par question, avant de choisir un plan."
+    ],
+    "pt": [
+     "Parceiro de raciocínio",
+     "Pensa junto um problema do negócio, pergunta a pergunta, antes de escolher um plano."
+    ],
+    "de": [
+     "Denkpartner",
+     "Durchdenkt ein Geschäftsproblem Frage für Frage mit Ihnen, bevor Sie einen Plan wählen."
+    ]
+   }
+  },
+  {
+   "s": "pros-and-cons",
+   "g": "planning",
+   "t": {
+    "en": [
+     "Pros and cons",
+     "Weigh options side by side and get a clear recommendation."
+    ],
+    "zh": [
+     "利弊权衡",
+     "把几个选项并排比较，给出明确建议。"
+    ],
+    "es": [
+     "Pros y contras",
+     "Compara opciones lado a lado y obtén una recomendación clara."
+    ],
+    "fr": [
+     "Pour et contre",
+     "Compare des options côte à côte et donne une recommandation claire."
+    ],
+    "pt": [
+     "Prós e contras",
+     "Compara opções lado a lado e dá uma recomendação clara."
+    ],
+    "de": [
+     "Vor- und Nachteile",
+     "Wägt Optionen nebeneinander ab und gibt eine klare Empfehlung."
+    ]
+   }
+  },
+  {
+   "s": "swot-analysis",
+   "g": "planning",
+   "t": {
+    "en": [
+     "SWOT analysis",
+     "Map strengths, weaknesses, opportunities and threats for a decision."
+    ],
+    "zh": [
+     "SWOT 分析",
+     "为一个决定梳理优势、劣势、机会和威胁。"
+    ],
+    "es": [
+     "Análisis DAFO",
+     "Ordena fortalezas, debilidades, oportunidades y amenazas para una decisión."
+    ],
+    "fr": [
+     "Analyse SWOT",
+     "Dresse forces, faiblesses, opportunités et menaces pour une décision."
+    ],
+    "pt": [
+     "Análise SWOT",
+     "Mapeia forças, fraquezas, oportunidades e ameaças para uma decisão."
+    ],
+    "de": [
+     "SWOT-Analyse",
+     "Stellt Stärken, Schwächen, Chancen und Risiken für eine Entscheidung zusammen."
+    ]
+   }
+  }
+ ]
+}

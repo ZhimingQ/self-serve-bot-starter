@@ -13,6 +13,7 @@ import IncludedModelPanel from "./IncludedModelPanel";
 import BotToolsPanel from "./BotToolsPanel";
 import AssistantModal, { BotSummaryCard, pillLabel, useBotInfo } from "./MyAssistantPanel";
 import AppsPanel from "./AppsPanel";
+import SkillsPanel from "./SkillsPanel";
 import type { BotToolId } from "../../lib/botTools";
 import {
   defaultAssistantPreferences,
@@ -43,7 +44,7 @@ class ChatDisplayError extends Error {}
 
 const OFFLINE_STATUSES = new Set(["stopped", "sleeping", "error"]);
 type ProvisionState = "checking" | "provisioning" | "ready" | "error";
-type Panel = "overview" | "assistant" | "channels" | "apps" | "prompts" | "history" | "usage" | "notifications" | "billing" | "model" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
+type Panel = "overview" | "assistant" | "channels" | "apps" | "skills" | "prompts" | "history" | "usage" | "notifications" | "billing" | "model" | "modelKey" | "botTools" | "settings" | "security" | "account" | "privacy" | "support";
 /** The panels WORKSPACE_MODE=simple offers. Billing is listed but only shown
  *  when payments are on. */
 const SIMPLE_PANELS: ReadonlySet<Panel> = new Set<Panel>(["assistant", "history", "billing", "account", "privacy", "support"]);
@@ -1055,6 +1056,7 @@ export default function ChatApp({
     { panel: "assistant", label: copy.controlAssistant, icon: "✦" },
     ...(channelsEnabled ? [{ panel: "channels" as Panel, label: copy.controlChannels, icon: "◈" }] : []),
     ...(appsEnabled ? [{ panel: "apps" as Panel, label: copy.controlApps, icon: "▦" }] : []),
+    { panel: "skills", label: copy.controlSkills, icon: "◆" },
     ...(botTools.length > 0 ? [{ panel: "botTools" as Panel, label: copy.botTools.navLabel, icon: "▤" }] : []),
     { panel: "history", label: copy.controlHistory, icon: "↻" },
     { panel: "usage", label: copy.controlUsage, icon: "◫" },
@@ -1561,6 +1563,10 @@ export default function ChatApp({
 
         {panel === "apps" && appsEnabled && (
           <AppsPanel copy={copy} preview={preview} brandName={brandName} />
+        )}
+
+        {panel === "skills" && !simpleMode && (
+          <SkillsPanel copy={copy} preview={preview} locale={locale} />
         )}
 
         {panel === "model" && (includedChoice || preview) && (

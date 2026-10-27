@@ -3655,3 +3655,17 @@ button.control-live:not(:disabled):hover { color: var(--ink); }
 .bt-catalog .bt-card p { line-height: 1.6; overflow-wrap: anywhere; }
 .bt-catalog .bt-card .btn { margin: 6px 8px 6px 0; }
 .bt-catalog pre { max-width: 100%; overflow: auto; }
+
+/* Skills panel (app/app/SkillsPanel.tsx): group chips + two-line cards. */
+.skills-groups { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.skills-chip { padding: 6px 13px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.skills-chip:hover { border-color: var(--accent); }
+.skills-chip.is-on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.skills-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.skills-grid li { display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+.skills-grid li > div { flex: 1; min-width: 0; }
+.skills-grid strong { display: block; font-size: 14px; font-weight: 600; }
+.skills-grid p { margin: 3px 0 0; color: var(--text-muted); font-size: 12.5px; line-height: 1.5; }
+.skills-grid .btn { flex: none; padding: 5px 12px; font-size: 12.5px; }
+.skills-grid .apps-on { flex: none; padding-top: 4px; }
+@media (max-width: 700px) { .skills-grid { grid-template-columns: minmax(0, 1fr); } }

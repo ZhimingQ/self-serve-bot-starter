@@ -247,6 +247,26 @@ export function channelAction(instanceId: string, body: Record<string, unknown>,
   return callApi(`/instances/${encodeURIComponent(instanceId)}/channels`, { method: "POST", body, timeoutMs });
 }
 
+// ── Customer self-service: skills ───────────────────────────────────────────
+// Marketplace skills via the platform's /skills endpoint. Same contract: the
+// caller resolved `instanceId` from the session.
+
+/** The skills on the bot right now: `{ skills: [{ slug, marketplace }] }`. */
+export function getSkills(instanceId: string) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/skills`, { method: "GET" });
+}
+
+/** Add one marketplace skill to the bot. Writing it into the bot takes a few seconds. */
+export function installSkill(instanceId: string, skill: string) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/skills`, { method: "POST", body: { skill }, timeoutMs: 60_000 });
+}
+
+/** Remove one skill from the bot. The slug reaches only the query string. */
+export function removeSkill(instanceId: string, skill: string) {
+  const qs = new URLSearchParams({ skill }).toString();
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/skills?${qs}`, { method: "DELETE", timeoutMs: 60_000 });
+}
+
 // ── Customer self-service: connected apps ────────────────────────────────────
 // Gmail, Calendar, Notion... through the platform's /apps endpoint, which keeps
 // each bot's connections in that bot's own pool (the same one the bot uses in
