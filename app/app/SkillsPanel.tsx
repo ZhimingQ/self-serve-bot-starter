@@ -8,9 +8,10 @@ import type { Locale } from "../../lib/i18n";
  * "Skills" — ready-made know-how the customer can switch on for their
  * assistant: weekly reports, proposals, invoices, SEO check-ups and so on.
  *
- * The list is lib/skillCatalog.json, a short vetted set (no API key needed,
- * runs on the assistant as shipped), with our own name and one-line
- * description in every language. Loaded only when this panel opens.
+ * The list is lib/skillCatalog.json, the vetted business skills (no API key
+ * needed, runs on the assistant as shipped), with our own name and one-line
+ * description in every language. Loaded only when this panel opens; the grid
+ * shows the first FIRST cards until "Show all", or every match while filtering.
  *
  * Adding writes the skill into the assistant, which takes a few seconds; the
  * assistant picks it up in open chats too. The server only accepts slugs from
@@ -26,6 +27,8 @@ interface State { installed: string[]; others: number }
  *  after that change has landed, or it shows the state from before it. */
 let pendingChange: Promise<unknown> | null = null;
 
+const FIRST = 60;
+
 const PREVIEW: State = { installed: ["weekly-report-generator", "invoice-generator"], others: 0 };
 
 export default function SkillsPanel({ copy, preview, locale }: { copy: Messages; preview: boolean; locale: Locale }) {
@@ -35,6 +38,15 @@ export default function SkillsPanel({ copy, preview, locale }: { copy: Messages;
   const [load, setLoad] = useState<"loading" | "ready" | "error" | "asleep">(preview ? "ready" : "loading");
   const [group, setGroup] = useState<string>("all");
   const [query, setQuery] = useState("");
+  const [all, setAll] = useState(false);
+  // "Show all" removes its own button, so focus moves to the first card it revealed.
+  const firstRevealed = useRef<HTMLLIElement>(null);
+  const [focusRevealed, setFocusRevealed] = useState(false);
+  useEffect(() => {
+    if (!focusRevealed) return;
+    firstRevealed.current?.focus();
+    setFocusRevealed(false);
+  }, [focusRevealed]);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "error" | "note"; text: string } | null>(null);
 
@@ -94,6 +106,14 @@ export default function SkillsPanel({ copy, preview, locale }: { copy: Messages;
     return `${name} ${blurb} ${e.t.en[0]}`.toLowerCase().includes(q);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [catalog, group, q, locale]);
+
+  const filtering = group !== "all" || q !== "";
+  const visible = filtering || all ? shown : shown.slice(0, FIRST);
+  const counts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const e of catalog?.skills ?? []) m[e.g] = (m[e.g] ?? 0) + 1;
+    return m;
+  }, [catalog]);
 
   function errorText(code: unknown): string {
     const errors = t.errors as Record<string, string>;
@@ -205,6 +225,7 @@ export default function SkillsPanel({ copy, preview, locale }: { copy: Messages;
                   onClick={() => setGroup(g)}
                 >
                   {g === "all" ? t.groupAll : groupLabel(g)}
+                  {g !== "all" && counts[g] ? <span className="skills-chip-count">{counts[g]}</span> : null}
                 </button>
               ))}
             </div>
@@ -227,12 +248,12 @@ export default function SkillsPanel({ copy, preview, locale }: { copy: Messages;
             ) : shown.length === 0 ? (
               <p className="byok-note" role="status">{t.noMatch}</p>
             ) : (
-              <ul className="skills-grid">
-                {shown.map((e) => {
+              <ul className="skills-grid" id="skills-grid">
+                {visible.map((e, i) => {
                   const [name, blurb] = text(e);
                   const isOn = installed.has(e.s);
                   return (
-                    <li key={e.s}>
+                    <li key={e.s} ref={i === FIRST ? firstRevealed : undefined} tabIndex={i === FIRST ? -1 : undefined}>
                       <div>
                         <strong>{name}</strong>
                         <p>{blurb}</p>
@@ -254,6 +275,11 @@ export default function SkillsPanel({ copy, preview, locale }: { copy: Messages;
                   );
                 })}
               </ul>
+            )}
+            {catalog && !filtering && !all && shown.length > FIRST && (
+              <button type="button" className="btn btn-secondary skills-all" aria-controls="skills-grid" onClick={() => { setAll(true); setFocusRevealed(true); }}>
+                {t.showAll(shown.length)}
+              </button>
             )}
           </section>
         </>
