@@ -85,11 +85,11 @@
      "Lay out a pitch for an investor, lender or partner, slide by slide."
     ],
     "zh": [
-     "融资路演稿",
+     "路演稿",
      "为投资人、贷款方或合作伙伴逐页搭好一份路演稿。"
     ],
     "es": [
-     "Presentación para inversores",
+     "Presentación de propuesta",
      "Estructura, diapositiva a diapositiva, una propuesta para un inversor, un banco o un socio."
     ],
     "fr": [
@@ -2001,27 +2001,27 @@
    "g": "marketing",
    "t": {
     "en": [
-     "Launch plan",
+     "Launch timeline",
      "Plan the weeks before, during and after launching a product or offer."
     ],
     "zh": [
-     "发布计划",
+     "发布时间表",
      "规划产品或优惠发布前、中、后几周的工作。"
     ],
     "es": [
-     "Plan de lanzamiento",
+     "Calendario de lanzamiento",
      "Planifica las semanas previas, durante y posteriores al lanzamiento de un producto u oferta."
     ],
     "fr": [
-     "Plan de lancement produit",
+     "Calendrier de lancement",
      "Planifiez les semaines avant, pendant et après le lancement d'un produit ou d'une offre."
     ],
     "pt": [
-     "Plano de lançamento",
+     "Cronograma de lançamento",
      "Planeje as semanas antes, durante e depois do lançamento de um produto ou oferta."
     ],
     "de": [
-     "Launch-Plan",
+     "Launch-Zeitplan",
      "Plant die Wochen vor, während und nach dem Start eines Produkts oder Angebots."
     ]
    }
@@ -4139,15 +4139,15 @@
      "用自上而下和自下而上两种方法估算你的市场有多大。"
     ],
     "es": [
-     "Tamaño de mercado",
+     "Estimación del tamaño de mercado",
      "Estima el tamaño de tu mercado con métodos de arriba abajo y de abajo arriba."
     ],
     "fr": [
-     "Taille du marché",
+     "Estimation de la taille du marché",
      "Estimez la taille de votre marché par des approches descendante et ascendante."
     ],
     "pt": [
-     "Tamanho do mercado",
+     "Estimativa do tamanho do mercado",
      "Estime o tamanho do seu mercado com métodos de cima para baixo e de baixo para cima."
     ],
     "de": [
@@ -5451,27 +5451,27 @@
    "g": "money",
    "t": {
     "en": [
-     "Bookkeeping basics",
+     "Accounting and tax basics",
      "Understand your books, statements and tax basics in plain words."
     ],
     "zh": [
-     "记账入门",
+     "会计与税务入门",
      "用大白话看懂你的账本、报表和税务基础。"
     ],
     "es": [
-     "Contabilidad básica",
+     "Fundamentos de contabilidad e impuestos",
      "Entiende tus cuentas, estados financieros y lo básico de impuestos con palabras sencillas."
     ],
     "fr": [
-     "Bases de la comptabilité",
+     "Comptabilité et fiscalité de base",
      "Comprenez vos comptes, vos états financiers et les bases fiscales en termes simples."
     ],
     "pt": [
-     "Contabilidade básica",
+     "Fundamentos de contabilidade e tributação",
      "Entenda seus livros, demonstrativos e o básico de impostos em palavras simples."
     ],
     "de": [
-     "Buchhaltungsgrundlagen",
+     "Buchhaltung und Steuern",
      "Erklärt Ihre Bücher, Abschlüsse und Steuergrundlagen in einfachen Worten."
     ]
    }
@@ -5601,27 +5601,27 @@
    "g": "money",
    "t": {
     "en": [
-     "Invoices",
+     "Invoices with due dates",
      "Draft clear invoices with itemized lines, due dates and late-fee terms."
     ],
     "zh": [
-     "发票",
+     "带到期日的发票",
      "起草清晰的发票，含明细行、到期日和滞纳金条款。"
     ],
     "es": [
-     "Facturas",
+     "Facturas con vencimiento",
      "Redacta facturas claras con líneas detalladas, vencimientos y condiciones por demora."
     ],
     "fr": [
-     "Factures",
+     "Factures avec échéances",
      "Rédigez des factures claires avec lignes détaillées, échéances et pénalités de retard."
     ],
     "pt": [
-     "Faturas e recibos",
+     "Faturas com vencimento",
      "Redija faturas claras com itens detalhados, vencimento e multa por atraso."
     ],
     "de": [
-     "Rechnungen",
+     "Rechnungen mit Fälligkeitsdatum",
      "Entwirft klare Rechnungen mit einzelnen Positionen, Fälligkeitsdaten und Verzugsgebühren."
     ]
    }
@@ -5853,11 +5853,11 @@
      "Diseña categorías, reglas y resúmenes mensuales de gastos para tu negocio."
     ],
     "fr": [
-     "Suivi des dépenses",
+     "Système de suivi des dépenses",
      "Concevez catégories, règles et synthèses mensuelles pour les dépenses de votre entreprise."
     ],
     "pt": [
-     "Controle de despesas",
+     "Sistema de controle de despesas",
      "Crie categorias, regras e resumos mensais de despesas para o seu negócio."
     ],
     "de": [
@@ -6531,27 +6531,27 @@
    "g": "planning",
    "t": {
     "en": [
-     "SWOT analysis",
+     "SWOT action plan",
      "Turn strengths, weaknesses, opportunities and threats into concrete actions."
     ],
     "zh": [
-     "SWOT 分析",
+     "SWOT 行动计划",
      "把优势、劣势、机会和威胁转成具体行动。"
     ],
     "es": [
-     "Análisis DAFO",
+     "Plan de acción DAFO",
      "Convierte fortalezas, debilidades, oportunidades y amenazas en acciones concretas."
     ],
     "fr": [
-     "Analyse SWOT",
+     "Plan d'action SWOT",
      "Transformez forces, faiblesses, opportunités et menaces en actions concrètes."
     ],
     "pt": [
-     "Análise SWOT",
+     "Plano de ação SWOT",
      "Transforme forças, fraquezas, oportunidades e ameaças em ações concretas."
     ],
     "de": [
-     "SWOT-Analyse",
+     "SWOT-Maßnahmenplan",
      "Macht aus Stärken, Schwächen, Chancen und Risiken konkrete Maßnahmen."
     ]
    }
