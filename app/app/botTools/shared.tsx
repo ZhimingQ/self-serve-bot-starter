@@ -15,6 +15,7 @@ export type BotToolsCopy = Messages["botTools"];
 
 /** What every section receives from the panel shell. */
 export interface SectionProps {
+  locale?: string;
   copy: Messages;
   /** Public demo: render canned state and never call the API. */
   preview: boolean;

@@ -815,6 +815,9 @@ export const messages = {
       body: "Power, backups, files and access for your own assistant. Everything here acts on your assistant only.",
       tabsLabel: "Tools",
       tabs: {
+        "catalog-tools": "Tools catalog",
+        "websites": "Websites",
+        "china-apps": "China apps",
         power: "Power",
         backup: "Backup",
         import: "Restore",
@@ -2002,6 +2005,9 @@ export const messages = {
       body: "开关机、备份、文件和访问方式，都在这里管理。这里的每项操作只作用于你自己的助手。",
       tabsLabel: "工具",
       tabs: {
+        "catalog-tools": "工具目录",
+        "websites": "网站",
+        "china-apps": "国内应用",
         power: "开关机",
         backup: "备份",
         import: "恢复",

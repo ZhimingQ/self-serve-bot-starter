@@ -19,6 +19,7 @@
  * not show.
  */
 import "server-only";
+import { CATALOG_ACTIONS } from "./catalogHandlers";
 import { NextResponse, type NextRequest } from "next/server";
 import { botToolCall, botToolRaw, computerDisconnect, type UpstreamResult } from "./buildResell";
 import { enabledBotTools } from "./config";
@@ -956,6 +957,7 @@ const importApply: ActionSpec = {
  * here, and one section component in app/app/botTools/.
  */
 export const BOT_TOOL_ACTIONS: Record<string, Partial<Record<Method, ActionSpec>>> = {
+  ...CATALOG_ACTIONS,
   info: { GET: info },
   power: { POST: power },
   backup: { GET: backup },

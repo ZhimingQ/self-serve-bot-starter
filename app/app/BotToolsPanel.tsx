@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState, type ComponentType } from "react";
 import type { Messages } from "../../lib/i18n";
 import type { BotToolId } from "../../lib/botTools";
 import { SectionState, errorText, statusText, toolFetch, type SectionProps } from "./botTools/shared";
+import ToolsSection from "./botTools/ToolsSection";
+import WebsitesSection from "./botTools/WebsitesSection";
+import ChinaAppsSection from "./botTools/ChinaAppsSection";
 import PowerSection from "./botTools/PowerSection";
 import BackupSection from "./botTools/BackupSection";
 import SshSection from "./botTools/SshSection";
@@ -34,6 +37,9 @@ import PluginsSection from "./botTools/PluginsSection";
  * locales), and one line here.
  */
 const SECTIONS: { id: BotToolId; Component: ComponentType<SectionProps> }[] = [
+  { id: "catalog-tools", Component: ToolsSection },
+  { id: "websites", Component: WebsitesSection },
+  { id: "china-apps", Component: ChinaAppsSection },
   { id: "power", Component: PowerSection },
   { id: "backup", Component: BackupSection },
   { id: "import", Component: ImportSection },
@@ -56,7 +62,7 @@ interface Info {
   backupCategories: string[];
 }
 
-export default function BotToolsPanel({ copy, preview, tools }: { copy: Messages; preview: boolean; tools: BotToolId[] }) {
+export default function BotToolsPanel({ copy, locale = "en", preview, tools }: { copy: Messages; locale?: string; preview: boolean; tools: BotToolId[] }) {
   const t = copy.botTools;
   const sections = SECTIONS.filter((s) => tools.includes(s.id));
   const [active, setActive] = useState<BotToolId | null>(sections[0]?.id ?? null);
@@ -133,6 +139,7 @@ export default function BotToolsPanel({ copy, preview, tools }: { copy: Messages
             {/* Keyed by tool so switching tabs starts each section fresh. */}
             <current.Component
               key={current.id}
+              locale={locale}
               copy={copy}
               preview={preview}
               status={info.status}

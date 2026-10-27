@@ -1574,7 +1574,7 @@ export default function ChatApp({
         )}
 
         {panel === "botTools" && botTools.length > 0 && (
-          <BotToolsPanel copy={copy} preview={preview} tools={botTools} />
+          <BotToolsPanel locale={locale} copy={copy} preview={preview} tools={botTools} />
         )}
 
         {panel === "settings" && (

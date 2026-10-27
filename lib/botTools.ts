@@ -17,7 +17,7 @@
 // "hermes-desktop" connects the Hermes Desktop app and "plugins" installs
 // add-ons from the Hermes plugin catalog; both are offered on Hermes
 // storefronts only (lib/config.ts drops them elsewhere).
-export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "hermes-desktop", "computer", "video", "logs", "live-browser", "plugins"] as const;
+export const knownBotTools = ["power", "backup", "ssh", "files", "endpoint", "import", "desktop", "hermes-desktop", "computer", "video", "logs", "live-browser", "plugins", "catalog-tools", "websites", "china-apps"] as const;
 export type BotToolId = (typeof knownBotTools)[number];
 
 const HERMES_ONLY_TOOLS: ReadonlySet<BotToolId> = new Set<BotToolId>(["hermes-desktop", "plugins"]);

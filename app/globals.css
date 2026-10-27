@@ -3643,3 +3643,15 @@ button.control-live:not(:disabled):hover { color: var(--ink); }
   .control-topbar > div:first-child strong,
   .control-topbar > div:first-child h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+/* Catalog panels share the workspace's form and card styling. */
+.bt-catalog input:not([type="checkbox"]), .bt-catalog select { display: block; width: 100%; max-width: 36rem; min-width: 0; box-sizing: border-box; padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface, #fff); color: var(--text); font: inherit; }
+.bt-catalog input:focus, .bt-catalog select:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bt-catalog form { display: grid; gap: 12px; margin-top: 18px; }
+.bt-catalog form > .btn { justify-self: start; }
+.bt-catalog form label { display: block; font-size: 13px; }
+.bt-catalog form label > input { margin-top: 7px; }
+.bt-catalog .bt-card { margin-top: 16px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; }
+.bt-catalog .bt-card p { line-height: 1.6; overflow-wrap: anywhere; }
+.bt-catalog .bt-card .btn { margin: 6px 8px 6px 0; }
+.bt-catalog pre { max-width: 100%; overflow: auto; }

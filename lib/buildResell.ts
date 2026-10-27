@@ -162,7 +162,7 @@ export interface UpstreamResult<T = Record<string, unknown>> {
 
 async function callApi<T = Record<string, unknown>>(
   path: string,
-  init: { method: "GET" | "POST" | "PUT" | "DELETE"; body?: unknown; timeoutMs?: number },
+  init: { method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown; timeoutMs?: number },
 ): Promise<UpstreamResult<T>> {
   const res = await fetch(`${brand.apiBase}${path}`, {
     method: init.method,
@@ -300,10 +300,13 @@ export type BotToolPath =
   | "/computer/approve"
   | "/import/preview"
   | "/import/apply"
+  | "/tools"
+  | "/sites"
+  | "/cn-apps"
   | "/video";
 
 export interface BotToolRequest {
-  method: "GET" | "POST" | "PUT" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   query?: Record<string, string>;
   /** A JSON body, serialized here. */
   json?: unknown;
