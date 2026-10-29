@@ -220,6 +220,10 @@ export default function ChatApp({
     },
     [simpleMode, channelsEnabled, appsEnabled, byokEnabled, botTools.length]
   );
+  // Search the Apps panel opens with when the Plugins section sends someone
+  // there; cleared on leaving so the sidebar's Apps link opens unfiltered.
+  const [appsQuery, setAppsQuery] = useState("");
+  useEffect(() => { if (panel !== "apps") setAppsQuery(""); }, [panel]);
   const [sessionUserTurns, setSessionUserTurns] = useState(0);
   const [sessionAssistantReplies, setSessionAssistantReplies] = useState(0);
   const [savedUserTurns, setSavedUserTurns] = useState(0);
@@ -1562,7 +1566,7 @@ export default function ChatApp({
         )}
 
         {panel === "apps" && appsEnabled && (
-          <AppsPanel copy={copy} preview={preview} brandName={brandName} />
+          <AppsPanel copy={copy} preview={preview} brandName={brandName} initialQuery={appsQuery} />
         )}
 
         {panel === "skills" && !simpleMode && (
@@ -1580,7 +1584,13 @@ export default function ChatApp({
         )}
 
         {panel === "botTools" && botTools.length > 0 && (
-          <BotToolsPanel locale={locale} copy={copy} preview={preview} tools={botTools} />
+          <BotToolsPanel
+            locale={locale}
+            copy={copy}
+            preview={preview}
+            tools={botTools}
+            onOpenApps={appsEnabled ? (query) => { setAppsQuery(query); openPanel("apps"); } : undefined}
+          />
         )}
 
         {panel === "settings" && (

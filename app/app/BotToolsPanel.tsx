@@ -62,7 +62,7 @@ interface Info {
   backupCategories: string[];
 }
 
-export default function BotToolsPanel({ copy, locale = "en", preview, tools }: { copy: Messages; locale?: string; preview: boolean; tools: BotToolId[] }) {
+export default function BotToolsPanel({ copy, locale = "en", preview, tools, onOpenApps }: { copy: Messages; locale?: string; preview: boolean; tools: BotToolId[]; onOpenApps?: (query: string) => void }) {
   const t = copy.botTools;
   const sections = SECTIONS.filter((s) => tools.includes(s.id));
   const [active, setActive] = useState<BotToolId | null>(sections[0]?.id ?? null);
@@ -145,6 +145,7 @@ export default function BotToolsPanel({ copy, locale = "en", preview, tools }: {
               status={info.status}
               onStatus={onStatus}
               backupCategories={info.backupCategories}
+              onOpenApps={onOpenApps}
             />
           </div>
         </>

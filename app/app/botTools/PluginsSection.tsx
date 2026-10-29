@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { scrubPluginText, withInstalledCards, type InstalledPlugin, type PluginCard, type PluginJob } from "../../../lib/botPlugins";
 import { SectionState, errorText, toolFetch, type SectionProps } from "./shared";
+import AppLogo from "../AppLogo";
+import { MIN_APP_QUERY, compactAppText, matchCatalogApps, suggestableApps, type CatalogRow } from "../../../lib/appMatch";
 
 /**
  * Plugins: add-ons from a public plugin catalog for the customer's own
@@ -35,7 +37,7 @@ const PREVIEW_CATALOG: PluginCard[] = [
 const isActive = (job: PluginJob | null | undefined): boolean =>
   !!job && job.phase !== "done" && job.phase !== "failed";
 
-export default function PluginsSection({ copy, preview, status }: SectionProps) {
+export default function PluginsSection({ copy, preview, status, onOpenApps }: SectionProps) {
   const t = copy.botTools.plugins;
   const [catalog, setCatalog] = useState<PluginCard[] | null>(preview ? PREVIEW_CATALOG : null);
   const [installed, setInstalled] = useState<InstalledPlugin[]>([]);
@@ -128,6 +130,29 @@ export default function PluginsSection({ copy, preview, status }: SectionProps) 
       return !q || `${c.title} ${c.name} ${c.description} ${c.category}`.toLowerCase().includes(q);
     });
   }, [catalog, installed, query, filter, installedNames]);
+
+  // A search that finds no plugin but names an app (Gmail, ClickUp) points at
+  // the Apps panel. Only apps this storefront offers are named, and only when
+  // the reseller offers Apps at all (onOpenApps is absent otherwise).
+  const wantApps = !!onOpenApps && load === "ready" && visible.length === 0 && compactAppText(query).length >= MIN_APP_QUERY;
+  const [appRows, setAppRows] = useState<{ rows: CatalogRow[]; connected: Set<string> } | null>(null);
+  // A failed availability check names nothing (fail closed) but is not kept:
+  // the next different search asks again.
+  const [appsFailedFor, setAppsFailedFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!wantApps || appRows || appsFailedFor === query) return;
+    let live = true;
+    Promise.all([
+      import("../../../lib/appCatalog.json").then((m) => (m.default as { apps: { s: string; n: string }[] }).apps),
+      preview ? Promise.resolve(null) : fetch("/api/apps", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([apps, state]) => {
+      if (!live) return;
+      if (!preview && !state) { setAppsFailedFor(query); return; }
+      setAppRows(suggestableApps(apps, state, preview));
+    }).catch(() => { if (live) setAppsFailedFor(query); });
+    return () => { live = false; };
+  }, [wantApps, appRows, appsFailedFor, query, preview]);
+  const appMatches = wantApps && appRows ? matchCatalogApps(appRows.rows, query) : [];
 
   const running = preview || status === "running";
   const busy = submitting || isActive(job);
@@ -246,7 +271,29 @@ export default function PluginsSection({ copy, preview, status }: SectionProps) 
             ))}
           </div>
 
-          {visible.length === 0 && <p className="byok-note">{t.empty}</p>}
+          {visible.length === 0 && <p className="byok-note">{query.trim() ? t.emptyQuery(query.trim()) : t.empty}</p>}
+          {appMatches.length > 0 && onOpenApps && (
+            <div className="bt-apps-hint">
+              <strong>{t.appsTitle}</strong>
+              <span>{t.appsBody}</span>
+              <ul className="bt-connections">
+                {appMatches.map(([slug, name]) => {
+                  const connected = appRows?.connected.has(slug) ?? false;
+                  return (
+                    <li key={slug}>
+                      <div><strong><AppLogo slug={slug} name={name} size={20} /> {name}</strong></div>
+                      <div className="bt-row-actions">
+                        <button type="button" className={connected ? "btn btn-secondary" : "btn btn-primary"} onClick={() => onOpenApps(name)}>
+                          {connected ? `✓ ${t.appsConnected}` : t.appsConnect}
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <button type="button" className="settings-reset" onClick={() => onOpenApps(query.trim())}>{t.appsSeeAll(query.trim())}</button>
+            </div>
+          )}
 
           <ul className="bt-connections">
             {visible.slice(0, shown).map((card) => {

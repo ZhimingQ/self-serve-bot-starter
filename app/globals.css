@@ -2708,6 +2708,10 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 .bt-folder-row { display: flex; align-items: center; gap: 10px; }
 .bt-folder-row input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
+.bt-apps-hint { display: grid; gap: 4px; margin: 14px 0 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; }
+.bt-apps-hint > span { color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.bt-apps-hint > .settings-reset { justify-self: start; margin-top: 4px; }
+.bt-apps-hint .bt-connections strong { display: inline-flex; align-items: center; gap: 8px; }
 .bt-connections { display: grid; gap: 10px; margin: 12px 0 0; padding: 0; list-style: none; }
 .bt-connections li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border: 1px solid var(--border); background: #fff; }
 .bt-connections li > div:first-child { display: grid; gap: 3px; min-width: 0; }

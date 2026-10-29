@@ -23,6 +23,9 @@ export interface SectionProps {
   status: string;
   /** Sections that change the status (power) report it back. */
   onStatus: (status: string) => void;
+  /** Opens the Apps panel searched for `query`; absent when the storefront
+   *  does not offer Apps, so nothing points there. */
+  onOpenApps?: (query: string) => void;
   /** Backup categories this assistant supports, in display order. */
   backupCategories: string[];
 }

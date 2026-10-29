@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Messages } from "../../lib/i18n";
 import AppLogo from "./AppLogo";
+import { BRANDED_APP, appMatchesQuery } from "../../lib/appMatch";
 
 /**
  * "Apps" — connect the customer's own Gmail, Calendar, Notion and the rest so
@@ -24,8 +25,7 @@ interface Connection { id: string; app: string; status: string }
 interface State { enabled: boolean; connections: Connection[]; managedApps: string[] }
 
 const PAGE = 48;
-/** Catalog rows that would name the platform underneath (white-label). */
-const BRANDED = /composio|openclaw/i;
+const BRANDED = BRANDED_APP;
 const PREVIEW: State = {
   enabled: true,
   connections: [{ id: "preview-gmail", app: "gmail", status: "active" }],
@@ -34,12 +34,13 @@ const PREVIEW: State = {
 
 /** `manageOnly`: list and disconnect only (a paused customer taking back access);
  *  no catalog, no connect or reconnect. */
-export default function AppsPanel({ copy, preview, brandName, manageOnly = false }: { copy: Messages; preview: boolean; brandName: string; manageOnly?: boolean }) {
+/** `initialQuery`: opens already searched (the Plugins section sends app searches here). */
+export default function AppsPanel({ copy, preview, brandName, manageOnly = false, initialQuery = "" }: { copy: Messages; preview: boolean; brandName: string; manageOnly?: boolean; initialQuery?: string }) {
   const t = copy.apps;
   const [catalog, setCatalog] = useState<Row[] | null>(null);
   const [state, setState] = useState<State | null>(preview ? PREVIEW : null);
   const [load, setLoad] = useState<"loading" | "ready" | "error">(preview ? "ready" : "loading");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [shown, setShown] = useState(PAGE);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "error" | "note"; text: string; link?: string } | null>(null);
@@ -110,7 +111,7 @@ export default function AppsPanel({ copy, preview, brandName, manageOnly = false
   }, [catalog, state?.managedApps]);
   const q = query.trim().toLowerCase();
   const matches = useMemo(
-    () => (q ? offered.filter(([s, n]) => n.toLowerCase().includes(q) || s.replace(/_/g, " ").includes(q)) : offered),
+    () => (q ? offered.filter((row) => appMatchesQuery(row, q)) : offered),
     [offered, q],
   );
   const connectedSlugs = new Set((state?.connections ?? []).filter((c) => c.status === "active").map((c) => c.app));
