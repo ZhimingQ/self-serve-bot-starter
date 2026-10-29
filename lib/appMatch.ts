@@ -44,9 +44,12 @@ export function matchCatalogApps(rows: CatalogRow[], query: string, max = 3): Ca
     if (n.includes(q) || s.includes(q)) return 2;
     return -1;
   };
-  return rows
-    .map((row, i) => ({ row, i, r: rank(row) }))
-    .filter((x) => x.r >= 0)
+  // Named exactly: drop apps that only contain the search mid-name
+  // ("gmail" offers Gmail, not Bigmailer).
+  const ranked = rows.map((row, i) => ({ row, i, r: rank(row) })).filter((x) => x.r >= 0);
+  const worst = ranked.some((x) => x.r === 0) ? 1 : 2;
+  return ranked
+    .filter((x) => x.r <= worst)
     .sort((a, b) => a.r - b.r || a.i - b.i)
     .slice(0, max)
     .map((x) => x.row);
