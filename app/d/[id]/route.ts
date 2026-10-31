@@ -5,7 +5,7 @@ import { clientIp, rateLimit } from "../../../lib/rateLimit";
 /**
  * GET /d/<id> — a file the assistant sent, on this storefront's own domain.
  *
- * The platform mints the link (a 30-minute capability id) and serves the file at
+ * The platform mints the link (a 24-hour capability id) and serves the file at
  * the same path; this route streams it through unchanged, Range requests
  * included, so large downloads can resume. Errors get this storefront's own
  * page: the platform's carries the platform's name.
@@ -17,7 +17,7 @@ const ID_SHAPE = /^[A-Za-z0-9_-]{8,32}$/;
 const PASS_STATUSES = new Set([200, 206, 304, 416]);
 
 const COPY: Record<number, { title: string; detail: string }> = {
-  404: { title: "Link expired or file unavailable", detail: "Download links work for 30 minutes, and the file has to still be with your assistant. Ask it to send the file again." },
+  404: { title: "Link expired or file unavailable", detail: "Download links work for 24 hours, and the file has to still be with your assistant. Ask it to send the file again." },
   409: { title: "Your assistant is offline", detail: "This file comes straight from your assistant, which isn’t running right now. Start it and ask again." },
   413: { title: "File too large", detail: "This file is too large to download through this link." },
   429: { title: "Too many requests", detail: "Please wait a moment and try again." },

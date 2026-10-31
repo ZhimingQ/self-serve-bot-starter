@@ -16,7 +16,7 @@ import { clientIp } from "./rateLimit";
  * this storefront's reseller key, so a build without these routes (or a site
  * that is not this storefront) keeps getting platform links.
  *
- * Each request is authorized on its own (a /d id is a 30-minute capability,
+ * Each request is authorized on its own (a /d id is a 24-hour capability,
  * the endpoint uses the customer's own bearer key) and the visitor's cookies are
  * never forwarded. The reseller key goes along only to name the visitor
  * (visitorHeaders): every customer reaches the platform from this one server,
