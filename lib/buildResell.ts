@@ -76,11 +76,11 @@ const CONTROL_TIMEOUT_MS = 20_000;
 const CREATE_TIMEOUT_MS = 90_000;
 
 /** Create a brand-new bot instance for a user. Takes ~30-90s to become reachable. */
-export async function createInstance(): Promise<BuildResellInstance> {
+export async function createInstance(timezone?: string): Promise<BuildResellInstance> {
   const res = await fetch(`${brand.apiBase}/instances`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ framework: brand.framework }),
+    body: JSON.stringify({ framework: brand.framework, ...(timezone ? { timezone } : {}) }),
     cache: "no-store",
     signal: AbortSignal.timeout(CREATE_TIMEOUT_MS),
   });

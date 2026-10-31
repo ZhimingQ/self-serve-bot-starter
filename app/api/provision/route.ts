@@ -18,7 +18,19 @@ import { rateLimit } from "../../../lib/rateLimit";
  */
 const inflight = new Map<string, Promise<{ status: string; instanceId: string }>>();
 
-async function provision(userId: string): Promise<{ status: string; instanceId: string }> {
+/** The customer's browser zone, or undefined when it is missing or unknown here.
+ *  The API refuses a bad zone, and an odd browser value must not fail a signup. */
+function validTimezone(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.includes("/")) return undefined;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+async function provision(userId: string, timezone?: string): Promise<{ status: string; instanceId: string }> {
   const store = getStore();
   const existing = await store.getUserInstance(userId);
   if (existing) {
@@ -28,7 +40,7 @@ async function provision(userId: string): Promise<{ status: string; instanceId: 
 
   let instance;
   try {
-    instance = await createInstance();
+    instance = await createInstance(timezone);
   } catch (err) {
     // A TIMEOUT here is the dangerous case, not a plain failure: the request was
     // aborted client-side, so the bot may well have been created anyway — and we
@@ -60,7 +72,7 @@ async function provision(userId: string): Promise<{ status: string; instanceId: 
   return { status: instance.status, instanceId: instance.id };
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -99,9 +111,12 @@ export async function POST() {
     );
   }
 
+  // Before the inflight check: an await between that check and the set would let
+  // two concurrent calls each create a bot.
+  const body = await request.json().catch(() => null);
   let pending = inflight.get(session.userId);
   if (!pending) {
-    pending = provision(session.userId).finally(() => inflight.delete(session.userId));
+    pending = provision(session.userId, validTimezone(body?.timezone)).finally(() => inflight.delete(session.userId));
     inflight.set(session.userId, pending);
   }
 

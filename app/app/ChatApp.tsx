@@ -493,7 +493,11 @@ export default function ChatApp({
       if (stale()) return;
       attempts += 1;
       try {
-        const res = await fetch("/api/provision", { method: "POST" });
+        const res = await fetch("/api/provision", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+        });
         const data = await res.json();
         // Superseded while the request was in flight.
         if (stale()) return;
