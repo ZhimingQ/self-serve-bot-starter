@@ -17,6 +17,7 @@
  * out of it.
  */
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { lookup as dnsLookup } from "node:dns";
 import { request as httpsRequest } from "node:https";
 import { BlockList, isIP, type LookupFunction } from "node:net";
@@ -70,6 +71,14 @@ const publicOnlyLookup: LookupFunction = (hostname, options, callback) => {
 
 export type ResolvedEndpoint = { provider: string; baseUrl: string };
 
+/** OpenCode refuses any chat request without a session id (400 MissingSessionID),
+ *  so a good key would fail the save probe. Decided by host, not provider id:
+ *  "Other endpoint" can point at opencode.ai too. Hermes sends its own once the
+ *  bot is running, so this one only has to be unique. */
+export function endpointHeaders(url: string): Record<string, string> {
+  return new URL(url).hostname === "opencode.ai" ? { "x-opencode-session": `storefront-${randomUUID()}` } : {};
+}
+
 /** Provider id (+ base URL for "custom") to the endpoint the bot will call. */
 export function resolveEndpoint(provider: string, rawBaseUrl: unknown): ResolvedEndpoint | { error: string } {
   const listed = hermesProvider(provider);
@@ -106,6 +115,7 @@ function send(ep: ResolvedEndpoint, url: string, key: string, body?: unknown): P
         timeout: TIMEOUT_MS,
         headers: {
           Authorization: `Bearer ${key}`,
+          ...endpointHeaders(url),
           // Anthropic's /v1/models wants its own headers. Only Anthropic gets
           // them: OpenRouter answers them with its short Anthropic-format list.
           ...(ep.provider === "anthropic" ? { "x-api-key": key, "anthropic-version": "2023-06-01" } : {}),

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Messages } from "../../lib/i18n";
 import { HERMES_PROVIDERS, MODEL_ID_RE, type HermesProviderId } from "../../lib/hermesProviders";
+import ProviderPicker, { providerPickerText } from "./ProviderPicker";
 
 /**
  * Hermes "use your own AI provider" panel. Shown when the reseller sets
@@ -213,22 +214,22 @@ export default function HermesModelKeyPanel({ copy, preview }: { copy: Messages;
 
           {showForm && (
             <form onSubmit={save}>
-              <div className="byok-providers" role="radiogroup" aria-label={copy.hkProvider}>
-                {[...HERMES_PROVIDERS.map((p) => ({ id: p.id as HermesProviderId, label: p.label, note: copy.providerNote[p.id] })),
-                  { id: "custom" as HermesProviderId, label: copy.hkCustom, note: copy.hkCustomNote }].map((option) => (
-                  <label key={option.id} className={option.id === provider ? "selected" : ""}>
-                    <input
-                      type="radio"
-                      name="provider"
-                      value={option.id}
-                      checked={option.id === provider}
-                      onChange={() => { setProvider(option.id); setModels(null); setModel(""); setError(null); }}
-                    />
-                    <strong>{option.label}</strong>
-                    <span>{option.note}</span>
-                  </label>
-                ))}
-              </div>
+              {!status.hasKey && (
+                <div className="byok-own-heading">
+                  <h3>{copy.hkOwnHeading}</h3>
+                  <p>{copy.hkOwnBody}</p>
+                </div>
+              )}
+              <ProviderPicker
+                id="hk-provider"
+                label={copy.hkProvider}
+                options={HERMES_PROVIDERS.map((p) => ({ id: p.id as HermesProviderId, label: p.label, note: copy.providerNote[p.id] }))}
+                pinned={{ id: "custom", label: copy.hkCustom, note: copy.hkCustomNote }}
+                recommended="openrouter"
+                value={provider}
+                onChange={(id) => { setProvider(id); setModels(null); setModel(""); setError(null); }}
+                text={providerPickerText(copy)}
+              />
 
               {provider === "custom" && (
                 <div className="byok-field">

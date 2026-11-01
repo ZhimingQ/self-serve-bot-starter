@@ -20,6 +20,8 @@ export const HERMES_PROVIDERS = [
   { id: "zai", label: "Z.AI", baseUrl: "https://api.z.ai/api/paas/v4", keysUrl: "https://z.ai/manage-apikey/apikey-list", logo: "zhipu-color" },
   { id: "moonshot", label: "Moonshot", baseUrl: "https://api.moonshot.ai/v1", keysUrl: "https://platform.moonshot.ai/console/api-keys", logo: "moonshot" },
   { id: "minimax", label: "MiniMax", baseUrl: "https://api.minimax.io/v1", keysUrl: "https://platform.minimax.io/user-center/basic-information/interface-key", logo: "minimax-color" },
+  { id: "opencode-go", label: "OpenCode Go", baseUrl: "https://opencode.ai/zen/go/v1", keysUrl: "https://opencode.ai/go", logo: "opencode" },
+  { id: "opencode-zen", label: "OpenCode Zen", baseUrl: "https://opencode.ai/zen/v1", keysUrl: "https://opencode.ai/auth", logo: "opencode" },
 ] as const;
 
 export type HermesProviderId = (typeof HERMES_PROVIDERS)[number]["id"] | "custom";

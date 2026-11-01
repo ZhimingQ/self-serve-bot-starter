@@ -558,6 +558,12 @@ export const messages = {
     hkProvider: "Provider",
     hkCustom: "Other endpoint",
     hkCustomNote: "Any OpenAI-compatible API",
+    hkOwnHeading: "Or use your own AI key",
+    hkOwnBody: "Connect a provider you already pay for.",
+    providerSearch: "Search providers",
+    providerGroupRecommended: "Recommended",
+    providerGroupOthers: "More providers",
+    providerNoMatch: (query: string) => `No provider matches "${query}".`,
     hkBaseUrl: "Base URL",
     hkBaseUrlHint: "The https address that ends before /chat/completions, for example https://api.example.com/v1",
     hkKey: (provider: string) => `${provider} API key`,
@@ -640,7 +646,8 @@ export const messages = {
       // objects, so copy.providerNote[option.id] only typechecks when a key is
       // present in BOTH. Keep every ProviderId represented in both blocks.
       nousportal: "Hermes-native",
-      "opencode-go": "Your Zen plan",
+      "opencode-go": "Monthly plan",
+      "opencode-zen": "Pay as you go",
     },
 
     // ── Channels ────────────────────────────────────────────────────────────
@@ -1820,6 +1827,12 @@ export const messages = {
     hkProvider: "服务商",
     hkCustom: "其他接口",
     hkCustomNote: "任意兼容 OpenAI 的 API",
+    hkOwnHeading: "或使用你自己的 AI 密钥",
+    hkOwnBody: "连接你已经付费的服务商。",
+    providerSearch: "搜索服务商",
+    providerGroupRecommended: "推荐",
+    providerGroupOthers: "更多服务商",
+    providerNoMatch: (query: string) => `没有找到“${query}”。`,
     hkBaseUrl: "接口地址（Base URL）",
     hkBaseUrlHint: "以 https 开头、在 /chat/completions 之前结束的地址，例如 https://api.example.com/v1",
     hkKey: (provider: string) => `${provider} API 密钥`,
@@ -1896,7 +1909,8 @@ export const messages = {
       openai: "GPT 直连",
       groq: "高速推理",
       nousportal: "Hermes 原生",
-      "opencode-go": "Zen 计划",
+      "opencode-go": "包月订阅",
+      "opencode-zen": "按量付费",
     },
 
     // ── 渠道连接 ───────────────────────────────────────────────────────────

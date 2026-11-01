@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Messages } from "../../lib/i18n";
 import { PROVIDERS, type ProviderId } from "../../lib/providers";
+import ProviderPicker, { providerPickerText } from "./ProviderPicker";
 
 /**
  * "Model key" panel — the customer points their assistant at their OWN provider
@@ -168,21 +169,15 @@ export default function ModelKeyPanel({
 
           {showForm && (
             <form onSubmit={save}>
-              <div className="byok-providers" role="radiogroup" aria-label={copy.modelKeyProviderTitle}>
-                {PROVIDERS.map((option) => (
-                  <label key={option.id} className={option.id === provider ? "selected" : ""}>
-                    <input
-                      type="radio"
-                      name="provider"
-                      value={option.id}
-                      checked={option.id === provider}
-                      onChange={() => { setProvider(option.id); setErrorText(""); setErrorCode(""); }}
-                    />
-                    <strong>{option.label}</strong>
-                    <span>{copy.providerNote[option.id]}</span>
-                  </label>
-                ))}
-              </div>
+              <ProviderPicker
+                id="mk-provider"
+                label={copy.modelKeyProviderTitle}
+                options={PROVIDERS.map((option) => ({ id: option.id, label: option.label, note: copy.providerNote[option.id] }))}
+                recommended="openrouter"
+                value={provider}
+                onChange={(id) => { setProvider(id); setErrorText(""); setErrorCode(""); }}
+                text={providerPickerText(copy)}
+              />
 
               <div className="byok-field">
                 <label htmlFor="model-key">{copy.modelKeyFieldLabel(spec.label)}</label>

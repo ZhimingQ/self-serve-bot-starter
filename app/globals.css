@@ -2387,31 +2387,75 @@ a.control-brand:hover strong { text-decoration: underline; text-underline-offset
   color: #416648;
 }
 
-.byok-providers {
-  display: grid;
-  margin-top: 20px;
-  gap: 8px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
+.byok-own-heading { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--border); }
+.byok-own-heading h3 { margin: 0; color: var(--ink); font-size: 15px; font-weight: 650; }
+.byok-own-heading p { margin: 3px 0 0; color: var(--text-muted); font-size: 12px; }
 
-.byok-providers label {
-  display: grid;
-  padding: 11px 13px;
+.provider-picker { position: relative; }
+.provider-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
   border: 1px solid var(--border);
   background: #fff;
+  color: var(--text);
   cursor: pointer;
+  font: inherit;
+  text-align: left;
 }
-
-.byok-providers label.selected {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
+.provider-trigger:focus-visible { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 2px; }
+.provider-chevron { flex: none; color: var(--text-muted); }
+.provider-tile {
+  display: inline-flex;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
 }
-
-.byok-providers input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.byok-providers strong { font-size: 13px; font-weight: 650; }
-.byok-providers span { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
-.byok-providers label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.provider-text { display: grid; min-width: 0; flex: 1; }
+.provider-text strong { overflow: hidden; color: var(--ink); font-size: 14px; font-weight: 650; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.byok-field .provider-text small { margin-top: 1px; color: var(--text-muted); font-size: 11.5px; line-height: 1.3; }
+.provider-popup {
+  position: absolute;
+  z-index: 40;
+  top: 100%;
+  right: 0;
+  left: 0;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 18px 40px -16px rgba(40, 30, 10, 0.32);
+}
+.provider-search { padding: 8px; border-bottom: 1px solid var(--border); }
+.byok-field .provider-search input { padding: 9px 12px; border: 0; background: var(--paper); font-family: inherit; font-size: 14px; }
+.provider-list { max-height: 320px; overflow-y: auto; padding: 6px; }
+.provider-group { padding: 8px 10px 4px; color: var(--text-muted); font-size: 11px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; }
+.provider-empty { margin: 0; padding: 10px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+.provider-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.provider-row:hover, .provider-row.is-active { background: var(--cream); }
+.provider-row.is-selected { background: var(--accent-soft); }
+.provider-row.is-selected.is-active { box-shadow: inset 0 0 0 1px var(--accent); }
+.provider-check { flex: none; color: var(--accent); font-size: 14px; }
+.provider-pinned { position: sticky; bottom: -6px; margin: 6px -6px -6px; padding: 6px; border-top: 1px solid var(--border); background: #fff; }
 
 .byok-field { margin-top: 20px; }
 .byok-field label { display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 12px; }
@@ -2729,7 +2773,6 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
 .bt-found p { margin: 6px 0 0; color: var(--text-muted); font-size: 12.5px; overflow-wrap: anywhere; }
 
 @media (max-width: 900px) {
-  .byok-providers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .channel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -2744,7 +2787,8 @@ button.bt-entry { padding: 0; border: 0; background: transparent; color: var(--a
   .bt-row-actions { flex-direction: column; align-items: flex-end; gap: 0; }
   .byok-card { padding: 20px; }
   .byok-card > header { flex-direction: column; gap: 10px; }
-  .byok-providers,
+  /* Below 16px iOS zooms the page when the field takes focus. */
+  .byok-field .provider-search input { font-size: 16px; }
   .channel-grid { grid-template-columns: 1fr; }
 }
 
