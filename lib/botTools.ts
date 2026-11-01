@@ -27,6 +27,17 @@ export function toolFitsFramework(id: BotToolId, framework: string): boolean {
   return !HERMES_ONLY_TOOLS.has(id) || framework === "hermes";
 }
 
+const ZH_ONLY_TOOLS: ReadonlySet<BotToolId> = new Set<BotToolId>(["china-apps"]);
+
+/**
+ * Should a customer reading this language see the tool? China apps are a
+ * Chinese-market surface, zh only like the 国内应用 entry on the platform's own
+ * dashboard. This hides the tab; a connected app keeps working for the bot.
+ */
+export function toolFitsLocale(id: BotToolId, locale: string): boolean {
+  return !ZH_ONLY_TOOLS.has(id) || locale.split("-")[0] === "zh";
+}
+
 /**
  * Parse BOT_TOOLS.
  *

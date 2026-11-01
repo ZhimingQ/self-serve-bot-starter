@@ -14,7 +14,7 @@ import BotToolsPanel from "./BotToolsPanel";
 import AssistantModal, { BotSummaryCard, pillLabel, useBotInfo } from "./MyAssistantPanel";
 import AppsPanel from "./AppsPanel";
 import SkillsPanel from "./SkillsPanel";
-import type { BotToolId } from "../../lib/botTools";
+import { toolFitsLocale, type BotToolId } from "../../lib/botTools";
 import {
   defaultAssistantPreferences,
   MAX_CUSTOM_INSTRUCTIONS_CHARS,
@@ -101,7 +101,7 @@ export default function ChatApp({
   channelsEnabled = true,
   appsEnabled = false,
   byokFramework = "openclaw",
-  botTools = [],
+  botTools: enabledBotTools = [],
   simpleMode = false,
   studentMode = false,
   turnsOutliveThePage = false,
@@ -156,6 +156,7 @@ export default function ChatApp({
   previewHomeHref?: string;
 }) {
   const copy = translations[locale];
+  const botTools = enabledBotTools.filter((id) => toolFitsLocale(id, locale));
   const profile = !studentMode && customerPresetId !== "general" ? getCustomerPreset(customerPresetId)[locale] : null;
   const startingPrompts = profile?.prompts ?? [copy.promptOne, copy.promptTwo, copy.promptThree];
   const promptLibrary = profile ? profile.workflows.map((job) => [job.prompt, job.result, job.title]) : [
@@ -271,6 +272,11 @@ export default function ChatApp({
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
   }, [locale]);
+
+  // A language change keeps this client state, and can hide the only tool.
+  useEffect(() => {
+    if (panel === "botTools" && botTools.length === 0) setPanel("assistant");
+  }, [panel, botTools.length]);
 
   // Cancel a pending poll on unmount so a re-armed chain cannot outlive the
   // component and resurrect a stale provisioning state.
