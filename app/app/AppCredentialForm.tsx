@@ -97,7 +97,7 @@ export default function AppCredentialForm({
       <div className="channel-modal">
         <header>
           <strong>{t.connectLabel(name)}</strong>
-          <button type="button" className="channel-modal-close" onClick={onClose} aria-label={t.credentialCancel}>✕</button>
+          <button type="button" className="channel-modal-close" disabled={busy} onClick={onClose} aria-label={t.credentialCancel}>✕</button>
         </header>
         <div className="channel-modal-body">
           <p>{t.credentialIntro}</p>
