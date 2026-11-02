@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Messages } from "../../lib/i18n";
 import AppLogo from "./AppLogo";
+import AppCredentialForm from "./AppCredentialForm";
 import { BRANDED_APP, appMatchesQuery } from "../../lib/appMatch";
 
 /**
@@ -11,10 +12,12 @@ import { BRANDED_APP, appMatchesQuery } from "../../lib/appMatch";
  *
  * The list is lib/appCatalog.json (popular first, then A to Z), loaded only when
  * this panel opens so the rest of /app does not carry it. The server says which
- * of those can be connected with a sign-in link (managedApps); when it cannot
- * say, every app is offered and the server refuses the ones it must.
+ * of those can be connected with a sign-in link (managedApps) and which with the
+ * customer's own API key or login details (credentialApps); when it cannot say,
+ * every app is offered and the server refuses the ones it must.
  *
- * Connecting opens the app's own sign-in page in a new tab. The tab is opened
+ * A credential app opens AppCredentialForm here. A sign-in app opens the app's
+ * own sign-in page in a new tab. The tab is opened
  * synchronously on the click (before the request) so pop-up blockers allow it,
  * then pointed at the URL once the server answers. Coming back to this tab
  * refreshes the list, which is when a finished sign-in shows up as connected.
@@ -22,7 +25,7 @@ import { BRANDED_APP, appMatchesQuery } from "../../lib/appMatch";
 
 type Row = [slug: string, name: string];
 interface Connection { id: string; app: string; status: string }
-interface State { enabled: boolean; connections: Connection[]; managedApps: string[] }
+interface State { enabled: boolean; connections: Connection[]; managedApps: string[]; credentialApps: string[] }
 
 const PAGE = 48;
 const BRANDED = BRANDED_APP;
@@ -30,6 +33,7 @@ const PREVIEW: State = {
   enabled: true,
   connections: [{ id: "preview-gmail", app: "gmail", status: "active" }],
   managedApps: [],
+  credentialApps: [],
 };
 
 /** `manageOnly`: list and disconnect only (a paused customer taking back access);
@@ -44,6 +48,7 @@ export default function AppsPanel({ copy, preview, brandName, manageOnly = false
   const [shown, setShown] = useState(PAGE);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "error" | "note"; text: string; link?: string } | null>(null);
+  const [credentialApp, setCredentialApp] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -80,6 +85,7 @@ export default function AppsPanel({ copy, preview, brandName, manageOnly = false
         enabled: data.enabled === true,
         connections: Array.isArray(data.connections) ? data.connections : [],
         managedApps: Array.isArray(data.managedApps) ? data.managedApps : [],
+        credentialApps: Array.isArray(data.credentialApps) ? data.credentialApps : [],
       });
       setLoad("ready");
     } catch {
@@ -105,10 +111,11 @@ export default function AppsPanel({ copy, preview, brandName, manageOnly = false
   const nameOf = (slug: string) =>
     names.get(slug) ?? (BRANDED.test(slug) ? t.otherApp : slug.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()));
 
+  const credentialSlugs = useMemo(() => new Set(state?.credentialApps ?? []), [state?.credentialApps]);
   const offered = useMemo(() => {
-    const managed = new Set(state?.managedApps ?? []);
-    return (catalog ?? []).filter(([s]) => managed.size === 0 || managed.has(s));
-  }, [catalog, state?.managedApps]);
+    const connectable = new Set([...(state?.managedApps ?? []), ...credentialSlugs]);
+    return (catalog ?? []).filter(([s]) => connectable.size === 0 || connectable.has(s));
+  }, [catalog, state?.managedApps, credentialSlugs]);
   const q = query.trim().toLowerCase();
   const matches = useMemo(
     () => (q ? offered.filter((row) => appMatchesQuery(row, q)) : offered),
@@ -124,6 +131,7 @@ export default function AppsPanel({ copy, preview, brandName, manageOnly = false
   async function connect(slug: string) {
     setMessage(null);
     if (preview) { setMessage({ kind: "note", text: t.previewNote }); return; }
+    if (credentialSlugs.has(slug)) { setCredentialApp(slug); return; }
     // Opened now, inside the click, so a pop-up blocker lets it through.
     const tab = window.open("about:blank", "_blank");
     setBusy(slug);
@@ -134,6 +142,12 @@ export default function AppsPanel({ copy, preview, brandName, manageOnly = false
         body: JSON.stringify({ app: slug }),
       });
       const data = await res.json().catch(() => ({}));
+      // The list was unavailable, so the app was offered without knowing how it connects.
+      if (data.needsCredentials === true) {
+        tab?.close();
+        setCredentialApp(slug);
+        return;
+      }
       if (!res.ok || typeof data.redirectUrl !== "string") {
         tab?.close();
         setMessage({ kind: "error", text: errorText(data.error) });
@@ -185,6 +199,13 @@ export default function AppsPanel({ copy, preview, brandName, manageOnly = false
 
   const statusText = (status: string) =>
     status === "active" ? t.statusConnected : status === "initiated" ? t.statusPending : t.statusReconnect;
+
+  function credentialConnected() {
+    const slug = credentialApp;
+    setCredentialApp(null);
+    if (slug) setMessage({ kind: "note", text: t.credentialConnected(nameOf(slug)) });
+    void refresh(true);
+  }
 
   return (
     <div className="control-content apps-panel">
@@ -296,6 +317,17 @@ export default function AppsPanel({ copy, preview, brandName, manageOnly = false
               </>
             )}
           </section>}
+
+          {credentialApp && (
+            <AppCredentialForm
+              copy={copy}
+              brandName={brandName}
+              slug={credentialApp}
+              name={nameOf(credentialApp)}
+              onClose={() => setCredentialApp(null)}
+              onConnected={credentialConnected}
+            />
+          )}
         </>
       )}
     </div>

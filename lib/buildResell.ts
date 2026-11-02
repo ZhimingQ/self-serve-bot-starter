@@ -272,7 +272,7 @@ export function removeSkill(instanceId: string, skill: string) {
 // each bot's connections in that bot's own pool (the same one the bot uses in
 // chat). Same contract: the caller resolved `instanceId` from the session.
 
-/** `{ enabled, connections: [{id, app, status, created_at}], managed_apps }`. */
+/** `{ enabled, connections: [{id, app, status, created_at}], managed_apps, credential_apps }`. */
 export function getApps(instanceId: string) {
   return callApi(`/instances/${encodeURIComponent(instanceId)}/apps`, { method: "GET" });
 }
@@ -280,6 +280,26 @@ export function getApps(instanceId: string) {
 /** Start connecting one app; answers `{ redirect_url, notice }`. */
 export function connectApp(instanceId: string, app: string) {
   return callApi(`/instances/${encodeURIComponent(instanceId)}/apps`, { method: "POST", body: { app } });
+}
+
+/** How one app connects; for a credential app, the fields to ask the customer for. */
+export function getAppAuth(instanceId: string, app: string, scheme?: string) {
+  const qs = new URLSearchParams({ app, ...(scheme ? { scheme } : {}) }).toString();
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/apps?${qs}`, { method: "GET" });
+}
+
+/** Connect an app with the customer's own API key or login details; answers
+ *  `{ connected, connection_id, scheme, notice }` with no redirect. */
+export function connectAppWithCredentials(
+  instanceId: string,
+  app: string,
+  credentials: Record<string, string>,
+  scheme?: string,
+) {
+  return callApi(`/instances/${encodeURIComponent(instanceId)}/apps`, {
+    method: "POST",
+    body: { app, credentials, ...(scheme ? { scheme } : {}) },
+  });
 }
 
 /** Disconnect one of the bot's connections. The id reaches only the query string. */
