@@ -79,6 +79,12 @@ export function endpointHeaders(url: string): Record<string, string> {
   return new URL(url).hostname === "opencode.ai" ? { "x-opencode-session": `storefront-${randomUUID()}` } : {};
 }
 
+/** Nous Portal refuses a chat with no `user=` tag (400 missing tags), so a good key
+ *  would fail the save probe. The platform writes the same tag into the bot. */
+export function endpointBody(url: string): Record<string, unknown> {
+  return new URL(url).hostname === "inference-api.nousresearch.com" ? { tags: ["user=hermes"] } : {};
+}
+
 /** Provider id (+ base URL for "custom") to the endpoint the bot will call. */
 export function resolveEndpoint(provider: string, rawBaseUrl: unknown): ResolvedEndpoint | { error: string } {
   const listed = hermesProvider(provider);
@@ -197,12 +203,13 @@ function isChatCompletion(json: unknown): boolean {
 export async function probeChat(ep: ResolvedEndpoint, key: string, model: string): Promise<{ ok: true } | { ok: false; error: string; message?: string }> {
   const url = `${ep.baseUrl}/chat/completions`;
   const messages = [{ role: "user", content: "Reply with OK." }];
+  const extra = endpointBody(url);
   let r: Reply;
   try {
-    r = await send(ep, url, key, { model, messages, max_tokens: 16 });
+    r = await send(ep, url, key, { ...extra, model, messages, max_tokens: 16 });
     // Newer OpenAI reasoning models refuse max_tokens and want this instead.
     if (r.status === 400 && /max_completion_tokens/.test(JSON.stringify(r.json ?? ""))) {
-      r = await send(ep, url, key, { model, messages, max_completion_tokens: 64 });
+      r = await send(ep, url, key, { ...extra, model, messages, max_completion_tokens: 64 });
     }
   } catch {
     return { ok: false, error: "unreachable" };
