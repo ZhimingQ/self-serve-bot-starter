@@ -5,9 +5,7 @@
  * URL for a listed provider.
  *
  * Every entry is an OpenAI-compatible endpoint, because Hermes takes a custom
- * key through its `custom` provider slot (base_url + api_key + model). xAI and
- * Nous Portal are absent on purpose: the platform refuses those hosts for a
- * resold bot, since it routes them itself.
+ * key through its `custom` provider slot (base_url + api_key + model).
  */
 export const HERMES_PROVIDERS = [
   { id: "openrouter", label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", keysUrl: "https://openrouter.ai/keys", logo: "openrouter" },
@@ -22,6 +20,10 @@ export const HERMES_PROVIDERS = [
   { id: "minimax", label: "MiniMax", baseUrl: "https://api.minimax.io/v1", keysUrl: "https://platform.minimax.io/user-center/basic-information/interface-key", logo: "minimax-color" },
   { id: "opencode-go", label: "OpenCode Go", baseUrl: "https://opencode.ai/zen/go/v1", keysUrl: "https://opencode.ai/go", logo: "opencode" },
   { id: "opencode-zen", label: "OpenCode Zen", baseUrl: "https://opencode.ai/zen/v1", keysUrl: "https://opencode.ai/auth", logo: "opencode" },
+  { id: "xai", label: "xAI", baseUrl: "https://api.x.ai/v1", keysUrl: "https://console.x.ai/team/default/api-keys", logo: "xai" },
+  { id: "nousportal", label: "Nous Portal", baseUrl: "https://inference-api.nousresearch.com/v1", keysUrl: "https://portal.nousresearch.com/", logo: "nousportal" },
+  { id: "ollama-cloud", label: "Ollama Cloud", baseUrl: "https://ollama.com/v1", keysUrl: "https://ollama.com/settings/keys", logo: "ollama" },
+  { id: "agnes", label: "Agnes", baseUrl: "https://apihub.agnes-ai.com/v1", keysUrl: "https://platform.agnes-ai.com/", logo: "agnes" },
 ] as const;
 
 export type HermesProviderId = (typeof HERMES_PROVIDERS)[number]["id"] | "custom";

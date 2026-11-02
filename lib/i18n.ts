@@ -648,6 +648,8 @@ export const messages = {
       nousportal: "Hermes-native",
       "opencode-go": "Monthly plan",
       "opencode-zen": "Pay as you go",
+      "ollama-cloud": "Hosted open models",
+      agnes: "Agnes models",
     },
 
     // ── Channels ────────────────────────────────────────────────────────────
@@ -1929,6 +1931,8 @@ export const messages = {
       nousportal: "Hermes 原生",
       "opencode-go": "包月订阅",
       "opencode-zen": "按量付费",
+      "ollama-cloud": "托管开源模型",
+      agnes: "Agnes 模型",
     },
 
     // ── 渠道连接 ───────────────────────────────────────────────────────────
