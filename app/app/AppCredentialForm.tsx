@@ -127,6 +127,7 @@ export default function AppCredentialForm({
                 <div className="byok-field" key={f.name}>
                   <label htmlFor={`app-credential-${i}`}>{f.required ? f.label : `${f.label} (${t.credentialOptional})`}</label>
                   <input
+                    disabled={busy}
                     id={`app-credential-${i}`}
                     type={f.secret ? "password" : "text"}
                     required={f.required}
