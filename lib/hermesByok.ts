@@ -126,6 +126,9 @@ function send(ep: ResolvedEndpoint, url: string, key: string, body?: unknown): P
           // them: OpenRouter answers them with its short Anthropic-format list.
           ...(ep.provider === "anthropic" ? { "x-api-key": key, "anthropic-version": "2023-06-01" } : {}),
           Accept: "application/json",
+          // Node sends none by default, and Nous Portal's Cloudflare answers that with a
+          // 403 page, which reads as a bad key.
+          "User-Agent": "Hermes-Storefront/1.0",
           ...(payload ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } : {}),
         },
       }, (res) => {
