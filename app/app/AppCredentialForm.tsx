@@ -118,7 +118,7 @@ export default function AppCredentialForm({
               {auth.schemes.length > 1 && (
                 <div className="byok-field">
                   <label htmlFor="app-credential-scheme">{t.credentialScheme}</label>
-                  <select id="app-credential-scheme" value={auth.scheme} onChange={(e) => chooseScheme(e.target.value)}>
+                  <select disabled={busy} id="app-credential-scheme" value={auth.scheme} onChange={(e) => chooseScheme(e.target.value)}>
                     {auth.schemes.map((s) => <option key={s} value={s}>{schemeNames[s] ?? s}</option>)}
                   </select>
                 </div>
