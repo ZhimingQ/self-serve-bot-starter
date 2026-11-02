@@ -53,13 +53,16 @@ export function readAppAuth(value: unknown): AppAuth | null {
   for (const entry of data.fields) {
     const f = (entry ?? {}) as Record<string, unknown>;
     if (typeof f.name !== "string" || !FIELD_NAME_RE.test(f.name)) continue;
+    const fallback = typeof f.default === "string" && f.default ? f.default : null;
     fields.push({
       name: f.name,
       label: typeof f.label === "string" && f.label ? f.label : f.name,
       description: typeof f.description === "string" ? f.description : "",
       required: f.required === true,
-      secret: f.secret !== false,
-      default: typeof f.default === "string" ? f.default : null,
+      // A field that ships with a default (a base URL, a region) is not a secret,
+      // and the customer needs to see the value they are accepting.
+      secret: f.secret !== false && !fallback,
+      default: fallback,
     });
   }
   if (fields.length === 0) return null;

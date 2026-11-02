@@ -248,7 +248,7 @@ export default function AppsPanel({ copy, preview, brandName, manageOnly = false
                       <strong>{nameOf(c.app)}</strong>
                       <small className={c.status === "active" ? "is-ok" : "is-pending"}>{statusText(c.status)}</small>
                     </span>
-                    {!manageOnly && c.status !== "active" && c.status !== "initiated" && (
+                    {!manageOnly && ((c.status !== "active" && c.status !== "initiated") || credentialSlugs.has(c.app)) && (
                       <button type="button" className="btn btn-secondary" disabled={busy !== null} onClick={() => void connect(c.app)}>
                         {t.reconnect}
                       </button>

@@ -48,6 +48,7 @@ export default function AppCredentialForm({
       const next = res.ok ? readAppAuth(data.auth) : null;
       if (!next) { setLoadFailed(true); return; }
       setAuth(next);
+      setValues(Object.fromEntries(next.fields.flatMap((f) => (f.default ? [[f.name, f.default]] : []))));
     } catch {
       if (mine === ticket.current) setLoadFailed(true);
     }
@@ -132,7 +133,6 @@ export default function AppCredentialForm({
                     autoFocus={i === 0}
                     autoComplete={f.secret ? "new-password" : "off"}
                     spellCheck={false}
-                    placeholder={f.default ?? undefined}
                     value={values[f.name] ?? ""}
                     onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
                   />
